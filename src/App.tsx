@@ -4,6 +4,7 @@ import Footer from './components/includes/Footer';
 import Home from './components/pages/Home';
 import About from './components/pages/About';
 import Programs from './components/pages/Programs';
+import Staff from './components/pages/Staff';
 import Admissions from './components/pages/Admissions';
 import Contact from './components/pages/Contact';
 
@@ -15,6 +16,7 @@ function App() {
         <Home />
         <About />
         <Programs />
+        <Staff />
         <Admissions />
         <Contact />
       </main>
