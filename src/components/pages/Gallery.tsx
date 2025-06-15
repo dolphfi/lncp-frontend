@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Masonry from "react-masonry-css";
 import { PhotoProvider, PhotoView } from "react-photo-view";
 import "react-photo-view/dist/react-photo-view.css";
+import { ChevronDown } from "lucide-react";
 
 // Types pour les images et les catégories
 interface Image {
@@ -97,7 +98,25 @@ const categories = [
 const Gallery: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const imagesPerPage = 15;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const filteredImages =
     selectedCategory === "all"
@@ -137,14 +156,63 @@ const Gallery: React.FC = () => {
 
         {/* Navigation filtrée */}
         <div className="flex justify-center mb-20">
-          <nav className="relative">
-            <div className="flex items-center space-x-12">
+          <nav className="relative" ref={dropdownRef}>
+            {/* Mobile Dropdown */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center justify-between w-48 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
+              >
+                <span>
+                  {categories.find((cat) => cat.id === selectedCategory)?.name}
+                </span>
+                <ChevronDown
+                  className={`w-5 h-5 ml-2 -mr-1 text-gray-400 transform transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""
+                    }`}
+                />
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute left-0 right-0 w-48 mx-auto mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                  <div className="py-1">
+                    {categories.map((category) => {
+                      const count =
+                        category.id === "all"
+                          ? images.length
+                          : images.filter(
+                            (img) => img.category === category.id
+                          ).length;
+                      return (
+                        <button
+                          key={category.id}
+                          onClick={() => {
+                            setSelectedCategory(category.id);
+                            setCurrentPage(1);
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2 text-sm flex justify-between ${selectedCategory === category.id
+                              ? "bg-gray-100 text-secondary"
+                              : "text-gray-700 hover:bg-gray-50"
+                            }`}
+                        >
+                          <span>{category.name}</span>
+                          <span className="text-gray-400">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Buttons */}
+            <div className="hidden md:flex items-center space-x-12">
               {categories.map((category) => {
                 const count =
                   category.id === "all"
                     ? images.length
                     : images.filter((img) => img.category === category.id)
-                        .length;
+                      .length;
 
                 return (
                   <button
@@ -153,17 +221,15 @@ const Gallery: React.FC = () => {
                       setSelectedCategory(category.id);
                       setCurrentPage(1);
                     }}
-                    className={`text-dark/70 hover:text-secondary text-xs cursor-pointer duration-300 relative group ${
-                      selectedCategory === category.id ? "text-secondary" : ""
-                    }`}
+                    className={`text-dark/70 hover:text-secondary text-xs cursor-pointer duration-300 relative group ${selectedCategory === category.id ? "text-secondary" : ""
+                      }`}
                   >
                     <span className="flex items-center gap-2">
                       <span
-                        className={`${
-                          selectedCategory === category.id
-                            ? "text-secondary"
-                            : ""
-                        }`}
+                        className={`${selectedCategory === category.id
+                          ? "text-secondary"
+                          : ""
+                          }`}
                       >
                         {category.name}
                       </span>
@@ -173,11 +239,10 @@ const Gallery: React.FC = () => {
                       </span>
                     </span>
                     <span
-                      className={`absolute -bottom-1 left-0 h-0.5 bg-secondary transition-all duration-300 ${
-                        selectedCategory === category.id
+                      className={`absolute -bottom-1 left-0 h-0.5 bg-secondary transition-all duration-300 ${selectedCategory === category.id
                           ? "w-full"
                           : "w-0 group-hover:w-full"
-                      }`}
+                        }`}
                     ></span>
                   </button>
                 );
@@ -230,11 +295,10 @@ const Gallery: React.FC = () => {
             <button
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className={`px-4 py-2 rounded-lg text-sm ${
-                currentPage === 1
+              className={`px-4 py-2 rounded-lg text-sm ${currentPage === 1
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-600 hover:text-secondary"
-              }`}
+                }`}
             >
               Précédent
             </button>
@@ -243,11 +307,10 @@ const Gallery: React.FC = () => {
                 <button
                   key={index + 1}
                   onClick={() => setCurrentPage(index + 1)}
-                  className={`w-8 h-8 rounded-lg text-sm ${
-                    currentPage === index + 1
+                  className={`w-8 h-8 rounded-lg text-sm ${currentPage === index + 1
                       ? "bg-secondary text-white"
                       : "text-gray-600 hover:text-secondary"
-                  }`}
+                    }`}
                 >
                   {index + 1}
                 </button>
@@ -258,11 +321,10 @@ const Gallery: React.FC = () => {
                 setCurrentPage((prev) => Math.min(prev + 1, totalPages))
               }
               disabled={currentPage === totalPages}
-              className={`px-4 py-2 rounded-lg text-sm ${
-                currentPage === totalPages
+              className={`px-4 py-2 rounded-lg text-sm ${currentPage === totalPages
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-600 hover:text-secondary"
-              }`}
+                }`}
             >
               Suivant
             </button>

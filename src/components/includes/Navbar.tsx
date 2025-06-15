@@ -73,16 +73,15 @@ const Navbar = () => {
               offset={-64}
               duration={500}
               onSetActive={() => setActiveSection("home")}
-              className={`font-medium text-xl cursor-pointer ${
-                activeSection === "home" ? "text-blue-600" : "text-dark/70"
-              }`}
+              className={`font-medium text-xl cursor-pointer ${activeSection === "home" ? "text-blue-600" : "text-dark/70"
+                }`}
             >
               LNCP
             </Link>
           </div>
 
           {/* Center Column: Links (Absolutely Centered) */}
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <div className="flex items-center space-x-4">
               {navLinks.map((link) => (
                 <Link
@@ -96,18 +95,16 @@ const Navbar = () => {
                   className={`text-dark/70 hover:text-blue-600 text-xs cursor-pointer duration-300 relative group `}
                 >
                   <span
-                    className={`relative z-10 ${
-                      activeSection === link.to ? "text-blue-600" : ""
-                    }`}
+                    className={`relative z-10 ${activeSection === link.to ? "text-blue-600" : ""
+                      }`}
                   >
                     {link.label}
                   </span>
                   <span
-                    className={`absolute rounded-full -bottom-1 left-0 h-0.5 bg-blue-600 transition-all duration-300 ${
-                      activeSection === link.to
-                        ? "w-full"
-                        : "w-0 group-hover:w-full"
-                    }`}
+                    className={`absolute rounded-full -bottom-1 left-0 h-0.5 bg-blue-600 transition-all duration-300 ${activeSection === link.to
+                      ? "w-full"
+                      : "w-0 group-hover:w-full"
+                      }`}
                   ></span>
                 </Link>
               ))}
@@ -117,7 +114,7 @@ const Navbar = () => {
           {/* Right Column: Buttons & Mobile Toggle */}
           <div className="flex items-center">
             {/* Desktop Buttons */}
-            <div className="hidden md:flex items-center space-x-2">
+            <div className="hidden lg:flex items-center space-x-2">
               <button
                 type="button"
                 className="flex items-center bg-secondary/10 text-secondary text-xs py-2 px-6 rounded-full hover:bg-secondary/20 transition-all duration-300 border border-secondary/20 hover:border-secondary/40"
@@ -135,7 +132,7 @@ const Navbar = () => {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="flex md:hidden ml-4">
+            <div className="flex lg:hidden ml-4">
               <button
                 ref={buttonRef}
                 onClick={toggleMenu}
@@ -156,9 +153,9 @@ const Navbar = () => {
       {/* Mobile Menu */}
       <div
         ref={menuRef}
-        className={`${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        } fixed top-0 right-0 h-screen w-full bg-white z-50 transition-transform duration-300 ease-in-out md:hidden`}
+        className={`fixed top-0 right-0 h-screen w-full bg-white z-50 transition-opacity duration-300 ease-in-out lg:hidden ${
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
         id="mobile-menu"
       >
         <div className="flex flex-col h-full">
@@ -184,9 +181,8 @@ const Navbar = () => {
                 duration={500}
                 onClick={toggleMenu}
                 onSetActive={() => setActiveSection(link.to)}
-                className={`text-dark hover:text-blue-600 block text-lg font-medium cursor-pointer ${
-                  activeSection === link.to ? "text-blue-600" : ""
-                }`}
+                className={`text-dark hover:text-blue-600 block text-lg font-medium cursor-pointer ${activeSection === link.to ? "text-blue-600" : ""
+                  }`}
               >
                 {link.label}
               </Link>

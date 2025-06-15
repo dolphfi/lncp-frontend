@@ -8,23 +8,32 @@ import Staff from "./components/pages/Staff";
 import Admissions from "./components/pages/Admissions";
 import Contact from "./components/pages/Contact";
 import Gallery from "./components/pages/Gallery";
+import Login from "./components/pages/Login"; // Import the Login component
+import { Routes, Route } from "react-router-dom"; // Import routing components
 
 function App() {
   return (
     <div className="bg-white">
       <Navbar />
-      <Home />
-      <main
-      // className="px-6 md:px-16 lg:px-32 pt-20 pb-16 md:pb-0"
-      >
-        <About />
-        <Programs />
-        <Staff />
-        <Gallery />
-        <Admissions />
-        <Contact />
-      </main>
-      <Footer />
+      {/* <Routes>
+        <Route path="/" element={ */}
+      <>
+        <Home />
+        <main
+        // className="px-6 md:px-16 lg:px-32 pt-20 pb-16 md:pb-0"
+        >
+          <About />
+          <Programs />
+          <Staff />
+          <Gallery />
+          <Admissions />
+          <Contact />
+        </main>
+        <Footer />
+      </>
+      {/* } />
+        <Route path="/login" element={<Login />} />
+      </Routes> */}
     </div>
   );
 }
