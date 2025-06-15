@@ -10,7 +10,10 @@ module.exports = {
         'primary': '#F5F7FA',
         'secondary': '#1E90FF',
         'dark': '#1A1A1A',
-      }
+      },
+      fontFamily: {
+        sans: ['Poppins', 'sans-serif'],
+      },
     },
   },
   plugins: [],
