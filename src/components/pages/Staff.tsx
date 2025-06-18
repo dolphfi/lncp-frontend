@@ -86,7 +86,7 @@ const Staff = () => {
     },
   ];
 
-  const itemsPerPage: number = 1;
+
   const totalPages: number = staffMembers.length;
 
   useEffect(() => {
@@ -165,7 +165,7 @@ const Staff = () => {
                         <div className="aspect-square relative">
                           <img
                             src={member.image}
-                            alt={`Photo de ${member.name}`}
+                            alt={member.name}
                             className="w-full h-full object-cover"
                             onError={(
                               e: React.SyntheticEvent<HTMLImageElement, Event>

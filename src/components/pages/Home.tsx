@@ -18,7 +18,7 @@ interface VisibleSlide extends Slide {
 
 const HomePage: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState<number>(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(true);
+  const [isAutoPlaying] = useState<boolean>(true);
   const [selectedImage, setSelectedImage] = useState<Slide | null>(null);
 
   // Données du carrousel avec images et statistiques
@@ -96,9 +96,6 @@ const HomePage: React.FC = () => {
     );
   };
 
-  const goToSlide = (index: number): void => {
-    setCurrentSlide(index);
-  };
 
   const openImageModal = (slide: Slide): void => {
     setSelectedImage(slide);

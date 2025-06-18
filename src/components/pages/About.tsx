@@ -1,13 +1,8 @@
 import React from "react";
 import {
-  GraduationCap,
   Target,
   Users,
   Award,
-  Heart,
-  BookOpen,
-  Lightbulb,
-  Shield,
 } from "lucide-react";
 
 const About: React.FC = () => {

@@ -8,8 +8,7 @@ import Staff from "./components/pages/Staff";
 import Admissions from "./components/pages/Admissions";
 import Contact from "./components/pages/Contact";
 import Gallery from "./components/pages/Gallery";
-import Login from "./components/pages/Login"; // Import the Login component
-import { Routes, Route } from "react-router-dom"; // Import routing components
+
 
 function App() {
   return (
