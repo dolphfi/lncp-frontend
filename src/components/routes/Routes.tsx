@@ -7,6 +7,7 @@ import Results from '../pages/sites/Results';
 import SiteLayout from '../layouts/SiteLayout';
 import DashboardLayout from '../layouts/DashboardLayout';
 import Dashboard from '../pages/dashboard/Dashboard';
+import { StudentsManagement } from '../pages/dashboard/StudentsManagement';
 // import PrivateRoute from '../utils/PrivateRoute.tsx';
 
 function AppRoutes() {
@@ -27,9 +28,11 @@ function AppRoutes() {
             {/* Routes privées */}
             {/* <Route element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/students" element={<StudentsManagement />} />
             </Route> */}
             <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/students" element={<StudentsManagement />} />
             </Route>
 
 

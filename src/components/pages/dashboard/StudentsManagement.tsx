@@ -1,0 +1,658 @@
+/**
+ * =====================================================
+ * PAGE DE GESTION DES ÉLÈVES
+ * =====================================================
+ * Cette page centralise toute la gestion des élèves :
+ * - Liste avec DataTable
+ * - Formulaire d'ajout/édition
+ * - Actions CRUD
+ * - Gestion d'état avec Zustand
+ */
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Plus, 
+  Users, 
+  Search, 
+  Filter, 
+  Download, 
+  Upload,
+  Eye,
+  Edit,
+  Trash2,
+  AlertCircle,
+  CheckCircle,
+  XCircle
+} from 'lucide-react';
+
+import { Button } from '../../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
+import { Badge } from '../../ui/badge';
+import { Input } from '../../ui/input';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription 
+} from '../../ui/dialog';
+import { Alert, AlertDescription } from '../../ui/alert';
+import { DataTable, createDefaultActions, createStatusBadge } from '../../ui/data-table';
+import type { Column, RowAction } from '../../ui/data-table';
+
+import { StudentForm } from '../../forms/StudentForm';
+import { useStudentStore } from '../../../stores/studentStore';
+import { Student } from '../../../types/student';
+import { CreateStudentFormData } from '../../../schemas/studentSchema';
+
+// =====================================================
+// COMPOSANT PRINCIPAL DE GESTION DES ÉLÈVES
+// =====================================================
+export const StudentsManagement: React.FC = () => {
+  
+  // =====================================================
+  // ÉTAT LOCAL DU COMPOSANT
+  // =====================================================
+  const navigate = useNavigate();
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  
+  // =====================================================
+  // RÉCUPÉRATION DE L'ÉTAT DEPUIS LE STORE ZUSTAND
+  // =====================================================
+  const {
+    // Données
+    students,
+    loading,
+    error,
+    loadingAction,
+    pagination,
+    filters,
+    sortOptions,
+    stats,
+    
+    // Actions
+    fetchStudents,
+    createStudent,
+    updateStudent,
+    deleteStudent,
+    setFilters,
+    setSortOptions,
+    changePage,
+    clearError,
+    fetchStats
+  } = useStudentStore();
+  
+  // =====================================================
+  // CHARGEMENT INITIAL DES DONNÉES
+  // =====================================================
+  useEffect(() => {
+    // Charger les élèves et les statistiques au montage du composant
+    fetchStudents();
+    fetchStats();
+  }, [fetchStudents, fetchStats]);
+  
+  // =====================================================
+  // CONFIGURATION DES COLONNES DU DATATABLE
+  // =====================================================
+  const columns: Column<Student>[] = [
+    {
+      key: 'avatar',
+      label: 'Photo',
+      width: '80px',
+      render: (avatar: string, student: Student) => (
+        <div className="flex items-center justify-center">
+          {avatar ? (
+            <img 
+              src={avatar} 
+              alt={`${student.firstName} ${student.lastName}`}
+              className="w-8 h-8 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+              <Users className="w-4 h-4 text-gray-500" />
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'studentId',
+      label: 'Matricule',
+      sortable: true,
+      searchable: true,
+      width: '120px',
+      render: (studentId: string) => (
+        <Badge variant="outline" className="font-mono">
+          {studentId}
+        </Badge>
+      )
+    },
+    {
+      key: 'firstName',
+      label: 'Prénom',
+      sortable: true,
+      searchable: true,
+      width: '150px'
+    },
+    {
+      key: 'lastName',
+      label: 'Nom',
+      sortable: true,
+      searchable: true,
+      width: '150px'
+    },
+    {
+      key: 'gender',
+      label: 'Sexe',
+      sortable: true,
+      filterable: true,
+      width: '100px',
+      render: (gender: string) => (
+        <Badge variant="outline" className={gender === 'male' ? 'text-blue-600' : 'text-pink-600'}>
+          {gender === 'male' ? 'H' : 'F'}
+        </Badge>
+      )
+    },
+    {
+      key: 'grade',
+      label: 'Classe',
+      sortable: true,
+      filterable: true,
+      width: '120px',
+      render: (grade: string) => (
+        <Badge variant="secondary">
+          {grade}
+        </Badge>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Statut',
+      sortable: true,
+      filterable: true,
+      width: '120px',
+      render: (status: string) => {
+        const statusConfig = {
+          'active': { label: 'Actif', variant: 'default' },
+          'inactive': { label: 'Inactif', variant: 'secondary' },
+          'suspended': { label: 'Suspendu', variant: 'destructive' }
+        };
+        
+        const config = statusConfig[status as keyof typeof statusConfig];
+        return (
+          <Badge variant={config.variant as any}>
+            {config.label}
+          </Badge>
+        );
+      }
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      searchable: true,
+      width: '200px'
+    },
+    {
+      key: 'phone',
+      label: 'Téléphone',
+      width: '150px'
+    },
+    {
+      key: 'enrollmentDate',
+      label: 'Inscription',
+      sortable: true,
+      width: '120px',
+      render: (date: string) => {
+        const formattedDate = new Date(date).toLocaleDateString('fr-FR');
+        return <span className="text-sm">{formattedDate}</span>;
+      }
+    }
+  ];
+  
+  // =====================================================
+  // CONFIGURATION DES ACTIONS DE LIGNE
+  // =====================================================
+  const rowActions: RowAction<Student>[] = [
+    {
+      label: "Voir",
+      icon: <Eye className="h-4 w-4" />,
+      onClick: (student) => {
+        setSelectedStudent(student);
+        setShowViewDialog(true);
+      }
+    },
+    {
+      label: "Modifier",
+      icon: <Edit className="h-4 w-4" />,
+      onClick: (student) => {
+        setSelectedStudent(student);
+        setShowEditDialog(true);
+      }
+    },
+    {
+      label: "Supprimer",
+      icon: <Trash2 className="h-4 w-4" />,
+      onClick: (student) => {
+        setSelectedStudent(student);
+        setShowDeleteDialog(true);
+      },
+      variant: "destructive"
+    }
+  ];
+  
+  // =====================================================
+  // GESTIONNAIRES D'ÉVÉNEMENTS
+  // =====================================================
+  
+  // Gestion de la création d'un nouvel élève
+  const handleCreateStudent = async (data: CreateStudentFormData) => {
+    try {
+      await createStudent(data);
+      setShowAddDialog(false);
+      // Afficher une notification de succès (à implémenter)
+    } catch (error) {
+      // L'erreur est gérée par le store
+    }
+  };
+  
+  // Gestion de la mise à jour d'un élève
+  const handleUpdateStudent = async (data: CreateStudentFormData, studentId?: string) => {
+    if (!studentId) return;
+    
+    try {
+      // Convertir les données en format de mise à jour
+      const updateData = {
+        id: studentId,
+        ...data
+      };
+      await updateStudent(updateData);
+      setShowEditDialog(false);
+      setSelectedStudent(null);
+      // Afficher une notification de succès (à implémenter)
+    } catch (error) {
+      // L'erreur est gérée par le store
+    }
+  };
+  
+  // Gestion de la suppression d'un élève
+  const handleDeleteStudent = async () => {
+    if (!selectedStudent) return;
+    
+    try {
+      await deleteStudent(selectedStudent.id);
+      setShowDeleteDialog(false);
+      setSelectedStudent(null);
+      // Afficher une notification de succès (à implémenter)
+    } catch (error) {
+      // L'erreur est gérée par le store
+    }
+  };
+  
+  // Gestion de la recherche
+  const handleSearch = (searchTerm: string) => {
+    setFilters({ search: searchTerm });
+  };
+  
+  // Gestion du tri
+  const handleSort = (sort: { field: string; order: 'asc' | 'desc' }) => {
+    setSortOptions({
+      field: sort.field as keyof Student,
+      order: sort.order
+    });
+  };
+  
+  // =====================================================
+  // RENDU DES STATISTIQUES
+  // =====================================================
+  const renderStats = () => {
+    if (!stats) return null;
+    
+    return (
+      <div className="mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+          {/* Statistique Total avec sous-totaux par sexe */}
+          <Card className="h-fit">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-1">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Élèves</p>
+                  <p className="text-xl font-bold">{stats.total}</p>
+                </div>
+                <Users className="h-4 w-4 text-blue-500" />
+              </div>
+              <div className="flex justify-between text-xs border-t pt-1">
+                <div className="text-center">
+                  <p className="text-blue-600 font-medium text-base">{stats.byGender.male}</p>
+                  <p className="text-xs text-muted-foreground">Hommes</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-pink-600 font-medium text-base">{stats.byGender.female}</p>
+                  <p className="text-xs text-muted-foreground">Femmes</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Statistique Actifs avec détails des autres statuts */}
+          <Card className="h-fit">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-1">
+                <div>
+                  <p className="text-xs text-muted-foreground">Actifs</p>
+                  <p className="text-xl font-bold text-green-600">{stats.active}</p>
+                </div>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              </div>
+              <div className="flex justify-between text-xs border-t pt-1">
+                <div className="text-center">
+                  <p className="text-gray-600 font-medium text-base">{stats.inactive}</p>
+                  <p className="text-xs text-muted-foreground">Inactifs</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-red-600 font-medium text-base">{stats.suspended}</p>
+                  <p className="text-xs text-muted-foreground">Suspendus</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Statistique Salles avec répartition */}
+          <Card className="h-fit">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-1">
+                <div>
+                  <p className="text-xs text-muted-foreground">Salles</p>
+                  <p className="text-xl font-bold text-purple-600">{stats.totalClasses}</p>
+                </div>
+                <div className="h-4 w-4 rounded-full bg-purple-100 flex items-center justify-center">
+                  <span className="text-purple-600 font-bold text-xs">🏫</span>
+                </div>
+              </div>
+              <div className="border-t pt-1">
+                <div className="grid grid-cols-2 gap-x-1 gap-y-0 text-xs">
+                  {Object.entries(stats.byGrade).map(([grade, count]) => (
+                    <div key={grade} className="flex justify-between items-center">
+                      <span className="text-muted-foreground">{grade}</span>
+                      <span className="font-medium text-sm">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Lien pour voir plus de détails */}
+        <div className="flex justify-end">
+          <Button 
+            variant="link" 
+            size="sm" 
+            className="text-xs text-muted-foreground hover:text-primary p-0 h-auto"
+            onClick={() => navigate('/dashboard')}
+          >
+            Voir plus de détails →
+          </Button>
+        </div>
+      </div>
+    );
+  };
+  
+  // =====================================================
+  // RENDU DES ERREURS
+  // =====================================================
+  const renderError = () => {
+    if (!error) return null;
+    
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          {error.message}
+          <Button
+            variant="link"
+            size="sm"
+            onClick={clearError}
+            className="ml-2 h-auto p-0"
+          >
+            Fermer
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  };
+  
+  // =====================================================
+  // RENDU PRINCIPAL DU COMPOSANT
+  // =====================================================
+  return (
+    <div className="space-y-6">
+      {/* En-tête avec titre et actions */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Gestion des Élèves</h1>
+          <p className="text-muted-foreground">
+            Gérez les inscriptions, informations et statuts des élèves
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button variant="outline" disabled={loading}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importer
+          </Button>
+          <Button variant="outline" disabled={loading}>
+            <Download className="h-4 w-4 mr-2" />
+            Exporter
+          </Button>
+          <Button onClick={() => setShowAddDialog(true)} disabled={loading}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvel Élève
+          </Button>
+        </div>
+      </div>
+      
+      {/* Affichage des erreurs */}
+      {renderError()}
+      
+      {/* Statistiques */}
+      {renderStats()}
+      
+      {/* Table des élèves */}
+      <DataTable
+        data={students}
+        columns={columns}
+        loading={loading}
+        rowActions={rowActions}
+        pagination={pagination}
+        onPageChange={changePage}
+        onSort={handleSort}
+        onSearch={handleSearch}
+        searchPlaceholder="Rechercher par nom, prénom, email ou matricule..."
+        emptyStateMessage="Aucun élève trouvé"
+        title="Liste des Élèves"
+        description={`${pagination.total} élèves au total`}
+      />
+      
+      {/* =====================================================
+          DIALOGS ET MODALES
+          ===================================================== */}
+      
+      {/* Dialog d'ajout d'élève */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ajouter un nouvel élève</DialogTitle>
+            <DialogDescription>
+              Remplissez tous les champs requis pour créer un nouvel élève.
+            </DialogDescription>
+          </DialogHeader>
+          <StudentForm
+            onSubmit={handleCreateStudent}
+            onCancel={() => setShowAddDialog(false)}
+            loading={loadingAction === 'create'}
+            mode="create"
+          />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog de modification d'élève */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modifier l'élève</DialogTitle>
+            <DialogDescription>
+              Modifiez les informations de l'élève selon vos besoins.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedStudent && (
+            <StudentForm
+              student={selectedStudent}
+              onSubmit={handleUpdateStudent}
+              onCancel={() => {
+                setShowEditDialog(false);
+                setSelectedStudent(null);
+              }}
+              loading={loadingAction === 'update'}
+              mode="edit"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog de suppression d'élève */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer l'élève</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer cet élève ? Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedStudent && (
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p><strong>Nom :</strong> {selectedStudent.firstName} {selectedStudent.lastName}</p>
+                <p><strong>Matricule :</strong> {selectedStudent.studentId}</p>
+                <p><strong>Classe :</strong> {selectedStudent.grade}</p>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteDialog(false);
+                    setSelectedStudent(null);
+                  }}
+                  disabled={loadingAction === 'delete'}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteStudent}
+                  disabled={loadingAction === 'delete'}
+                >
+                  {loadingAction === 'delete' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Suppression...
+                    </div>
+                  ) : (
+                    'Supprimer'
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog de visualisation d'élève */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Détails de l'élève</DialogTitle>
+          </DialogHeader>
+          
+          {selectedStudent && (
+            <div className="space-y-6">
+              {/* Photo et informations de base */}
+              <div className="flex items-center gap-4">
+                {selectedStudent.avatar ? (
+                  <img 
+                    src={selectedStudent.avatar} 
+                    alt={`${selectedStudent.firstName} ${selectedStudent.lastName}`}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                    <Users className="w-8 h-8 text-gray-500" />
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-xl font-semibold">
+                    {selectedStudent.firstName} {selectedStudent.lastName}
+                  </h3>
+                  <p className="text-muted-foreground">{selectedStudent.studentId}</p>
+                  <Badge variant={selectedStudent.status === 'active' ? 'default' : 'secondary'}>
+                    {selectedStudent.status}
+                  </Badge>
+                </div>
+              </div>
+              
+              {/* Informations détaillées */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium mb-2">Informations personnelles</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><strong>Email :</strong> {selectedStudent.email}</p>
+                    <p><strong>Téléphone :</strong> {selectedStudent.phone}</p>
+                    <p><strong>Date de naissance :</strong> {new Date(selectedStudent.dateOfBirth).toLocaleDateString('fr-FR')}</p>
+                    <p><strong>Adresse :</strong> {selectedStudent.address}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium mb-2">Informations scolaires</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><strong>Classe :</strong> {selectedStudent.grade}</p>
+                    <p><strong>Inscription :</strong> {new Date(selectedStudent.enrollmentDate).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Informations du parent */}
+              <div>
+                <h4 className="font-medium mb-2">Contact parent/tuteur</h4>
+                <div className="space-y-1 text-sm">
+                  <p><strong>Nom :</strong> {selectedStudent.parentContact.name}</p>
+                  <p><strong>Relation :</strong> {selectedStudent.parentContact.relationship}</p>
+                  <p><strong>Email :</strong> {selectedStudent.parentContact.email}</p>
+                  <p><strong>Téléphone :</strong> {selectedStudent.parentContact.phone}</p>
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowViewDialog(false);
+                    setSelectedStudent(null);
+                  }}
+                >
+                  Fermer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}; 
