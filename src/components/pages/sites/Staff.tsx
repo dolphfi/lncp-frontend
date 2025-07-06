@@ -120,10 +120,10 @@ const Staff = () => {
     >
       <div className="max-w-4xl w-full">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-secondary/10 rounded-full mb-6 border border-secondary/20">
-            <Users className="w-8 h-8 text-secondary" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-site-secondary/10 rounded-full mb-6 border border-site-secondary/20">
+            <Users className="w-8 h-8 text-site-secondary" />
           </div>
-          <h1 className="text-4xl font-bold text-secondary mb-4 font-['Kaushan_Script']">
+          <h1 className="text-4xl font-bold text-site-secondary mb-4 font-['Kaushan_Script']">
             Notre Administration
           </h1>
           <p className="text-sm text-gray-600 max-w-2xl mx-auto leading-relaxed">

@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { LogIn, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -18,8 +20,10 @@ const Login = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log("Login attempt with:", formData);
+    // Simuler une authentification réussie
+    localStorage.setItem('isAuthenticated', 'true');
+    // Rediriger vers le tableau de bord
+    navigate('/dashboard');
   };
 
   return (
@@ -39,9 +43,9 @@ const Login = () => {
         <div className="max-w-md w-full">
           {/* Header */}
           <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-500/10 rounded-full mb-6 border border-blue-500/20">
+            <Link to="/" className="inline-flex items-center justify-center w-16 h-16 bg-blue-500/10 rounded-full mb-6 border border-blue-500/20">
               <LogIn className="w-8 h-8 text-blue-500" />
-            </div>
+            </Link>
             <h1 className="text-4xl font-bold text-blue-500 mb-4 font-['Kaushan_Script']">
               Connexion
             </h1>
@@ -144,12 +148,12 @@ const Login = () => {
                       Se souvenir de moi
                     </label>
                   </div>
-                  <a
-                    href="#"
+                  <Link
+                    to="/forgot_password"
                     className="text-xs text-blue-600 hover:text-blue-700 transition-colors duration-200"
                   >
                     Mot de passe oublié ?
-                  </a>
+                  </Link>
                 </div>
 
                 {/* Submit Button */}
@@ -163,17 +167,17 @@ const Login = () => {
               </form>
 
               {/* Register Link */}
-              <div className="mt-6 pt-4 border-t border-white/40">
+              {/* <div className="mt-6 pt-4 border-t border-white/40">
                 <p className="text-xs text-center text-blue-900/70">
                   Vous n'avez pas de compte ?{" "}
-                  <a
-                    href="#"
+                  <Link
+                    to="/register"
                     className="text-blue-600 hover:text-blue-700 transition-colors duration-200 font-medium"
                   >
                     Créer un compte
-                  </a>
+                  </Link>
                 </p>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

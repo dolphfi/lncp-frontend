@@ -150,7 +150,7 @@ const HomePage: React.FC = () => {
             <div className="flex justify-center lg:justify-start">
               <button
                 type="button"
-                className="flex items-center bg-secondary text-primary font-medium text-xs py-1.5 px-4 rounded-full hover:bg-blue-700 transition-colors duration-300"
+                className="flex items-center bg-site-secondary text-site-primary font-medium text-xs py-1.5 px-4 rounded-full hover:bg-blue-700 transition-colors duration-300"
               >
                 <span>Admission</span>
                 <svg

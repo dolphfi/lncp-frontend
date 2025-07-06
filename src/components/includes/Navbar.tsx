@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-scroll";
+import { Link as LinkScroll } from "react-scroll";
+import { Link as LinkRouter } from 'react-router-dom';
 import { Menu, X, User, FileText } from "lucide-react";
 
 const Navbar = () => {
@@ -66,7 +67,7 @@ const Navbar = () => {
         <div className="relative flex items-center justify-between h-20">
           {/* Left Column: Logo */}
           <div>
-            <Link
+            <LinkScroll
               to="home"
               spy={true}
               smooth={true}
@@ -77,14 +78,14 @@ const Navbar = () => {
                 }`}
             >
               LNCP
-            </Link>
+            </LinkScroll>
           </div>
 
           {/* Center Column: Links (Absolutely Centered) */}
           <div className="hidden lg:block">
             <div className="flex items-center space-x-4">
               {navLinks.map((link) => (
-                <Link
+                <LinkScroll
                   key={link.to}
                   to={link.to}
                   spy={true}
@@ -106,7 +107,7 @@ const Navbar = () => {
                       : "w-0 group-hover:w-full"
                       }`}
                   ></span>
-                </Link>
+                </LinkScroll>
               ))}
             </div>
           </div>
@@ -115,20 +116,14 @@ const Navbar = () => {
           <div className="flex items-center">
             {/* Desktop Buttons */}
             <div className="hidden lg:flex items-center space-x-2">
-              <button
-                type="button"
-                className="flex items-center bg-secondary/10 text-secondary text-xs py-2 px-6 rounded-full hover:bg-secondary/20 transition-all duration-300 border border-secondary/20 hover:border-secondary/40"
-              >
+              <LinkRouter to="/login" className="flex items-center bg-site-secondary/10 text-site-secondary text-xs py-2 px-6 rounded-full hover:bg-site-secondary/20 transition-all duration-300 border border-site-secondary/20 hover:border-site-secondary/40">
                 <span>Connecter</span>
                 <User className="h-4 w-4 ml-2" />
-              </button>
-              <button
-                type="button"
-                className="flex items-center bg-teal-500/10 text-teal-600 text-xs py-2 px-6 rounded-full hover:bg-teal-500/20 transition-all duration-300 border border-teal-500/20 hover:border-teal-500/40"
-              >
+              </LinkRouter>
+              <LinkRouter to="/results" className="flex items-center bg-teal-500/10 text-teal-600 text-xs py-2 px-6 rounded-full hover:bg-teal-500/20 transition-all duration-300 border border-teal-500/20 hover:border-teal-500/40">
                 <span>Résultats</span>
                 <FileText className="h-4 w-4 ml-2" />
-              </button>
+              </LinkRouter>
             </div>
 
             {/* Mobile Menu Button */}
@@ -137,7 +132,7 @@ const Navbar = () => {
                 ref={buttonRef}
                 onClick={toggleMenu}
                 type="button"
-                className="inline-flex items-center justify-center p-2 rounded-md text-dark hover:text-secondary focus:outline-none"
+                className="inline-flex items-center justify-center p-2 rounded-md text-dark hover:text-site-secondary focus:outline-none"
               >
                 {isOpen ? (
                   <X className="h-6 w-6" />
@@ -153,9 +148,8 @@ const Navbar = () => {
       {/* Mobile Menu */}
       <div
         ref={menuRef}
-        className={`fixed top-0 right-0 h-screen w-full bg-white z-50 transition-opacity duration-300 ease-in-out lg:hidden ${
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed top-0 right-0 h-screen w-full bg-white z-50 transition-opacity duration-300 ease-in-out lg:hidden ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
         id="mobile-menu"
       >
         <div className="flex flex-col h-full">
@@ -163,7 +157,7 @@ const Navbar = () => {
           <div className="flex justify-end p-4">
             <button
               onClick={toggleMenu}
-              className="p-2 rounded-md text-dark hover:text-secondary focus:outline-none"
+              className="p-2 rounded-md text-dark hover:text-site-secondary focus:outline-none"
             >
               <X className="h-6 w-6" />
             </button>
@@ -172,7 +166,7 @@ const Navbar = () => {
           {/* Menu Items */}
           <div className="flex-1 px-6 py-4 space-y-6">
             {navLinks.map((link) => (
-              <Link
+              <LinkScroll
                 key={link.to}
                 to={link.to}
                 spy={true}
@@ -185,26 +179,20 @@ const Navbar = () => {
                   }`}
               >
                 {link.label}
-              </Link>
+              </LinkScroll>
             ))}
           </div>
 
           {/* Bottom Buttons */}
           <div className="p-6 space-y-4 border-t border-gray-200">
-            <button
-              type="button"
-              className="w-full flex items-center justify-center bg-secondary/10 text-secondary text-sm py-3 px-4 rounded-full hover:bg-secondary/20 transition-all duration-300 border border-secondary/20 hover:border-secondary/40"
-            >
+            <LinkRouter to="/login" className="w-full flex items-center justify-center bg-site-secondary/10 text-site-secondary text-sm py-3 px-4 rounded-full hover:bg-site-secondary/20 transition-all duration-300 border border-site-secondary/20 hover:border-site-secondary/40">
               <span>Connecter</span>
               <User className="h-4 w-4 ml-2" />
-            </button>
-            <button
-              type="button"
-              className="w-full flex items-center justify-center bg-teal-500/10 text-teal-600 text-sm py-3 px-4 rounded-full hover:bg-teal-500/20 transition-all duration-300 border border-teal-500/20 hover:border-teal-500/40"
-            >
+            </LinkRouter>
+            <LinkRouter to="/results" className="w-full flex items-center justify-center bg-teal-500/10 text-teal-600 text-sm py-3 px-4 rounded-full hover:bg-teal-500/20 transition-all duration-300 border border-teal-500/20 hover:border-teal-500/40">
               <span>Résultats</span>
               <FileText className="h-4 w-4 ml-2" />
-            </button>
+            </LinkRouter>
           </div>
         </div>
       </div>

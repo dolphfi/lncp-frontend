@@ -3,12 +3,12 @@ import { Link } from "react-scroll";
 
 const Footer = () => {
   return (
-    <footer className="border-t border-primary/80 bg-blue-900 text-primary">
+    <footer className="border-t border-site-primary/80 bg-blue-900 text-site-primary">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-secondary">LNCP</h2>
-            <p className="text-xs text-primary/80">
+            <h2 className="text-lg font-medium text-site-secondary">LNCP</h2>
+            <p className="text-xs text-site-primary/80">
               L'excellence en éducation, un héritage à perpétuer.
             </p>
           </div>
@@ -22,7 +22,7 @@ const Footer = () => {
                   smooth={true}
                   offset={-64}
                   duration={500}
-                  className="hover:text-secondary transition-colors cursor-pointer text-xs"
+                  className="hover:text-site-secondary transition-colors cursor-pointer text-xs"
                 >
                   Accueil
                 </Link>
@@ -34,7 +34,7 @@ const Footer = () => {
                   smooth={true}
                   offset={-64}
                   duration={500}
-                  className="hover:text-secondary transition-colors cursor-pointer text-xs"
+                  className="hover:text-site-secondary transition-colors cursor-pointer text-xs"
                 >
                   À Propos
                 </Link>
@@ -46,7 +46,7 @@ const Footer = () => {
                   smooth={true}
                   offset={-64}
                   duration={500}
-                  className="hover:text-secondary transition-colors cursor-pointer text-xs"
+                  className="hover:text-site-secondary transition-colors cursor-pointer text-xs"
                 >
                   Admissions
                 </Link>
@@ -58,7 +58,7 @@ const Footer = () => {
                   smooth={true}
                   offset={-64}
                   duration={500}
-                  className="hover:text-secondary transition-colors cursor-pointer text-xs"
+                  className="hover:text-site-secondary transition-colors cursor-pointer text-xs"
                 >
                   Contact
                 </Link>
@@ -71,7 +71,7 @@ const Footer = () => {
               <button
                 type="button"
                 title="Facebook"
-                className="text-primary/80 hover:text-secondary transition-colors"
+                className="text-site-primary/80 hover:text-site-secondary transition-colors"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -90,7 +90,7 @@ const Footer = () => {
               <button
                 type="button"
                 title="Twitter"
-                className="text-primary/80 hover:text-secondary transition-colors"
+                className="text-site-primary/80 hover:text-site-secondary transition-colors"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -109,7 +109,7 @@ const Footer = () => {
               <button
                 type="button"
                 title="Instagram"
-                className="text-primary/80 hover:text-secondary transition-colors"
+                className="text-site-primary/80 hover:text-site-secondary transition-colors"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -130,7 +130,7 @@ const Footer = () => {
             </div>
           </div>
         </div>
-        <div className="mt-8 pt-8 border-t border-primary/20 text-center text-xs text-primary/60">
+        <div className="mt-8 pt-8 border-t border-site-primary/20 text-center text-xs text-site-primary/60">
           <p>
             &copy; {new Date().getFullYear()} Lycée National Charlemagne
             Péralte. Tous droits réservés.

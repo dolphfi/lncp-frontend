@@ -14,7 +14,7 @@ const About: React.FC = () => {
       <div className="px-6 md:px-16 lg:px-32 pt-20 pb-16 md:pb-16">
         {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-secondary mb-4 font-['Kaushan_Script']">
+          <h1 className="text-4xl font-bold text-site-secondary mb-4 font-['Kaushan_Script']">
             À Propos du LNCP
           </h1>
           <p className="text-sm max-w-2xl mx-auto leading-relaxed">
@@ -26,8 +26,8 @@ const About: React.FC = () => {
         {/* Mission Section */}
         <div className="mb-16">
           <div className="flex items-center mb-6 ">
-            {/* <Heart className="w-6 h-6 text-secondary mr-3" /> */}
-            <h2 className="text-xl font-medium text-secondary font-['Kaushan_Script'] ">
+            {/* <Heart className="w-6 h-6 text-site-secondary mr-3" /> */}
+            <h2 className="text-xl font-medium text-site-secondary font-['Kaushan_Script'] ">
               Notre Mission
             </h2>
           </div>
@@ -47,14 +47,14 @@ const About: React.FC = () => {
         {/* Values Grid */}
         {/* <div className="mb-16">
           <div className="flex items-center mb-8">
-            <Award className="w-6 h-6 text-secondary mr-3" />
-            <h2 className="text-xl font-medium text-secondary">Nos Valeurs</h2>
+            <Award className="w-6 h-6 text-site-secondary mr-3" />
+            <h2 className="text-xl font-medium text-site-secondary">Nos Valeurs</h2>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="w-8 h-8 text-secondary" />
+              <div className="w-16 h-16 bg-site-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-8 h-8 text-site-secondary" />
               </div>
               <h3 className="font-medium text-sm mb-2">Excellence</h3>
               <p className="text-xs text-gray-600">
@@ -63,8 +63,8 @@ const About: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-secondary" />
+              <div className="w-16 h-16 bg-site-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-site-secondary" />
               </div>
               <h3 className="font-medium text-sm mb-2">Intégrité</h3>
               <p className="text-xs text-gray-600">
@@ -73,8 +73,8 @@ const About: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-secondary" />
+              <div className="w-16 h-16 bg-site-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-site-secondary" />
               </div>
               <h3 className="font-medium text-sm mb-2">Respect</h3>
               <p className="text-xs text-gray-600">
@@ -83,8 +83,8 @@ const About: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Lightbulb className="w-8 h-8 text-secondary" />
+              <div className="w-16 h-16 bg-site-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Lightbulb className="w-8 h-8 text-site-secondary" />
               </div>
               <h3 className="font-medium text-sm mb-2">Innovation</h3>
               <p className="text-xs text-gray-600">
@@ -97,8 +97,8 @@ const About: React.FC = () => {
         {/* Vision Section */}
         {/* <div className="mb-16">
           <div className="flex items-center mb-6">
-            <Target className="w-6 h-6 text-secondary mr-3" />
-            <h2 className="text-2xl font-bold text-secondary">Notre Vision</h2>
+            <Target className="w-6 h-6 text-site-secondary mr-3" />
+            <h2 className="text-2xl font-bold text-site-secondary">Notre Vision</h2>
           </div>
           <p className="text-lg leading-relaxed">
             Être reconnu comme un établissement d'excellence qui forme des
@@ -110,8 +110,8 @@ const About: React.FC = () => {
         {/* Engagement Section */}
         {/* <div className="mb-16">
           <div className="flex items-center mb-6">
-            <GraduationCap className="w-6 h-6 text-secondary mr-3" />
-            <h2 className="text-2xl font-bold text-secondary">
+            <GraduationCap className="w-6 h-6 text-site-secondary mr-3" />
+            <h2 className="text-2xl font-bold text-site-secondary">
               Notre Engagement
             </h2>
           </div>
@@ -127,8 +127,8 @@ const About: React.FC = () => {
         <div className="border-t border-gray-200 pt-16">
           <div className="grid md:grid-cols-3 gap-8 text-center">
             <div>
-              <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Award className="w-6 h-6 text-secondary" />
+              <div className="w-12 h-12 bg-site-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Award className="w-6 h-6 text-site-secondary" />
               </div>
               <h3 className="font-medium text-sm text-black mb-2">
                 Excellence
@@ -137,8 +137,8 @@ const About: React.FC = () => {
             </div>
 
             <div>
-              <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-6 h-6 text-secondary" />
+              <div className="w-12 h-12 bg-site-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-6 h-6 text-site-secondary" />
               </div>
               <h3 className="font-medium text-sm text-black mb-2">
                 Communauté
@@ -149,8 +149,8 @@ const About: React.FC = () => {
             </div>
 
             <div>
-              <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Target className="w-6 h-6 text-secondary" />
+              <div className="w-12 h-12 bg-site-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="w-6 h-6 text-site-secondary" />
               </div>
               <h3 className="font-medium text-sm text-black mb-2">Mission</h3>
               <p className="text-xs text-gray-600">

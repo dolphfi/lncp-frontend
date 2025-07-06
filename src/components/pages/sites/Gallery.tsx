@@ -145,7 +145,7 @@ const Gallery: React.FC = () => {
       <div className="px-6 md:px-16 lg:px-32 pt-20 pb-16 md:pb-0">
         {/* Header Section */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-secondary mb-4 font-['Kaushan_Script']">
+          <h1 className="text-4xl font-bold text-site-secondary mb-4 font-['Kaushan_Script']">
             Collection
           </h1>
           <p className="text-sm max-w-2xl mx-auto leading-relaxed">
@@ -161,7 +161,7 @@ const Gallery: React.FC = () => {
             <div className="md:hidden">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center justify-between w-48 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
+                className="flex items-center justify-between w-48 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-site-secondary"
               >
                 <span>
                   {categories.find((cat) => cat.id === selectedCategory)?.name}
@@ -191,7 +191,7 @@ const Gallery: React.FC = () => {
                             setIsDropdownOpen(false);
                           }}
                           className={`w-full text-left px-4 py-2 text-sm flex justify-between ${selectedCategory === category.id
-                              ? "bg-gray-100 text-secondary"
+                              ? "bg-gray-100 text-site-secondary"
                               : "text-gray-700 hover:bg-gray-50"
                             }`}
                         >
@@ -221,13 +221,13 @@ const Gallery: React.FC = () => {
                       setSelectedCategory(category.id);
                       setCurrentPage(1);
                     }}
-                    className={`text-dark/70 hover:text-secondary text-xs cursor-pointer duration-300 relative group ${selectedCategory === category.id ? "text-secondary" : ""
+                    className={`text-dark/70 hover:text-site-secondary text-xs cursor-pointer duration-300 relative group ${selectedCategory === category.id ? "text-site-secondary" : ""
                       }`}
                   >
                     <span className="flex items-center gap-2">
                       <span
                         className={`${selectedCategory === category.id
-                          ? "text-secondary"
+                          ? "text-site-secondary"
                           : ""
                           }`}
                       >
@@ -239,7 +239,7 @@ const Gallery: React.FC = () => {
                       </span>
                     </span>
                     <span
-                      className={`absolute -bottom-1 left-0 h-0.5 bg-secondary transition-all duration-300 ${selectedCategory === category.id
+                      className={`absolute -bottom-1 left-0 h-0.5 bg-site-secondary transition-all duration-300 ${selectedCategory === category.id
                           ? "w-full"
                           : "w-0 group-hover:w-full"
                         }`}
@@ -297,7 +297,7 @@ const Gallery: React.FC = () => {
               disabled={currentPage === 1}
               className={`px-4 py-2 rounded-lg text-sm ${currentPage === 1
                   ? "text-gray-400 cursor-not-allowed"
-                  : "text-gray-600 hover:text-secondary"
+                  : "text-gray-600 hover:text-site-secondary"
                 }`}
             >
               Précédent
@@ -308,8 +308,8 @@ const Gallery: React.FC = () => {
                   key={index + 1}
                   onClick={() => setCurrentPage(index + 1)}
                   className={`w-8 h-8 rounded-lg text-sm ${currentPage === index + 1
-                      ? "bg-secondary text-white"
-                      : "text-gray-600 hover:text-secondary"
+                      ? "bg-site-secondary text-white"
+                      : "text-gray-600 hover:text-site-secondary"
                     }`}
                 >
                   {index + 1}
@@ -323,7 +323,7 @@ const Gallery: React.FC = () => {
               disabled={currentPage === totalPages}
               className={`px-4 py-2 rounded-lg text-sm ${currentPage === totalPages
                   ? "text-gray-400 cursor-not-allowed"
-                  : "text-gray-600 hover:text-secondary"
+                  : "text-gray-600 hover:text-site-secondary"
                 }`}
             >
               Suivant
