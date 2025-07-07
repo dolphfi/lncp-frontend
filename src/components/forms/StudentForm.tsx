@@ -1,25 +1,42 @@
 /**
  * =====================================================
- * COMPOSANT FORMULAIRE POUR LES ÉLÈVES
+ * FORMULAIRE MODERNE D'ENREGISTREMENT DES ÉLÈVES
  * =====================================================
- * Ce composant gère la création et la modification des élèves
- * avec validation Zod et React Hook Form
+ * Formulaire fluide et moderne avec shadcn/ui et Tailwind CSS
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarDays, User, Mail, Phone, MapPin, GraduationCap, Users } from 'lucide-react';
+import { 
+  CalendarDays, 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  GraduationCap, 
+  Users, 
+  School,
+  FileText,
+  Image as ImageIcon,
+  Upload,
+  X
+} from 'lucide-react';
 
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Textarea } from '../ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { Separator } from '../ui/separator';
 
 import { 
   createStudentSchema,
   CreateStudentFormData,
   GRADE_OPTIONS,
+  LEVEL_OPTIONS,
   STATUS_OPTIONS,
   GENDER_OPTIONS,
   RELATIONSHIP_OPTIONS
@@ -27,22 +44,20 @@ import {
 import { Student } from '../../types/student';
 
 // =====================================================
-// TYPES POUR LES PROPS DU COMPOSANT
+// TYPES ET INTERFACES
 // =====================================================
-
-// Type unifié pour les données du formulaire
 type StudentFormData = CreateStudentFormData;
 
 interface StudentFormProps {
-  student?: Student;                    // Élève à éditer (undefined pour création)
-  onSubmit: (data: StudentFormData, studentId?: string) => void; // Callback avec les données et l'ID optionnel
-  onCancel?: () => void;               // Callback pour annuler
-  loading?: boolean;                   // État de chargement
-  mode?: 'create' | 'edit';           // Mode du formulaire
+  student?: Student;
+  onSubmit: (data: StudentFormData, studentId?: string) => void;
+  onCancel?: () => void;
+  loading?: boolean;
+  mode?: 'create' | 'edit';
 }
 
 // =====================================================
-// COMPOSANT PRINCIPAL DU FORMULAIRE
+// COMPOSANT PRINCIPAL
 // =====================================================
 export const StudentForm: React.FC<StudentFormProps> = ({
   student,
@@ -51,517 +66,531 @@ export const StudentForm: React.FC<StudentFormProps> = ({
   loading = false,
   mode = student ? 'edit' : 'create'
 }) => {
-  
+  const [imagePreview, setImagePreview] = useState<string>('');
+
   // =====================================================
-  // CONFIGURATION DU FORMULAIRE AVEC REACT HOOK FORM
+  // CONFIGURATION DU FORMULAIRE
   // =====================================================
   const {
-    register,              // Fonction pour enregistrer les champs
-    control,               // Contrôleur pour les champs personnalisés
-    handleSubmit,          // Fonction pour gérer la soumission
-    formState: { errors, isSubmitting }, // État du formulaire
-    reset,                 // Fonction pour réinitialiser
-    setValue,              // Fonction pour définir des valeurs
-    watch                  // Fonction pour observer les valeurs
+    register,
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+    setValue
   } = useForm<StudentFormData>({
     resolver: zodResolver(createStudentSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
-      email: '',
-      phone: '',
-      dateOfBirth: '',
       gender: 'male',
-      address: '',
+      dateOfBirth: '',
+      placeOfBirth: '',
+      email: '',
+      ninthGradeOrderNumber: '',
+      level: 'nouveauSecondaire',
       grade: 'NSI',
+      ninthGradeSchool: '',
+      ninthGradeGraduationYear: '',
+      lastSchool: '',
       enrollmentDate: new Date().toISOString().split('T')[0],
-      studentId: '',
+      avatar: '',
       parentContact: {
-        name: '',
+        fatherName: '',
+        motherName: '',
+        responsiblePerson: '',
         phone: '',
         email: '',
+        address: '',
         relationship: 'père'
       },
-      status: 'active',
-      avatar: ''
+      status: 'active'
     }
   });
-  
+
   // =====================================================
   // EFFET POUR PRÉREMPLIR LE FORMULAIRE EN MODE ÉDITION
   // =====================================================
   useEffect(() => {
     if (mode === 'edit' && student) {
-      // Préremplir tous les champs avec les données de l'élève
-      reset({
+      const studentData = {
         firstName: student.firstName,
         lastName: student.lastName,
-        email: student.email,
-        phone: student.phone,
-        dateOfBirth: student.dateOfBirth.split('T')[0], // Conversion pour l'input date
         gender: student.gender,
-        address: student.address,
-        grade: student.grade as any,
+        dateOfBirth: student.dateOfBirth.split('T')[0],
+        placeOfBirth: student.placeOfBirth || '',
+        email: student.email || '',
+        ninthGradeOrderNumber: student.ninthGradeOrderNumber || '',
+        level: student.level || 'nouveauSecondaire',
+        grade: student.grade,
+        ninthGradeSchool: student.ninthGradeSchool || '',
+        ninthGradeGraduationYear: student.ninthGradeGraduationYear || '',
+        lastSchool: student.lastSchool || '',
         enrollmentDate: student.enrollmentDate.split('T')[0],
-        studentId: student.studentId,
+        avatar: student.avatar || '',
         parentContact: {
-          name: student.parentContact.name,
+          fatherName: student.parentContact.fatherName || '',
+          motherName: student.parentContact.motherName || '',
+          responsiblePerson: student.parentContact.responsiblePerson,
           phone: student.parentContact.phone,
-          email: student.parentContact.email,
-          relationship: student.parentContact.relationship as any
+          email: student.parentContact.email || '',
+          address: student.parentContact.address || '',
+          relationship: student.parentContact.relationship
         },
-        status: student.status,
-        avatar: student.avatar || ''
-      });
+        status: student.status
+      } as StudentFormData;
+      
+      reset(studentData);
+      setImagePreview(student.avatar || '');
     }
   }, [mode, student, reset]);
-  
+
   // =====================================================
-  // GESTION DE LA SOUMISSION DU FORMULAIRE
+  // GESTION DE LA SOUMISSION
   // =====================================================
   const onFormSubmit = (data: StudentFormData) => {
     if (mode === 'edit' && student) {
-      // En mode édition, passer l'ID de l'élève avec les données
       onSubmit(data, student.id);
     } else {
-      // En mode création, soumettre toutes les données
       onSubmit(data);
     }
   };
-  
+
   // =====================================================
-  // FONCTION POUR GÉNÉRER UN MATRICULE AUTOMATIQUEMENT
+  // GESTION DE L'UPLOAD D'IMAGE
   // =====================================================
-  const generateStudentId = () => {
-    const year = new Date().getFullYear().toString().slice(-2);
-    const random = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-    const grade = watch('grade');
-    const gradeCode = grade ? grade.charAt(0).toUpperCase() : 'X';
-    const generatedId = `${year}${gradeCode}${random}`;
-    setValue('studentId', generatedId);
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setImagePreview(result);
+        setValue('avatar', result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
-  
+
+  const removeImage = () => {
+    setImagePreview('');
+    setValue('avatar', '');
+  };
+
   // =====================================================
-  // RENDU DU COMPOSANT
+  // COMPOSANT DE CHAMP AVEC LABEL
+  // =====================================================
+  const FormField = ({ 
+    label, 
+    required = false, 
+    error, 
+    children 
+  }: { 
+    label: string; 
+    required?: boolean; 
+    error?: string; 
+    children: React.ReactNode;
+  }) => (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+        {label} {required && <span className="text-red-500">*</span>}
+      </Label>
+      {children}
+      {error && (
+        <p className="text-sm text-red-500">{error}</p>
+      )}
+    </div>
+  );
+
+  // =====================================================
+  // RENDU DU FORMULAIRE
   // =====================================================
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
-      {/* En-tête du formulaire */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            {mode === 'create' ? 'Nouvel Élève' : 'Modifier Élève'}
-          </CardTitle>
-          {mode === 'edit' && student && (
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">{student.studentId}</Badge>
-              <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>
-                {STATUS_OPTIONS.find(s => s.value === student.status)?.label}
-              </Badge>
-            </div>
-          )}
-        </CardHeader>
-      </Card>
-      
-      {/* Section : Informations personnelles */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="h-4 w-4" />
-            Informations Personnelles
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Ligne 1 : Prénom et Nom */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Prénom <span className="text-red-500">*</span>
-              </label>
-              <Input
-                {...register('firstName')}
-                placeholder="Prénom de l'élève"
-                disabled={loading}
-                className={errors.firstName ? 'border-red-500' : ''}
-              />
-              {errors.firstName && (
-                <p className="text-sm text-red-500 mt-1">{errors.firstName.message}</p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Nom <span className="text-red-500">*</span>
-              </label>
-              <Input
-                {...register('lastName')}
-                placeholder="Nom de famille"
-                disabled={loading}
-                className={errors.lastName ? 'border-red-500' : ''}
-              />
-              {errors.lastName && (
-                <p className="text-sm text-red-500 mt-1">{errors.lastName.message}</p>
-              )}
-            </div>
-          </div>
-          
-          {/* Ligne 2 : Email et Téléphone */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                <Mail className="inline h-4 w-4 mr-1" />
-                Email <span className="text-red-500">*</span>
-              </label>
-              <Input
-                {...register('email')}
-                type="email"
-                placeholder="email@example.com"
-                disabled={loading}
-                className={errors.email ? 'border-red-500' : ''}
-              />
-              {errors.email && (
-                <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                <Phone className="inline h-4 w-4 mr-1" />
-                Téléphone <span className="text-red-500">*</span>
-              </label>
-              <Input
-                {...register('phone')}
-                type="tel"
-                placeholder="+509 1234-5678"
-                disabled={loading}
-                className={errors.phone ? 'border-red-500' : ''}
-              />
-              {errors.phone && (
-                <p className="text-sm text-red-500 mt-1">{errors.phone.message}</p>
-              )}
-            </div>
-          </div>
-          
-          {/* Ligne 3 : Date de naissance */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              <CalendarDays className="inline h-4 w-4 mr-1" />
-              Date de naissance <span className="text-red-500">*</span>
-            </label>
-            <Input
-              {...register('dateOfBirth')}
-              type="date"
-              disabled={loading}
-              className={errors.dateOfBirth ? 'border-red-500' : ''}
-            />
-            {errors.dateOfBirth && (
-              <p className="text-sm text-red-500 mt-1">{errors.dateOfBirth.message}</p>
-            )}
-          </div>
-          
-          {/* Ligne 4 : Sexe */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Sexe <span className="text-red-500">*</span>
-            </label>
-            <Controller
-              name="gender"
-              control={control}
-              render={({ field }) => (
-                <select
-                  {...field}
-                  disabled={loading}
-                  className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${errors.gender ? 'border-red-500' : ''}`}
-                >
-                  {GENDER_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              )}
-            />
-            {errors.gender && (
-              <p className="text-sm text-red-500 mt-1">{errors.gender.message}</p>
-            )}
-          </div>
-          
-          {/* Ligne 5 : Adresse */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              <MapPin className="inline h-4 w-4 mr-1" />
-              Adresse <span className="text-red-500">*</span>
-            </label>
-            <Input
-              {...register('address')}
-              placeholder="Adresse complète de résidence"
-              disabled={loading}
-              className={errors.address ? 'border-red-500' : ''}
-            />
-            {errors.address && (
-              <p className="text-sm text-red-500 mt-1">{errors.address.message}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Section : Informations scolaires */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <GraduationCap className="h-4 w-4" />
-            Informations Scolaires
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Ligne 1 : Classe et Date d'inscription */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Classe <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                name="grade"
-                control={control}
-                render={({ field }) => (
-                  <select
-                    {...field}
-                    disabled={loading}
-                    className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${errors.grade ? 'border-red-500' : ''}`}
-                  >
-                    {GRADE_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              />
-              {errors.grade && (
-                <p className="text-sm text-red-500 mt-1">{errors.grade.message}</p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Date d'inscription <span className="text-red-500">*</span>
-              </label>
-              <Input
-                {...register('enrollmentDate')}
-                type="date"
-                disabled={loading}
-                className={errors.enrollmentDate ? 'border-red-500' : ''}
-              />
-              {errors.enrollmentDate && (
-                <p className="text-sm text-red-500 mt-1">{errors.enrollmentDate.message}</p>
-              )}
-            </div>
-          </div>
-          
-          {/* Ligne 2 : Matricule et Statut */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Matricule <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-2">
+    <div className="w-full space-y-4">
+      <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+        {/* =====================================================
+            SECTION 1: INFORMATIONS PERSONNELLES + PHOTO
+        ===================================================== */}
+        <Card className="shadow-sm border-0 w-full">
+          <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-lg py-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <User className="h-4 w-4" />
+              Informations de l'Élève
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-4">
+            {/* Ligne 1: Nom, Prénom, Sexe */}
+            <div className="grid grid-cols-3 gap-4">
+              <FormField label="Nom" required error={errors.lastName?.message}>
                 <Input
-                  {...register('studentId')}
-                  placeholder="Ex: 24T1234"
+                  {...register('lastName')}
+                  placeholder="Nom de famille"
+                  className="h-9"
                   disabled={loading}
-                  className={errors.studentId ? 'border-red-500' : ''}
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={generateStudentId}
+              </FormField>
+
+              <FormField label="Prénom" required error={errors.firstName?.message}>
+                <Input
+                  {...register('firstName')}
+                  placeholder="Prénom de l'élève"
+                  className="h-9"
                   disabled={loading}
-                  className="shrink-0"
-                >
-                  Générer
-                </Button>
+                />
+              </FormField>
+
+              <FormField label="Sexe" required error={errors.gender?.message}>
+                <Controller
+                  name="gender"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Sélectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GENDER_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+            </div>
+
+            {/* Ligne 2: Date naissance, Lieu naissance, Email */}
+            <div className="grid grid-cols-3 gap-4">
+              <FormField label="Date de naissance" required error={errors.dateOfBirth?.message}>
+                <div className="relative">
+                  <CalendarDays className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
+                  <Input
+                    {...register('dateOfBirth')}
+                    type="date"
+                    className="h-9 pl-9"
+                    disabled={loading}
+                  />
+                </div>
+              </FormField>
+
+              <FormField label="Lieu de naissance" required error={errors.placeOfBirth?.message}>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
+                  <Input
+                    {...register('placeOfBirth')}
+                    placeholder="Ville, Département"
+                    className="h-9 pl-9"
+                    disabled={loading}
+                  />
+                </div>
+              </FormField>
+
+              <FormField label="Email" error={errors.email?.message}>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
+                  <Input
+                    {...register('email')}
+                    type="email"
+                    placeholder="email@exemple.com"
+                    className="h-9 pl-9"
+                    disabled={loading}
+                  />
+                </div>
+              </FormField>
+            </div>
+
+            {/* Ligne 3: N° ordre 9e, Photo */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2">
+                <FormField label="N° d'ordre 9ème AF" required error={errors.ninthGradeOrderNumber?.message}>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
+                    <Input
+                      {...register('ninthGradeOrderNumber')}
+                      placeholder="Ex: 2023/001234"
+                      className="h-9 pl-9"
+                      disabled={loading}
+                    />
+                  </div>
+                </FormField>
               </div>
-              {errors.studentId && (
-                <p className="text-sm text-red-500 mt-1">{errors.studentId.message}</p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Statut <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                name="status"
-                control={control}
-                render={({ field }) => (
-                  <select
-                    {...field}
+
+              {/* Photo compacte */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Photo de profil
+                </Label>
+                <div className="flex items-center gap-3">
+                  {imagePreview ? (
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Aperçu"
+                        className="w-12 h-12 object-cover rounded-full border-2 border-blue-200"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0"
+                        onClick={removeImage}
+                      >
+                        <X className="h-2 w-2" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="w-12 h-12 border border-dashed border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center">
+                      <ImageIcon className="h-4 w-4 text-gray-400" />
+                    </div>
+                  )}
+                  
+                  <Label htmlFor="avatar-upload" className="cursor-pointer">
+                    <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 rounded text-xs border border-blue-200 dark:border-blue-700 transition-colors">
+                      <Upload className="h-3 w-3 text-blue-600" />
+                      <span className="text-blue-600 font-medium">Choisir</span>
+                    </div>
+                  </Label>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
                     disabled={loading}
-                    className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${errors.status ? 'border-red-500' : ''}`}
-                  >
-                    {STATUS_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              />
-              {errors.status && (
-                <p className="text-sm text-red-500 mt-1">{errors.status.message}</p>
-              )}
+                    aria-label="Télécharger une photo de profil"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Section : Informations du parent/tuteur */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Users className="h-4 w-4" />
-            Informations du Parent/Tuteur
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Ligne 1 : Nom et Relation */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Nom complet <span className="text-red-500">*</span>
-              </label>
-              <Input
-                {...register('parentContact.name')}
-                placeholder="Nom du parent/tuteur"
-                disabled={loading}
-                className={errors.parentContact?.name ? 'border-red-500' : ''}
-              />
-              {errors.parentContact?.name && (
-                <p className="text-sm text-red-500 mt-1">{errors.parentContact.name.message}</p>
-              )}
+          </CardContent>
+        </Card>
+
+        {/* =====================================================
+            SECTION 2: INFORMATIONS SCOLAIRES
+        ===================================================== */}
+        <Card className="shadow-sm border-0 w-full">
+          <CardHeader className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-t-lg py-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <School className="h-4 w-4" />
+              Informations Scolaires
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-4">
+            {/* Ligne 1: Niveau, Classe */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Niveau" required error={errors.level?.message}>
+                <Controller
+                  name="level"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Sélectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LEVEL_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+
+              <FormField label="Classe" required error={errors.grade?.message}>
+                <Controller
+                  name="grade"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Sélectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GRADE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Relation <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                name="parentContact.relationship"
-                control={control}
-                render={({ field }) => (
-                  <select
-                    {...field}
+
+            {/* Ligne 2: École 9e, Année réussite, Dernier établissement */}
+            <div className="grid grid-cols-3 gap-4">
+              <FormField label="École 9e" error={errors.ninthGradeSchool?.message}>
+                <Input
+                  {...register('ninthGradeSchool')}
+                  placeholder="École de 9e année"
+                  className="h-9"
+                  disabled={loading}
+                />
+              </FormField>
+
+              <FormField label="Année réussite 9e" error={errors.ninthGradeGraduationYear?.message}>
+                <Input
+                  {...register('ninthGradeGraduationYear')}
+                  placeholder="Ex: 2023"
+                  className="h-9"
+                  disabled={loading}
+                />
+              </FormField>
+
+              <FormField label="Dernier établissement" error={errors.lastSchool?.message}>
+                <Input
+                  {...register('lastSchool')}
+                  placeholder="Dernier établissement"
+                  className="h-9"
+                  disabled={loading}
+                />
+              </FormField>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* =====================================================
+            SECTION 3: INFORMATIONS DES PARENTS
+        ===================================================== */}
+        <Card className="shadow-sm border-0 w-full">
+          <CardHeader className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-t-lg py-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Users className="h-4 w-4" />
+              Informations des Parents
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-4">
+            {/* Ligne 1: Père, Mère, Responsable */}
+            <div className="grid grid-cols-3 gap-4">
+              <FormField label="Nom du père" error={errors.parentContact?.fatherName?.message}>
+                <Input
+                  {...register('parentContact.fatherName')}
+                  placeholder="Nom du père"
+                  className="h-9"
+                  disabled={loading}
+                />
+              </FormField>
+
+              <FormField label="Nom de la mère" error={errors.parentContact?.motherName?.message}>
+                <Input
+                  {...register('parentContact.motherName')}
+                  placeholder="Nom de la mère"
+                  className="h-9"
+                  disabled={loading}
+                />
+              </FormField>
+
+              <FormField label="Personne responsable" required error={errors.parentContact?.responsiblePerson?.message}>
+                <Input
+                  {...register('parentContact.responsiblePerson')}
+                  placeholder="Personne responsable"
+                  className="h-9"
+                  disabled={loading}
+                />
+              </FormField>
+            </div>
+
+            {/* Ligne 2: Téléphone, Email, Relation */}
+            <div className="grid grid-cols-3 gap-4">
+              <FormField label="Téléphone" required error={errors.parentContact?.phone?.message}>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
+                  <Input
+                    {...register('parentContact.phone')}
+                    placeholder="+509 XXXX XXXX"
+                    className="h-9 pl-9"
                     disabled={loading}
-                    className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${errors.parentContact?.relationship ? 'border-red-500' : ''}`}
-                  >
-                    {RELATIONSHIP_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              />
-              {errors.parentContact?.relationship && (
-                <p className="text-sm text-red-500 mt-1">{errors.parentContact.relationship.message}</p>
-              )}
+                  />
+                </div>
+              </FormField>
+
+              <FormField label="Email" error={errors.parentContact?.email?.message}>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
+                  <Input
+                    {...register('parentContact.email')}
+                    type="email"
+                    placeholder="email@exemple.com"
+                    className="h-9 pl-9"
+                    disabled={loading}
+                  />
+                </div>
+              </FormField>
+
+              <FormField label="Relation" required error={errors.parentContact?.relationship?.message}>
+                <Controller
+                  name="parentContact.relationship"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Relation" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RELATIONSHIP_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
             </div>
-          </div>
-          
-          {/* Ligne 2 : Email et Téléphone du parent */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                <Mail className="inline h-4 w-4 mr-1" />
-                Email <span className="text-red-500">*</span>
-              </label>
-              <Input
-                {...register('parentContact.email')}
-                type="email"
-                placeholder="email@example.com"
-                disabled={loading}
-                className={errors.parentContact?.email ? 'border-red-500' : ''}
-              />
-              {errors.parentContact?.email && (
-                <p className="text-sm text-red-500 mt-1">{errors.parentContact.email.message}</p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                <Phone className="inline h-4 w-4 mr-1" />
-                Téléphone <span className="text-red-500">*</span>
-              </label>
-              <Input
-                {...register('parentContact.phone')}
-                type="tel"
-                placeholder="+509 1234-5678"
-                disabled={loading}
-                className={errors.parentContact?.phone ? 'border-red-500' : ''}
-              />
-              {errors.parentContact?.phone && (
-                <p className="text-sm text-red-500 mt-1">{errors.parentContact.phone.message}</p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Section : Photo de profil (optionnel) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="h-4 w-4" />
-            Photo de Profil (Optionnel)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              URL de la photo
-            </label>
-            <Input
-              {...register('avatar')}
-              type="url"
-              placeholder="https://example.com/photo.jpg"
-              disabled={loading}
-              className={errors.avatar ? 'border-red-500' : ''}
-            />
-            {errors.avatar && (
-              <p className="text-sm text-red-500 mt-1">{errors.avatar.message}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Boutons d'action */}
-      <div className="flex justify-end gap-3 pt-4">
-        {onCancel && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={loading || isSubmitting}
-          >
-            Annuler
-          </Button>
-        )}
-        <Button
-          type="submit"
-          disabled={loading || isSubmitting}
-          className="min-w-[120px]"
-        >
-          {loading || isSubmitting ? (
-            <div className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              {mode === 'create' ? 'Création...' : 'Mise à jour...'}
-            </div>
-          ) : (
-            mode === 'create' ? 'Créer l\'élève' : 'Mettre à jour'
+
+            {/* Adresse */}
+            <FormField label="Adresse" error={errors.parentContact?.address?.message}>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 h-3 w-3 text-gray-400" />
+                <Textarea
+                  {...register('parentContact.address')}
+                  placeholder="Adresse complète des parents..."
+                  className="pl-9 min-h-[60px] w-full"
+                  disabled={loading}
+                />
+              </div>
+            </FormField>
+          </CardContent>
+        </Card>
+
+        {/* =====================================================
+            BOUTONS D'ACTION
+        ===================================================== */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-end pt-2 w-full">
+          {onCancel && (
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onCancel}
+              disabled={loading || isSubmitting}
+              className="sm:w-auto w-full h-9"
+            >
+              Annuler
+            </Button>
           )}
-        </Button>
-      </div>
-    </form>
+          <Button 
+            type="submit" 
+            disabled={loading || isSubmitting}
+            className="sm:w-auto w-full h-9 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+          >
+            {loading || isSubmitting ? (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                {mode === 'create' ? 'Enregistrement...' : 'Modification...'}
+              </div>
+            ) : (
+              mode === 'create' ? 'Enregistrer l\'élève' : 'Modifier l\'élève'
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }; 

@@ -42,7 +42,15 @@ import { DataTable, createDefaultActions, createStatusBadge } from '../../ui/dat
 import type { Column, RowAction } from '../../ui/data-table';
 
 import { StudentForm } from '../../forms/StudentForm';
-import { useStudentStore } from '../../../stores/studentStore';
+import {
+  useStudentStore,
+  useStudents,
+  useStudentLoading,
+  useStudentError,
+  useStudentStats,
+  useStudentFilters,
+  useStudentPagination
+} from '../../../stores/studentStore';
 import { Student } from '../../../types/student';
 import { CreateStudentFormData } from '../../../schemas/studentSchema';
 
@@ -97,41 +105,9 @@ export const StudentsManagement: React.FC = () => {
   }, [fetchStudents, fetchStats]);
   
   // =====================================================
-  // CONFIGURATION DES COLONNES DU DATATABLE
+  // CONFIGURATION DES COLONNES DE LA TABLE
   // =====================================================
   const columns: Column<Student>[] = [
-    {
-      key: 'avatar',
-      label: 'Photo',
-      width: '80px',
-      render: (avatar: string, student: Student) => (
-        <div className="flex items-center justify-center">
-          {avatar ? (
-            <img 
-              src={avatar} 
-              alt={`${student.firstName} ${student.lastName}`}
-              className="w-8 h-8 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-              <Users className="w-4 h-4 text-gray-500" />
-            </div>
-          )}
-        </div>
-      )
-    },
-    {
-      key: 'studentId',
-      label: 'Matricule',
-      sortable: true,
-      searchable: true,
-      width: '120px',
-      render: (studentId: string) => (
-        <Badge variant="outline" className="font-mono">
-          {studentId}
-        </Badge>
-      )
-    },
     {
       key: 'firstName',
       label: 'Prénom',
@@ -149,44 +125,48 @@ export const StudentsManagement: React.FC = () => {
     {
       key: 'gender',
       label: 'Sexe',
-      sortable: true,
-      filterable: true,
-      width: '100px',
-      render: (gender: string) => (
-        <Badge variant="outline" className={gender === 'male' ? 'text-blue-600' : 'text-pink-600'}>
-          {gender === 'male' ? 'H' : 'F'}
-        </Badge>
-      )
+      width: '80px',
+      render: (gender: 'male' | 'female') => {
+        return (
+          <Badge variant="outline" className="text-xs">
+            {gender === 'male' ? '👨 H' : '👩 F'}
+          </Badge>
+        );
+      }
     },
     {
       key: 'grade',
       label: 'Classe',
       sortable: true,
-      filterable: true,
-      width: '120px',
-      render: (grade: string) => (
-        <Badge variant="secondary">
-          {grade}
-        </Badge>
-      )
+      width: '100px',
+      render: (grade: string) => {
+        return (
+          <Badge variant="secondary" className="text-xs">
+            {grade}
+          </Badge>
+        );
+      }
+    },
+    {
+      key: 'studentId',
+      label: 'Matricule',
+      sortable: true,
+      searchable: true,
+      width: '120px'
     },
     {
       key: 'status',
       label: 'Statut',
       sortable: true,
-      filterable: true,
-      width: '120px',
+      width: '100px',
       render: (status: string) => {
-        const statusConfig = {
-          'active': { label: 'Actif', variant: 'default' },
-          'inactive': { label: 'Inactif', variant: 'secondary' },
-          'suspended': { label: 'Suspendu', variant: 'destructive' }
-        };
-        
-        const config = statusConfig[status as keyof typeof statusConfig];
+        const variant = status === 'active' ? 'default' : 
+                      status === 'inactive' ? 'secondary' : 'destructive';
+        const label = status === 'active' ? 'Actif' : 
+                     status === 'inactive' ? 'Inactif' : 'Suspendu';
         return (
-          <Badge variant={config.variant as any}>
-            {config.label}
+          <Badge variant={variant} className="text-xs">
+            {label}
           </Badge>
         );
       }
@@ -195,12 +175,14 @@ export const StudentsManagement: React.FC = () => {
       key: 'email',
       label: 'Email',
       searchable: true,
-      width: '200px'
-    },
-    {
-      key: 'phone',
-      label: 'Téléphone',
-      width: '150px'
+      width: '200px',
+      render: (email?: string) => {
+        return email ? (
+          <span className="text-sm">{email}</span>
+        ) : (
+          <span className="text-xs text-gray-400">Non renseigné</span>
+        );
+      }
     },
     {
       key: 'enrollmentDate',
@@ -296,6 +278,11 @@ export const StudentsManagement: React.FC = () => {
   // Gestion de la recherche
   const handleSearch = (searchTerm: string) => {
     setFilters({ search: searchTerm });
+  };
+  
+  // ✨ Gestion des filtres avancés
+  const handleStudentFilter = (filterUpdates: Partial<typeof filters>) => {
+    setFilters(filterUpdates);
   };
   
   // Gestion du tri
@@ -472,6 +459,8 @@ export const StudentsManagement: React.FC = () => {
         onPageChange={changePage}
         onSort={handleSort}
         onSearch={handleSearch}
+        onStudentFilter={handleStudentFilter}
+        currentFilters={filters}
         searchPlaceholder="Rechercher par nom, prénom, email ou matricule..."
         emptyStateMessage="Aucun élève trouvé"
         title="Liste des Élèves"
@@ -611,17 +600,22 @@ export const StudentsManagement: React.FC = () => {
                 <div>
                   <h4 className="font-medium mb-2">Informations personnelles</h4>
                   <div className="space-y-1 text-sm">
-                    <p><strong>Email :</strong> {selectedStudent.email}</p>
-                    <p><strong>Téléphone :</strong> {selectedStudent.phone}</p>
+                    <p><strong>Email :</strong> {selectedStudent.email || 'Non renseigné'}</p>
+                    <p><strong>Sexe :</strong> {selectedStudent.gender === 'male' ? 'Homme' : 'Femme'}</p>
                     <p><strong>Date de naissance :</strong> {new Date(selectedStudent.dateOfBirth).toLocaleDateString('fr-FR')}</p>
-                    <p><strong>Adresse :</strong> {selectedStudent.address}</p>
+                    <p><strong>Lieu de naissance :</strong> {selectedStudent.placeOfBirth}</p>
+                    <p><strong>N° d'ordre 9ème AF :</strong> {selectedStudent.ninthGradeOrderNumber}</p>
                   </div>
                 </div>
                 
                 <div>
                   <h4 className="font-medium mb-2">Informations scolaires</h4>
                   <div className="space-y-1 text-sm">
+                    <p><strong>Niveau :</strong> {selectedStudent.level === 'nouveauSecondaire' ? 'Nouveau Secondaire' : 'Secondaire'}</p>
                     <p><strong>Classe :</strong> {selectedStudent.grade}</p>
+                    <p><strong>École 9e :</strong> {selectedStudent.ninthGradeSchool || 'Non renseigné'}</p>
+                    <p><strong>Année réussite 9e :</strong> {selectedStudent.ninthGradeGraduationYear || 'Non renseigné'}</p>
+                    <p><strong>Dernier établissement :</strong> {selectedStudent.lastSchool || 'Non renseigné'}</p>
                     <p><strong>Inscription :</strong> {new Date(selectedStudent.enrollmentDate).toLocaleDateString('fr-FR')}</p>
                   </div>
                 </div>
@@ -631,10 +625,13 @@ export const StudentsManagement: React.FC = () => {
               <div>
                 <h4 className="font-medium mb-2">Contact parent/tuteur</h4>
                 <div className="space-y-1 text-sm">
-                  <p><strong>Nom :</strong> {selectedStudent.parentContact.name}</p>
+                  <p><strong>Père :</strong> {selectedStudent.parentContact.fatherName || 'Non renseigné'}</p>
+                  <p><strong>Mère :</strong> {selectedStudent.parentContact.motherName || 'Non renseigné'}</p>
+                  <p><strong>Personne responsable :</strong> {selectedStudent.parentContact.responsiblePerson}</p>
                   <p><strong>Relation :</strong> {selectedStudent.parentContact.relationship}</p>
-                  <p><strong>Email :</strong> {selectedStudent.parentContact.email}</p>
                   <p><strong>Téléphone :</strong> {selectedStudent.parentContact.phone}</p>
+                  <p><strong>Email :</strong> {selectedStudent.parentContact.email || 'Non renseigné'}</p>
+                  <p><strong>Adresse :</strong> {selectedStudent.parentContact.address || 'Non renseigné'}</p>
                 </div>
               </div>
               

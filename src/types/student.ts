@@ -11,21 +11,28 @@ export interface Student {
   id: string;                    // Identifiant unique de l'élève
   firstName: string;             // Prénom de l'élève
   lastName: string;              // Nom de famille de l'élève
-  email: string;                 // Email de l'élève
-  phone: string;                 // Numéro de téléphone
-  dateOfBirth: string;           // Date de naissance (format ISO)
   gender: 'male' | 'female';     // Sexe de l'élève
-  address: string;               // Adresse complète
-  grade: string;                 // Classe (ex: "Terminale A", "Première S")
+  dateOfBirth: string;           // Date de naissance (format ISO)
+  placeOfBirth: string;          // Lieu de naissance
+  email?: string;                // Email de l'élève (optionnel)
+  ninthGradeOrderNumber: string; // N° d'ordre 9ème AF
+  level: 'secondaire' | 'nouveauSecondaire'; // Niveau scolaire
+  grade: string;                 // Classe (ex: "NSI", "NSII", etc.)
+  ninthGradeSchool?: string;     // École où l'élève a fait la 9e (optionnel)
+  ninthGradeGraduationYear?: string; // Année de réussite 9e (optionnel)
+  lastSchool?: string;           // Dernier établissement (optionnel)
   enrollmentDate: string;        // Date d'inscription (format ISO)
   studentId: string;             // Matricule unique de l'élève
-  parentContact: {               // Informations du parent/tuteur
-    name: string;                // Nom du parent
-    phone: string;               // Téléphone du parent
-    email: string;               // Email du parent
+  parentContact: {               // Informations des parents/tuteurs
+    fatherName?: string;         // Nom du père (optionnel)
+    motherName?: string;         // Nom de la mère (optionnel)
+    responsiblePerson: string;   // Personne responsable
+    phone: string;               // Téléphone de contact
+    email?: string;              // Email des parents (optionnel)
+    address?: string;            // Adresse des parents (optionnel)
     relationship: string;        // Relation (père, mère, tuteur)
   };
-  status: 'active' | 'inactive' | 'suspended'; // Statut de l'élève (retiré graduated)
+  status: 'active' | 'inactive' | 'suspended'; // Statut de l'élève
   avatar?: string;               // URL de la photo de profil (optionnel)
   createdAt: string;             // Date de création du dossier
   updatedAt: string;             // Date de dernière mise à jour
@@ -35,18 +42,25 @@ export interface Student {
 export interface CreateStudentDto {
   firstName: string;
   lastName: string;
-  email: string;
-  phone: string;
-  dateOfBirth: string;
   gender: 'male' | 'female';
-  address: string;
+  dateOfBirth: string;
+  placeOfBirth: string;
+  email?: string;
+  ninthGradeOrderNumber: string;
+  level: 'secondaire' | 'nouveauSecondaire';
   grade: string;
+  ninthGradeSchool?: string;
+  ninthGradeGraduationYear?: string;
+  lastSchool?: string;
   enrollmentDate: string;
   studentId: string;
   parentContact: {
-    name: string;
+    fatherName?: string;
+    motherName?: string;
+    responsiblePerson: string;
     phone: string;
-    email: string;
+    email?: string;
+    address?: string;
     relationship: string;
   };
   status: 'active' | 'inactive' | 'suspended';
@@ -58,18 +72,25 @@ export interface UpdateStudentDto {
   id: string;                    // L'ID est requis pour identifier l'élève à modifier
   firstName?: string;
   lastName?: string;
-  email?: string;
-  phone?: string;
-  dateOfBirth?: string;
   gender?: 'male' | 'female';
-  address?: string;
+  dateOfBirth?: string;
+  placeOfBirth?: string;
+  email?: string;
+  ninthGradeOrderNumber?: string;
+  level?: 'secondaire' | 'nouveauSecondaire';
   grade?: string;
+  ninthGradeSchool?: string;
+  ninthGradeGraduationYear?: string;
+  lastSchool?: string;
   enrollmentDate?: string;
   studentId?: string;
   parentContact?: {
-    name?: string;
+    fatherName?: string;
+    motherName?: string;
+    responsiblePerson?: string;
     phone?: string;
     email?: string;
+    address?: string;
     relationship?: string;
   };
   status?: 'active' | 'inactive' | 'suspended';

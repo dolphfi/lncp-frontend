@@ -78,18 +78,25 @@ const convertFormDataToStudent = (data: CreateStudentFormData): Student => {
     id: generateId(),
     firstName: data.firstName,
     lastName: data.lastName,
-    email: data.email,
-    phone: data.phone,
-    dateOfBirth: new Date(data.dateOfBirth).toISOString(),
     gender: data.gender,
-    address: data.address,
+    dateOfBirth: new Date(data.dateOfBirth).toISOString(),
+    placeOfBirth: data.placeOfBirth,
+    email: data.email,
+    ninthGradeOrderNumber: data.ninthGradeOrderNumber,
+    level: data.level,
     grade: data.grade,
+    ninthGradeSchool: data.ninthGradeSchool,
+    ninthGradeGraduationYear: data.ninthGradeGraduationYear,
+    lastSchool: data.lastSchool,
     enrollmentDate: new Date(data.enrollmentDate).toISOString(),
     studentId: data.studentId,
     parentContact: {
-      name: data.parentContact.name,
+      fatherName: data.parentContact.fatherName,
+      motherName: data.parentContact.motherName,
+      responsiblePerson: data.parentContact.responsiblePerson,
       phone: data.parentContact.phone,
       email: data.parentContact.email,
+      address: data.parentContact.address,
       relationship: data.parentContact.relationship
     },
     status: data.status,
@@ -217,7 +224,7 @@ export const useStudentStore = create<StudentStore>()(
         }
       },
       
-      updateStudent: async (data: UpdateStudentFormData & { id: string }) => {
+      updateStudent: async (data: any) => {
         set(state => {
           state.loadingAction = 'update';
           state.error = null;
@@ -235,35 +242,34 @@ export const useStudentStore = create<StudentStore>()(
           
           const existingStudent = mockStudents[existingStudentIndex];
           
-          // Préparer les champs de mise à jour
-          const updateFields: Partial<Student> = {};
-          
-          if (data.firstName !== undefined) updateFields.firstName = data.firstName;
-          if (data.lastName !== undefined) updateFields.lastName = data.lastName;
-          if (data.email !== undefined) updateFields.email = data.email;
-          if (data.phone !== undefined) updateFields.phone = data.phone;
-          if (data.dateOfBirth !== undefined) updateFields.dateOfBirth = new Date(data.dateOfBirth).toISOString();
-          if (data.address !== undefined) updateFields.address = data.address;
-          if (data.grade !== undefined) updateFields.grade = data.grade;
-          if (data.enrollmentDate !== undefined) updateFields.enrollmentDate = new Date(data.enrollmentDate).toISOString();
-          if (data.studentId !== undefined) updateFields.studentId = data.studentId;
-          if (data.status !== undefined) updateFields.status = data.status;
-          if (data.avatar !== undefined) updateFields.avatar = data.avatar;
-          
-          // Mettre à jour les informations du parent si fournies
-          if (data.parentContact !== undefined) {
-            updateFields.parentContact = {
-              name: data.parentContact.name,
-              phone: data.parentContact.phone,
-              email: data.parentContact.email,
-              relationship: data.parentContact.relationship
-            };
-          }
-          
-          // Créer l'élève mis à jour
+          // Créer l'élève mis à jour avec les nouvelles données
           const updatedStudent: Student = {
             ...existingStudent,
-            ...updateFields,
+            firstName: data.firstName !== undefined ? data.firstName : existingStudent.firstName,
+            lastName: data.lastName !== undefined ? data.lastName : existingStudent.lastName,
+            gender: data.gender !== undefined ? data.gender : existingStudent.gender,
+            dateOfBirth: data.dateOfBirth !== undefined ? new Date(data.dateOfBirth).toISOString() : existingStudent.dateOfBirth,
+            placeOfBirth: data.placeOfBirth !== undefined ? data.placeOfBirth : existingStudent.placeOfBirth,
+            email: data.email !== undefined ? data.email : existingStudent.email,
+            ninthGradeOrderNumber: data.ninthGradeOrderNumber !== undefined ? data.ninthGradeOrderNumber : existingStudent.ninthGradeOrderNumber,
+            level: data.level !== undefined ? data.level : existingStudent.level,
+            grade: data.grade !== undefined ? data.grade : existingStudent.grade,
+            ninthGradeSchool: data.ninthGradeSchool !== undefined ? data.ninthGradeSchool : existingStudent.ninthGradeSchool,
+            ninthGradeGraduationYear: data.ninthGradeGraduationYear !== undefined ? data.ninthGradeGraduationYear : existingStudent.ninthGradeGraduationYear,
+            lastSchool: data.lastSchool !== undefined ? data.lastSchool : existingStudent.lastSchool,
+            enrollmentDate: data.enrollmentDate !== undefined ? new Date(data.enrollmentDate).toISOString() : existingStudent.enrollmentDate,
+            studentId: data.studentId !== undefined ? data.studentId : existingStudent.studentId,
+            status: data.status !== undefined ? data.status : existingStudent.status,
+            avatar: data.avatar !== undefined ? data.avatar : existingStudent.avatar,
+            parentContact: data.parentContact !== undefined ? {
+              fatherName: data.parentContact.fatherName !== undefined ? data.parentContact.fatherName : existingStudent.parentContact.fatherName,
+              motherName: data.parentContact.motherName !== undefined ? data.parentContact.motherName : existingStudent.parentContact.motherName,
+              responsiblePerson: data.parentContact.responsiblePerson !== undefined ? data.parentContact.responsiblePerson : existingStudent.parentContact.responsiblePerson,
+              phone: data.parentContact.phone !== undefined ? data.parentContact.phone : existingStudent.parentContact.phone,
+              email: data.parentContact.email !== undefined ? data.parentContact.email : existingStudent.parentContact.email,
+              address: data.parentContact.address !== undefined ? data.parentContact.address : existingStudent.parentContact.address,
+              relationship: data.parentContact.relationship !== undefined ? data.parentContact.relationship : existingStudent.parentContact.relationship
+            } : existingStudent.parentContact,
             updatedAt: new Date().toISOString()
           };
           
@@ -339,8 +345,21 @@ export const useStudentStore = create<StudentStore>()(
           state.pagination.page = 1; // Reset à la première page
         });
         
-        // Recharger les données avec les nouveaux filtres
-        get().fetchStudents();
+        // ✨ Appliquer les filtres IMMÉDIATEMENT sans loading ni delay
+        const { filters, sortOptions, pagination } = get();
+        
+        let filteredStudents = searchStudents(mockStudents, filters.search || '', {
+          grade: filters.grade || undefined,
+          status: filters.status || undefined
+        });
+        
+        filteredStudents = sortStudents(filteredStudents, sortOptions.field, sortOptions.order);
+        const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
+        
+        set(state => {
+          state.students = paginatedResult.data;
+          state.pagination = paginatedResult.pagination;
+        });
       },
       
       setSortOptions: (sort: StudentSortOptions) => {
@@ -348,8 +367,21 @@ export const useStudentStore = create<StudentStore>()(
           state.sortOptions = sort;
         });
         
-        // Recharger les données avec le nouveau tri
-        get().fetchStudents();
+        // ✨ Appliquer le tri IMMÉDIATEMENT sans loading ni delay
+        const { filters, sortOptions, pagination } = get();
+        
+        let filteredStudents = searchStudents(mockStudents, filters.search || '', {
+          grade: filters.grade || undefined,
+          status: filters.status || undefined
+        });
+        
+        filteredStudents = sortStudents(filteredStudents, sortOptions.field, sortOptions.order);
+        const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
+        
+        set(state => {
+          state.students = paginatedResult.data;
+          state.pagination = paginatedResult.pagination;
+        });
       },
       
       changePage: (page: number) => {
@@ -357,8 +389,21 @@ export const useStudentStore = create<StudentStore>()(
           state.pagination.page = page;
         });
         
-        // Recharger les données pour la nouvelle page
-        get().fetchStudents();
+        // ✨ Appliquer la pagination IMMÉDIATEMENT sans loading ni delay
+        const { filters, sortOptions, pagination } = get();
+        
+        let filteredStudents = searchStudents(mockStudents, filters.search || '', {
+          grade: filters.grade || undefined,
+          status: filters.status || undefined
+        });
+        
+        filteredStudents = sortStudents(filteredStudents, sortOptions.field, sortOptions.order);
+        const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
+        
+        set(state => {
+          state.students = paginatedResult.data;
+          state.pagination = paginatedResult.pagination;
+        });
       },
       
       // =====================================================

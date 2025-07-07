@@ -16,18 +16,25 @@ export const mockStudents: Student[] = [
     id: '1',
     firstName: 'Jean',
     lastName: 'Dupont',
-    email: 'jean.dupont@email.com',
-    phone: '+509 1234-5678',
-    dateOfBirth: '2005-03-15T00:00:00Z',
     gender: 'male',
-    address: '123 Rue de la Paix, Port-au-Prince, Haïti',
+    dateOfBirth: '2005-03-15T00:00:00Z',
+    placeOfBirth: 'Port-au-Prince, Ouest',
+    email: 'jean.dupont@email.com',
+    ninthGradeOrderNumber: '2020/001234',
+    level: 'nouveauSecondaire',
     grade: 'NSII',
+    ninthGradeSchool: 'École Nationale de Port-au-Prince',
+    ninthGradeGraduationYear: '2020',
+    lastSchool: 'Lycée Alexandre Pétion',
     enrollmentDate: '2023-09-01T00:00:00Z',
     studentId: '23N2001',
     parentContact: {
-      name: 'Marie Dupont',
+      fatherName: 'Paul Dupont',
+      motherName: 'Marie Dupont',
+      responsiblePerson: 'Marie Dupont',
       phone: '+509 1234-5679',
       email: 'marie.dupont@email.com',
+      address: '123 Rue de la Paix, Port-au-Prince, Haïti',
       relationship: 'mère'
     },
     status: 'active',
@@ -39,18 +46,25 @@ export const mockStudents: Student[] = [
     id: '2',
     firstName: 'Marie',
     lastName: 'Pierre',
-    email: 'marie.pierre@email.com',
-    phone: '+509 2345-6789',
-    dateOfBirth: '2006-07-22T00:00:00Z',
     gender: 'female',
-    address: '456 Avenue des Fleurs, Pétion-Ville, Haïti',
+    dateOfBirth: '2006-07-22T00:00:00Z',
+    placeOfBirth: 'Pétion-Ville, Ouest',
+    email: 'marie.pierre@email.com',
+    ninthGradeOrderNumber: '2021/005678',
+    level: 'nouveauSecondaire',
     grade: 'NSI',
+    ninthGradeSchool: 'Collège Saint-Pierre',
+    ninthGradeGraduationYear: '2021',
+    lastSchool: 'Institution Mixte Clarisse',
     enrollmentDate: '2023-09-01T00:00:00Z',
     studentId: '23N1002',
     parentContact: {
-      name: 'Paul Pierre',
+      fatherName: 'Paul Pierre',
+      motherName: 'Lucie Pierre',
+      responsiblePerson: 'Paul Pierre',
       phone: '+509 2345-6790',
       email: 'paul.pierre@email.com',
+      address: '456 Avenue des Fleurs, Pétion-Ville, Haïti',
       relationship: 'père'
     },
     status: 'active',
@@ -62,18 +76,25 @@ export const mockStudents: Student[] = [
     id: '3',
     firstName: 'Pierre',
     lastName: 'Louis',
-    email: 'pierre.louis@email.com',
-    phone: '+509 3456-7890',
-    dateOfBirth: '2007-11-08T00:00:00Z',
     gender: 'male',
-    address: '789 Boulevard des Martyrs, Carrefour, Haïti',
+    dateOfBirth: '2007-11-08T00:00:00Z',
+    placeOfBirth: 'Carrefour, Ouest',
+    email: 'pierre.louis@email.com',
+    ninthGradeOrderNumber: '2022/009876',
+    level: 'nouveauSecondaire',
     grade: 'NSIV',
+    ninthGradeSchool: 'École Nationale de Carrefour',
+    ninthGradeGraduationYear: '2022',
+    lastSchool: 'Lycée des Jeunes Filles',
     enrollmentDate: '2023-09-01T00:00:00Z',
     studentId: '23N4003',
     parentContact: {
-      name: 'Rose Louis',
+      fatherName: 'Jean Louis',
+      motherName: 'Rose Louis',
+      responsiblePerson: 'Rose Louis',
       phone: '+509 3456-7891',
       email: 'rose.louis@email.com',
+      address: '789 Boulevard des Martyrs, Carrefour, Haïti',
       relationship: 'mère'
     },
     status: 'active',
@@ -84,18 +105,25 @@ export const mockStudents: Student[] = [
     id: '4',
     firstName: 'Anne',
     lastName: 'Joseph',
-    email: 'anne.joseph@email.com',
-    phone: '+509 4567-8901',
-    dateOfBirth: '2008-01-30T00:00:00Z',
     gender: 'female',
-    address: '321 Rue de la Liberté, Delmas, Haïti',
+    dateOfBirth: '2008-01-30T00:00:00Z',
+    placeOfBirth: 'Delmas, Ouest',
+    email: 'anne.joseph@email.com',
+    ninthGradeOrderNumber: '2023/001122',
+    level: 'nouveauSecondaire',
     grade: 'NSIII',
+    ninthGradeSchool: 'Collège Canado-Haïtien',
+    ninthGradeGraduationYear: '2023',
+    lastSchool: 'Lycée Philippe Guerrier',
     enrollmentDate: '2023-09-01T00:00:00Z',
     studentId: '23N3004',
     parentContact: {
-      name: 'Marc Joseph',
+      fatherName: 'Marc Joseph',
+      motherName: 'Carla Joseph',
+      responsiblePerson: 'Marc Joseph',
       phone: '+509 4567-8902',
       email: 'marc.joseph@email.com',
+      address: '321 Rue de la Liberté, Delmas, Haïti',
       relationship: 'père'
     },
     status: 'active',
@@ -106,18 +134,25 @@ export const mockStudents: Student[] = [
     id: '5',
     firstName: 'Claude',
     lastName: 'Michel',
-    email: 'claude.michel@email.com',
-    phone: '+509 5678-9012',
-    dateOfBirth: '2004-05-12T00:00:00Z',
     gender: 'male',
-    address: '654 Rue de la Fraternité, Croix-des-Bouquets, Haïti',
+    dateOfBirth: '2004-05-12T00:00:00Z',
+    placeOfBirth: 'Croix-des-Bouquets, Ouest',
+    email: 'claude.michel@email.com',
+    ninthGradeOrderNumber: '2019/003344',
+    level: 'nouveauSecondaire',
     grade: 'NSI',
+    ninthGradeSchool: 'École Baptiste de Croix-des-Bouquets',
+    ninthGradeGraduationYear: '2019',
+    lastSchool: 'Lycée de Pétion-Ville',
     enrollmentDate: '2022-09-01T00:00:00Z',
     studentId: '22N1005',
     parentContact: {
-      name: 'Lucie Michel',
+      fatherName: 'Robert Michel',
+      motherName: 'Lucie Michel',
+      responsiblePerson: 'Lucie Michel',
       phone: '+509 5678-9013',
       email: 'lucie.michel@email.com',
+      address: '654 Rue de la Fraternité, Croix-des-Bouquets, Haïti',
       relationship: 'mère'
     },
     status: 'inactive',
@@ -128,18 +163,25 @@ export const mockStudents: Student[] = [
     id: '6',
     firstName: 'Sophia',
     lastName: 'Barthélémy',
-    email: 'sophia.barthelemy@email.com',
-    phone: '+509 6789-0123',
-    dateOfBirth: '2005-09-18T00:00:00Z',
     gender: 'female',
-    address: '987 Avenue Jean-Jacques Dessalines, Port-au-Prince, Haïti',
+    dateOfBirth: '2005-09-18T00:00:00Z',
+    placeOfBirth: 'Port-au-Prince, Ouest',
+    email: 'sophia.barthelemy@email.com',
+    ninthGradeOrderNumber: '2020/005566',
+    level: 'nouveauSecondaire',
     grade: 'NSII',
+    ninthGradeSchool: 'Institution Sainte-Rose de Lima',
+    ninthGradeGraduationYear: '2020',
+    lastSchool: 'Lycée Toussaint Louverture',
     enrollmentDate: '2023-09-01T00:00:00Z',
     studentId: '23N2006',
     parentContact: {
-      name: 'Robert Barthélémy',
+      fatherName: 'Robert Barthélémy',
+      motherName: 'Ketlie Barthélémy',
+      responsiblePerson: 'Robert Barthélémy',
       phone: '+509 6789-0124',
       email: 'robert.barthelemy@email.com',
+      address: '987 Avenue Jean-Jacques Dessalines, Port-au-Prince, Haïti',
       relationship: 'père'
     },
     status: 'active',
@@ -150,18 +192,24 @@ export const mockStudents: Student[] = [
     id: '7',
     firstName: 'James',
     lastName: 'Toussaint',
-    email: 'james.toussaint@email.com',
-    phone: '+509 7890-1234',
-    dateOfBirth: '2006-12-03T00:00:00Z',
     gender: 'male',
-    address: '555 Rue Capois, Port-au-Prince, Haïti',
+    dateOfBirth: '2006-12-03T00:00:00Z',
+    placeOfBirth: 'Port-au-Prince, Ouest',
+    ninthGradeOrderNumber: '2021/007788',
+    level: 'nouveauSecondaire',
     grade: 'NSIII',
+    ninthGradeSchool: 'Collège Saint-Louis de Gonzague',
+    ninthGradeGraduationYear: '2021',
+    lastSchool: 'Lycée Anténor Firmin',
     enrollmentDate: '2023-09-01T00:00:00Z',
     studentId: '23N3007',
     parentContact: {
-      name: 'Micheline Toussaint',
+      fatherName: 'Michel Toussaint',
+      motherName: 'Micheline Toussaint',
+      responsiblePerson: 'Micheline Toussaint',
       phone: '+509 7890-1235',
       email: 'micheline.toussaint@email.com',
+      address: '555 Rue Capois, Port-au-Prince, Haïti',
       relationship: 'mère'
     },
     status: 'active',
@@ -172,18 +220,25 @@ export const mockStudents: Student[] = [
     id: '8',
     firstName: 'Roseline',
     lastName: 'Moïse',
-    email: 'roseline.moise@email.com',
-    phone: '+509 8901-2345',
-    dateOfBirth: '2007-04-25T00:00:00Z',
     gender: 'female',
-    address: '777 Boulevard Harry Truman, Pétion-Ville, Haïti',
+    dateOfBirth: '2007-04-25T00:00:00Z',
+    placeOfBirth: 'Pétion-Ville, Ouest',
+    email: 'roseline.moise@email.com',
+    ninthGradeOrderNumber: '2022/009900',
+    level: 'nouveauSecondaire',
     grade: 'NSIV',
+    ninthGradeSchool: 'École Presbytérienne',
+    ninthGradeGraduationYear: '2022',
+    lastSchool: 'Institution Mixte Bethesda',
     enrollmentDate: '2023-09-01T00:00:00Z',
     studentId: '23N4008',
     parentContact: {
-      name: 'Jean Moïse',
+      fatherName: 'Jean Moïse',
+      motherName: 'Sandra Moïse',
+      responsiblePerson: 'Jean Moïse',
       phone: '+509 8901-2346',
       email: 'jean.moise@email.com',
+      address: '777 Boulevard Harry Truman, Pétion-Ville, Haïti',
       relationship: 'père'
     },
     status: 'suspended',
@@ -237,35 +292,34 @@ export const searchStudents = (
     gender?: string;
   } = {}
 ): Student[] => {
-  let filtered = [...students];
+  let filteredStudents = students;
 
-  // Filtrage par terme de recherche
+  // Appliquer les filtres
+  if (filters.grade) {
+    filteredStudents = filteredStudents.filter(student => student.grade === filters.grade);
+  }
+
+  if (filters.status) {
+    filteredStudents = filteredStudents.filter(student => student.status === filters.status);
+  }
+
+  if (filters.gender) {
+    filteredStudents = filteredStudents.filter(student => student.gender === filters.gender);
+  }
+
+  // Appliquer la recherche textuelle
   if (searchTerm) {
     const term = searchTerm.toLowerCase();
-    filtered = filtered.filter(student =>
+    filteredStudents = filteredStudents.filter(student =>
       student.firstName.toLowerCase().includes(term) ||
       student.lastName.toLowerCase().includes(term) ||
-      student.email.toLowerCase().includes(term) ||
-      student.studentId.toLowerCase().includes(term)
+      (student.email && student.email.toLowerCase().includes(term)) ||
+      student.studentId.toLowerCase().includes(term) ||
+      student.parentContact.responsiblePerson.toLowerCase().includes(term)
     );
   }
 
-  // Filtrage par classe
-  if (filters.grade) {
-    filtered = filtered.filter(student => student.grade === filters.grade);
-  }
-
-  // Filtrage par statut
-  if (filters.status) {
-    filtered = filtered.filter(student => student.status === filters.status);
-  }
-
-  // Filtrage par sexe
-  if (filters.gender) {
-    filtered = filtered.filter(student => student.gender === filters.gender);
-  }
-
-  return filtered;
+  return filteredStudents;
 };
 
 // Simuler un tri

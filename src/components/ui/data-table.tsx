@@ -20,7 +20,13 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
-  Eye
+  Eye,
+  X,
+  Check,
+  School,
+  Users,
+  Activity,
+  RotateCcw
 } from 'lucide-react';
 import { Button } from './button';
 import { Input } from './input';
@@ -36,7 +42,10 @@ import {
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuCheckboxItem
 } from './dropdown-menu';
 import { Badge } from './badge';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
@@ -87,6 +96,14 @@ export interface PaginationInfo {
   totalPages: number;              // Total de pages
 }
 
+// Type pour les filtres spécifiques aux élèves
+export interface StudentFilters {
+  search?: string;
+  grade?: string;
+  status?: 'active' | 'inactive' | 'suspended';
+  gender?: 'male' | 'female';
+}
+
 // =====================================================
 // PROPS DU COMPOSANT DATA TABLE
 // =====================================================
@@ -102,6 +119,9 @@ interface DataTableProps<T> {
   onSort?: (sort: SortOption) => void;   // Callback lors du tri
   onSearch?: (search: string) => void;   // Callback lors de la recherche
   onFilter?: (filters: FilterOption[]) => void; // Callback lors du filtrage
+  // ✨ Nouveaux props pour les filtres étudiants
+  onStudentFilter?: (filters: Partial<StudentFilters>) => void; // Callback spécifique élèves
+  currentFilters?: Partial<StudentFilters>; // Filtres actuels pour l'affichage
   emptyStateMessage?: string;      // Message lorsqu'il n'y a pas de données
   title?: string;                  // Titre de la table
   description?: string;            // Description de la table
@@ -124,6 +144,8 @@ export function DataTable<T>({
   onSort,
   onSearch,
   onFilter,
+  onStudentFilter,
+  currentFilters,
   emptyStateMessage = "Aucune donnée disponible",
   title,
   description,
@@ -294,28 +316,263 @@ export function DataTable<T>({
             )}
           </div>
           
-          {/* Barre de recherche */}
+          {/* Barre de recherche et filtres */}
           {searchable && (
-            <div className="flex items-center gap-2 mt-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={searchPlaceholder}
-                  value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-9"
-                  disabled={loading}
-                />
+            <div className="space-y-3 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={searchPlaceholder}
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="pl-9"
+                    disabled={loading}
+                  />
+                </div>
+                
+                {/* ✨ Menu de filtres avancé et moderne */}
+                {onStudentFilter && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={loading}
+                        className="relative transition-colors duration-200 hover:bg-accent"
+                      >
+                        <Filter className="h-4 w-4 mr-2" />
+                        Filtres
+                        {/* Badge animé pour indiquer des filtres actifs */}
+                        {currentFilters && (
+                          Object.keys(currentFilters).filter(key => 
+                            key !== 'search' && currentFilters[key as keyof StudentFilters]
+                          ).length > 0
+                        ) && (
+                          <Badge 
+                            variant="destructive" 
+                            className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                          >
+                            {Object.keys(currentFilters).filter(key => 
+                              key !== 'search' && currentFilters[key as keyof StudentFilters]
+                            ).length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent 
+                      align="end" 
+                      className="w-72 p-2 space-y-2 bg-white dark:bg-gray-800 shadow-2xl border-0 rounded-xl"
+                      sideOffset={8}
+                    >
+                      {/* Section Salles */}
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-2">
+                        <DropdownMenuLabel className="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium">
+                          <School className="h-4 w-4" />
+                          Filtrer par Salle
+                        </DropdownMenuLabel>
+                        <div className="space-y-1">
+                          <DropdownMenuCheckboxItem
+                            checked={!currentFilters?.grade}
+                            onCheckedChange={() => onStudentFilter({ grade: undefined })}
+                            className="text-sm rounded-md transition-colors"
+                          >
+                            <span className="font-medium">Toutes les salles</span>
+                          </DropdownMenuCheckboxItem>
+                          {['NSI', 'NSII', 'NSIII', 'NSIV'].map((grade) => (
+                            <DropdownMenuCheckboxItem
+                              key={grade}
+                              checked={currentFilters?.grade === grade}
+                              onCheckedChange={(checked) => 
+                                onStudentFilter({ grade: checked ? grade : undefined })
+                              }
+                              className="text-sm rounded-md transition-colors hover:bg-blue-100 dark:hover:bg-blue-800/30"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className="w-6 h-6 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-300">
+                                  {grade.slice(-1)}
+                                </span>
+                                {grade}
+                              </span>
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Section Sexe */}
+                      <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 space-y-2">
+                        <DropdownMenuLabel className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-medium">
+                          <Users className="h-4 w-4" />
+                          Filtrer par Sexe
+                        </DropdownMenuLabel>
+                        <div className="space-y-1">
+                          <DropdownMenuCheckboxItem
+                            checked={!currentFilters?.gender}
+                            onCheckedChange={() => onStudentFilter({ gender: undefined })}
+                            className="text-sm rounded-md transition-colors"
+                          >
+                            <span className="font-medium">Tous</span>
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={currentFilters?.gender === 'male'}
+                            onCheckedChange={(checked) => 
+                              onStudentFilter({ gender: checked ? 'male' : undefined })
+                            }
+                            className="text-sm rounded-md transition-colors hover:bg-purple-100 dark:hover:bg-purple-800/30"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="w-6 h-6 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center text-xs">
+                                👨
+                              </span>
+                              Hommes
+                            </span>
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={currentFilters?.gender === 'female'}
+                            onCheckedChange={(checked) => 
+                              onStudentFilter({ gender: checked ? 'female' : undefined })
+                            }
+                            className="text-sm rounded-md transition-colors hover:bg-purple-100 dark:hover:bg-purple-800/30"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="w-6 h-6 bg-pink-100 dark:bg-pink-800 rounded-full flex items-center justify-center text-xs">
+                                👩
+                              </span>
+                              Femmes
+                            </span>
+                          </DropdownMenuCheckboxItem>
+                        </div>
+                      </div>
+                      
+                      {/* Section Statut */}
+                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 space-y-2">
+                        <DropdownMenuLabel className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium">
+                          <Activity className="h-4 w-4" />
+                          Filtrer par Statut
+                        </DropdownMenuLabel>
+                        <div className="space-y-1">
+                          <DropdownMenuCheckboxItem
+                            checked={!currentFilters?.status}
+                            onCheckedChange={() => onStudentFilter({ status: undefined })}
+                            className="text-sm rounded-md transition-colors"
+                          >
+                            <span className="font-medium">Tous</span>
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={currentFilters?.status === 'active'}
+                            onCheckedChange={(checked) => 
+                              onStudentFilter({ status: checked ? 'active' : undefined })
+                            }
+                            className="text-sm rounded-md transition-colors hover:bg-green-100 dark:hover:bg-green-800/30"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="w-6 h-6 bg-green-100 dark:bg-green-800 rounded-full flex items-center justify-center text-xs">
+                                ✅
+                              </span>
+                              Actifs
+                            </span>
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={currentFilters?.status === 'inactive'}
+                            onCheckedChange={(checked) => 
+                              onStudentFilter({ status: checked ? 'inactive' : undefined })
+                            }
+                            className="text-sm rounded-md transition-colors hover:bg-green-100 dark:hover:bg-green-800/30"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="w-6 h-6 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-xs">
+                                ⏸️
+                              </span>
+                              Inactifs
+                            </span>
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={currentFilters?.status === 'suspended'}
+                            onCheckedChange={(checked) => 
+                              onStudentFilter({ status: checked ? 'suspended' : undefined })
+                            }
+                            className="text-sm rounded-md transition-colors hover:bg-green-100 dark:hover:bg-green-800/30"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="w-6 h-6 bg-red-100 dark:bg-red-800 rounded-full flex items-center justify-center text-xs">
+                                🚫
+                              </span>
+                              Suspendus
+                            </span>
+                          </DropdownMenuCheckboxItem>
+                        </div>
+                      </div>
+                      
+                      {/* Bouton de réinitialisation moderne */}
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <DropdownMenuItem
+                          onClick={() => onStudentFilter({
+                            grade: undefined,
+                            gender: undefined,
+                            status: undefined
+                          })}
+                          className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          <span className="font-medium">Effacer tous les filtres</span>
+                        </DropdownMenuItem>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                disabled={loading}
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filtres
-              </Button>
+              
+              {/* ✨ Affichage moderne des filtres actifs */}
+              {currentFilters && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {currentFilters.grade && (
+                    <Badge 
+                      variant="secondary" 
+                      className="flex items-center gap-2 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700 rounded-full transition-colors duration-200 hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                    >
+                      <School className="h-3 w-3" />
+                      <span className="text-sm font-medium">Salle: {currentFilters.grade}</span>
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors" 
+                        onClick={() => onStudentFilter?.({ grade: undefined })}
+                      />
+                    </Badge>
+                  )}
+                  {currentFilters.gender && (
+                    <Badge 
+                      variant="secondary" 
+                      className="flex items-center gap-2 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 border-purple-200 dark:border-purple-700 rounded-full transition-colors duration-200 hover:bg-purple-200 dark:hover:bg-purple-800/50"
+                    >
+                      <Users className="h-3 w-3" />
+                      <span className="text-sm font-medium">
+                        Sexe: {currentFilters.gender === 'male' ? 'Hommes' : 'Femmes'}
+                      </span>
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors" 
+                        onClick={() => onStudentFilter?.({ gender: undefined })}
+                      />
+                    </Badge>
+                  )}
+                  {currentFilters.status && (
+                    <Badge 
+                      variant="secondary" 
+                      className="flex items-center gap-2 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700 rounded-full transition-colors duration-200 hover:bg-green-200 dark:hover:bg-green-800/50"
+                    >
+                      <Activity className="h-3 w-3" />
+                      <span className="text-sm font-medium">
+                        Statut: {
+                          currentFilters.status === 'active' ? 'Actifs' :
+                          currentFilters.status === 'inactive' ? 'Inactifs' : 'Suspendus'
+                        }
+                      </span>
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors" 
+                        onClick={() => onStudentFilter?.({ status: undefined })}
+                      />
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </CardHeader>
