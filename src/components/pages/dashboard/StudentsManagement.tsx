@@ -23,7 +23,10 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  FileText,
+  FileSpreadsheet,
+  FileDown
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
@@ -40,6 +43,14 @@ import {
 import { Alert, AlertDescription } from '../../ui/alert';
 import { DataTable, createDefaultActions, createStatusBadge } from '../../ui/data-table';
 import type { Column, RowAction } from '../../ui/data-table';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '../../ui/dropdown-menu';
 
 import { StudentForm } from '../../forms/StudentForm';
 import {
@@ -53,6 +64,7 @@ import {
 } from '../../../stores/studentStore';
 import { Student } from '../../../types/student';
 import { CreateStudentFormData } from '../../../schemas/studentSchema';
+import { useRoomStore } from '../../../stores/roomStore';
 
 // =====================================================
 // COMPOSANT PRINCIPAL DE GESTION DES ÉLÈVES
@@ -94,6 +106,9 @@ export const StudentsManagement: React.FC = () => {
     clearError,
     fetchStats
   } = useStudentStore();
+
+  // Récupération des salles pour les filtres
+  const { rooms, fetchRooms } = useRoomStore();
   
   // =====================================================
   // CHARGEMENT INITIAL DES DONNÉES
@@ -102,7 +117,8 @@ export const StudentsManagement: React.FC = () => {
     // Charger les élèves et les statistiques au montage du composant
     fetchStudents();
     fetchStats();
-  }, [fetchStudents, fetchStats]);
+    fetchRooms();
+  }, [fetchStudents, fetchStats, fetchRooms]);
   
   // =====================================================
   // CONFIGURATION DES COLONNES DE LA TABLE
@@ -110,49 +126,77 @@ export const StudentsManagement: React.FC = () => {
   const columns: Column<Student>[] = [
     {
       key: 'firstName',
-      label: 'Prénom',
+      label: 'Élève',
       sortable: true,
       searchable: true,
-      width: '150px'
-    },
-    {
-      key: 'lastName',
-      label: 'Nom',
-      sortable: true,
-      searchable: true,
-      width: '150px'
+      width: '250px',
+      render: (firstName: string, student: Student) => {
+        return (
+          <div className="flex items-center space-x-3">
+            {/* Photo de profil */}
+            <div className="flex-shrink-0">
+              {student.avatar ? (
+                <img
+                  src={student.avatar}
+                  alt={`${student.firstName} ${student.lastName}`}
+                  className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm">
+                  {student.firstName?.charAt(0) || ''}{student.lastName?.charAt(0) || ''}
+                </div>
+              )}
+            </div>
+            
+            {/* Informations de l'élève */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                {student.firstName} {student.lastName}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {student.studentId}
+              </p>
+            </div>
+          </div>
+        );
+      }
     },
     {
       key: 'gender',
       label: 'Sexe',
-      width: '80px',
+      width: '90px',
       render: (gender: 'male' | 'female') => {
         return (
           <Badge variant="outline" className="text-xs">
-            {gender === 'male' ? '👨 H' : '👩 F'}
+            {gender === 'male' ? '👨' : '👩'}
           </Badge>
         );
       }
     },
     {
-      key: 'grade',
-      label: 'Classe',
+      key: 'roomName',
+      label: 'Salle',
       sortable: true,
-      width: '100px',
-      render: (grade: string) => {
-        return (
-          <Badge variant="secondary" className="text-xs">
-            {grade}
-          </Badge>
-        );
+      width: '200px',
+      render: (roomName: string | undefined, student: Student) => {
+        if (roomName && student.grade) {
+          return (
+            <Badge variant="outline" className="text-xs whitespace-nowrap">
+              {student.grade} - {roomName}
+            </Badge>
+          );
+        } else if (student.grade) {
+          return (
+            <Badge variant="secondary" className="text-xs whitespace-nowrap">
+              {student.grade} - Non assignée
+            </Badge>
+          );
+        } else {
+          return (
+            <span className="text-xs text-gray-400 whitespace-nowrap">Non assignée</span>
+          );
+        }
       }
-    },
-    {
-      key: 'studentId',
-      label: 'Matricule',
-      sortable: true,
-      searchable: true,
-      width: '120px'
     },
     {
       key: 'status',
@@ -292,6 +336,43 @@ export const StudentsManagement: React.FC = () => {
       order: sort.order
     });
   };
+
+  // =====================================================
+  // FONCTIONS D'EXPORTATION
+  // =====================================================
+  
+  const exportToCSV = () => {
+    const headers = ['Prénom', 'Nom', 'Sexe', 'Classe', 'Matricule', 'Statut', 'Email', 'Date d\'inscription'];
+    const csvContent = [
+      headers.join(','),
+      ...students.map(student => [
+        student.firstName,
+        student.lastName,
+        student.gender === 'male' ? 'Homme' : 'Femme',
+        student.grade,
+        student.studentId,
+        student.status === 'active' ? 'Actif' : student.status === 'inactive' ? 'Inactif' : 'Suspendu',
+        student.email || '',
+        new Date(student.enrollmentDate).toLocaleDateString('fr-FR')
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `eleves_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToPDF = () => {
+    // Simulation d'export PDF - à implémenter avec une librairie comme jsPDF
+    alert('Export PDF - Fonctionnalité à implémenter');
+  };
+
   
   // =====================================================
   // RENDU DES STATISTIQUES
@@ -361,13 +442,25 @@ export const StudentsManagement: React.FC = () => {
                 </div>
               </div>
               <div className="border-t pt-1">
-                <div className="grid grid-cols-2 gap-x-1 gap-y-0 text-xs">
-                  {Object.entries(stats.byGrade).map(([grade, count]) => (
-                    <div key={grade} className="flex justify-between items-center">
-                      <span className="text-muted-foreground">{grade}</span>
-                      <span className="font-medium text-sm">{count}</span>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-2 gap-1">
+                  {Object.entries(stats.byGrade).map(([grade, count], index) => {
+                    const colors = [
+                      { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600' },
+                      { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-600' },
+                      { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-600' },
+                      { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-600' }
+                    ];
+                    const color = colors[index % colors.length];
+                    
+                    return (
+                      <div key={grade} className={`${color.bg} rounded-md p-0.4 px-2 border ${color.border}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-gray-600">{grade}</span>
+                          <span className={`text-xs font-bold ${color.text}`}>{count}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </CardContent>
@@ -432,10 +525,30 @@ export const StudentsManagement: React.FC = () => {
             <Upload className="h-4 w-4 mr-2" />
             Importer
           </Button>
-          <Button variant="outline" disabled={loading}>
-            <Download className="h-4 w-4 mr-2" />
-            Exporter
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={loading}>
+                <Download className="h-4 w-4 mr-2" />
+                Exporter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>Format d'exportation</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={exportToCSV}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+              {/* <DropdownMenuItem onClick={exportToExcel}>
+                <FileText className="h-4 w-4 mr-2" />
+                Export Excel
+              </DropdownMenuItem> */}
+              <DropdownMenuItem onClick={exportToPDF}>
+                <FileDown className="h-4 w-4 mr-2" />
+                Export PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => setShowAddDialog(true)} disabled={loading}>
             <Plus className="h-4 w-4 mr-2" />
             Nouvel Élève
@@ -461,6 +574,7 @@ export const StudentsManagement: React.FC = () => {
         onSearch={handleSearch}
         onStudentFilter={handleStudentFilter}
         currentFilters={filters}
+        rooms={rooms}
         searchPlaceholder="Rechercher par nom, prénom, email ou matricule..."
         emptyStateMessage="Aucun élève trouvé"
         title="Liste des Élèves"

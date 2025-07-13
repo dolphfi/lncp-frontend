@@ -6,6 +6,65 @@
  * la gestion des élèves dans le système scolaire
  */
 
+// =====================================================
+// TYPES POUR LES CLASSES ET SALLES
+// =====================================================
+
+// Type pour les classes (niveaux)
+export type ClassLevel = 'NSI' | 'NSII' | 'NSIII' | 'NSIV';
+
+// Type pour une salle
+export interface Room {
+  id: string;                    // Identifiant unique de la salle
+  name: string;                  // Nom de la salle (ex: "Salle A", "Salle B")
+  classLevel: ClassLevel;        // Niveau de la classe (NSI, NSII, etc.)
+  capacity: number;              // Capacité maximale de la salle
+  description?: string;          // Description optionnelle de la salle
+  isActive: boolean;             // Si la salle est active
+  createdAt: string;             // Date de création
+  updatedAt: string;             // Date de dernière mise à jour
+}
+
+// Type pour créer une nouvelle salle
+export interface CreateRoomDto {
+  name: string;
+  classLevel: ClassLevel;
+  capacity: number;
+  description?: string;
+  isActive?: boolean;
+}
+
+// Type pour mettre à jour une salle
+export interface UpdateRoomDto {
+  id: string;
+  name?: string;
+  classLevel?: ClassLevel;
+  capacity?: number;
+  description?: string;
+  isActive?: boolean;
+}
+
+// Type pour les filtres de salles
+export interface RoomFilters {
+  search?: string;               // Recherche par nom de salle
+  classLevel?: ClassLevel;       // Filtrer par niveau de classe
+  isActive?: boolean;            // Filtrer par statut actif/inactif
+}
+
+// Type pour les statistiques des salles
+export interface RoomStats {
+  total: number;                 // Nombre total de salles
+  active: number;                // Nombre de salles actives
+  inactive: number;              // Nombre de salles inactives
+  byClassLevel: Record<ClassLevel, number>; // Répartition par niveau
+  totalCapacity: number;         // Capacité totale
+  averageCapacity: number;       // Capacité moyenne
+}
+
+// =====================================================
+// TYPES POUR LES ÉLÈVES (MODIFIÉS POUR INCLURE LA SALLE)
+// =====================================================
+
 // Type principal pour un élève
 export interface Student {
   id: string;                    // Identifiant unique de l'élève
@@ -18,6 +77,8 @@ export interface Student {
   ninthGradeOrderNumber: string; // N° d'ordre 9ème AF
   level: 'secondaire' | 'nouveauSecondaire'; // Niveau scolaire
   grade: string;                 // Classe (ex: "NSI", "NSII", etc.)
+  roomId?: string;               // ID de la salle assignée (optionnel)
+  roomName?: string;             // Nom de la salle (pour affichage)
   ninthGradeSchool?: string;     // École où l'élève a fait la 9e (optionnel)
   ninthGradeGraduationYear?: string; // Année de réussite 9e (optionnel)
   lastSchool?: string;           // Dernier établissement (optionnel)
@@ -49,6 +110,7 @@ export interface CreateStudentDto {
   ninthGradeOrderNumber: string;
   level: 'secondaire' | 'nouveauSecondaire';
   grade: string;
+  roomId?: string;               // ID de la salle assignée
   ninthGradeSchool?: string;
   ninthGradeGraduationYear?: string;
   lastSchool?: string;
@@ -79,6 +141,7 @@ export interface UpdateStudentDto {
   ninthGradeOrderNumber?: string;
   level?: 'secondaire' | 'nouveauSecondaire';
   grade?: string;
+  roomId?: string;               // ID de la salle assignée
   ninthGradeSchool?: string;
   ninthGradeGraduationYear?: string;
   lastSchool?: string;
@@ -97,10 +160,11 @@ export interface UpdateStudentDto {
   avatar?: string;
 }
 
-// Type pour les filtres de recherche
+// Type pour les filtres de recherche (modifié pour inclure la salle)
 export interface StudentFilters {
   search?: string;               // Recherche par nom, prénom, email
   grade?: string;                // Filtrer par classe
+  roomId?: string;               // Filtrer par salle
   status?: 'active' | 'inactive' | 'suspended';
   gender?: 'male' | 'female';    // Filtrer par sexe
   enrollmentYear?: number;       // Filtrer par année d'inscription

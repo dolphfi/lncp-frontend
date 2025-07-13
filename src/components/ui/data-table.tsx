@@ -26,7 +26,8 @@ import {
   School,
   Users,
   Activity,
-  RotateCcw
+  RotateCcw,
+  Building
 } from 'lucide-react';
 import { Button } from './button';
 import { Input } from './input';
@@ -100,8 +101,16 @@ export interface PaginationInfo {
 export interface StudentFilters {
   search?: string;
   grade?: string;
+  roomId?: string;
   status?: 'active' | 'inactive' | 'suspended';
   gender?: 'male' | 'female';
+}
+
+// Type pour une salle (pour les filtres)
+export interface Room {
+  id: string;
+  name: string;
+  classLevel: string;
 }
 
 // =====================================================
@@ -122,6 +131,7 @@ interface DataTableProps<T> {
   // ✨ Nouveaux props pour les filtres étudiants
   onStudentFilter?: (filters: Partial<StudentFilters>) => void; // Callback spécifique élèves
   currentFilters?: Partial<StudentFilters>; // Filtres actuels pour l'affichage
+  rooms?: Room[];                  // Liste des salles pour les filtres
   emptyStateMessage?: string;      // Message lorsqu'il n'y a pas de données
   title?: string;                  // Titre de la table
   description?: string;            // Description de la table
@@ -146,6 +156,7 @@ export function DataTable<T>({
   onFilter,
   onStudentFilter,
   currentFilters,
+  rooms = [],
   emptyStateMessage = "Aucune donnée disponible",
   title,
   description,
@@ -366,33 +377,33 @@ export function DataTable<T>({
                       sideOffset={8}
                     >
                       {/* Section Salles */}
-                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-2">
-                        <DropdownMenuLabel className="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium">
-                          <School className="h-4 w-4" />
+                      <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 space-y-2">
+                        <DropdownMenuLabel className="flex items-center gap-2 text-orange-700 dark:text-orange-300 font-medium">
+                          <Building className="h-4 w-4" />
                           Filtrer par Salle
                         </DropdownMenuLabel>
                         <div className="space-y-1">
                           <DropdownMenuCheckboxItem
-                            checked={!currentFilters?.grade}
-                            onCheckedChange={() => onStudentFilter({ grade: undefined })}
+                            checked={!currentFilters?.roomId}
+                            onCheckedChange={() => onStudentFilter({ roomId: undefined })}
                             className="text-sm rounded-md transition-colors"
                           >
                             <span className="font-medium">Toutes les salles</span>
                           </DropdownMenuCheckboxItem>
-                          {['NSI', 'NSII', 'NSIII', 'NSIV'].map((grade) => (
+                          {rooms.map((room) => (
                             <DropdownMenuCheckboxItem
-                              key={grade}
-                              checked={currentFilters?.grade === grade}
+                              key={room.id}
+                              checked={currentFilters?.roomId === room.id}
                               onCheckedChange={(checked) => 
-                                onStudentFilter({ grade: checked ? grade : undefined })
+                                onStudentFilter({ roomId: checked ? room.id : undefined })
                               }
-                              className="text-sm rounded-md transition-colors hover:bg-blue-100 dark:hover:bg-blue-800/30"
+                              className="text-sm rounded-md transition-colors hover:bg-orange-100 dark:hover:bg-orange-800/30"
                             >
                               <span className="flex items-center gap-2">
-                                <span className="w-6 h-6 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-300">
-                                  {grade.slice(-1)}
+                                <span className="w-6 h-6 bg-orange-100 dark:bg-orange-800 rounded-full flex items-center justify-center text-xs font-bold text-orange-700 dark:text-orange-300">
+                                  {room.classLevel.slice(-1)}
                                 </span>
-                                {grade}
+                                {room.classLevel} - {room.name}
                               </span>
                             </DropdownMenuCheckboxItem>
                           ))}
@@ -507,9 +518,9 @@ export function DataTable<T>({
                       <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                         <DropdownMenuItem
                           onClick={() => onStudentFilter({
-                            grade: undefined,
                             gender: undefined,
-                            status: undefined
+                            status: undefined,
+                            roomId: undefined
                           })}
                           className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
                         >
@@ -525,19 +536,6 @@ export function DataTable<T>({
               {/* ✨ Affichage moderne des filtres actifs */}
               {currentFilters && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  {currentFilters.grade && (
-                    <Badge 
-                      variant="secondary" 
-                      className="flex items-center gap-2 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700 rounded-full transition-colors duration-200 hover:bg-blue-200 dark:hover:bg-blue-800/50"
-                    >
-                      <School className="h-3 w-3" />
-                      <span className="text-sm font-medium">Salle: {currentFilters.grade}</span>
-                      <X 
-                        className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors" 
-                        onClick={() => onStudentFilter?.({ grade: undefined })}
-                      />
-                    </Badge>
-                  )}
                   {currentFilters.gender && (
                     <Badge 
                       variant="secondary" 
@@ -568,6 +566,24 @@ export function DataTable<T>({
                       <X 
                         className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors" 
                         onClick={() => onStudentFilter?.({ status: undefined })}
+                      />
+                    </Badge>
+                  )}
+                  {currentFilters.roomId && (
+                    <Badge 
+                      variant="secondary" 
+                      className="flex items-center gap-2 px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-700 rounded-full transition-colors duration-200 hover:bg-orange-200 dark:hover:bg-orange-800/50"
+                    >
+                      <Building className="h-3 w-3" />
+                      <span className="text-sm font-medium">
+                        Salle: {(() => {
+                          const room = rooms.find(r => r.id === currentFilters.roomId);
+                          return room ? `${room.classLevel} - ${room.name}` : 'Inconnue';
+                        })()}
+                      </span>
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors" 
+                        onClick={() => onStudentFilter?.({ roomId: undefined })}
                       />
                     </Badge>
                   )}

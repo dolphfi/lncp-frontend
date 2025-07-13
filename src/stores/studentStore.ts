@@ -30,6 +30,7 @@ import {
   sortStudents, 
   paginateStudents 
 } from '../data/mockStudents';
+import { getRoomNameById } from '../data/mockRooms';
 
 import { CreateStudentFormData, UpdateStudentFormData } from '../schemas/studentSchema';
 
@@ -85,6 +86,8 @@ const convertFormDataToStudent = (data: CreateStudentFormData): Student => {
     ninthGradeOrderNumber: data.ninthGradeOrderNumber,
     level: data.level,
     grade: data.grade,
+    roomId: data.roomId === 'none' ? undefined : data.roomId,
+    roomName: data.roomId && data.roomId !== 'none' ? getRoomNameById(data.roomId) : undefined,
     ninthGradeSchool: data.ninthGradeSchool,
     ninthGradeGraduationYear: data.ninthGradeGraduationYear,
     lastSchool: data.lastSchool,
@@ -124,6 +127,7 @@ export const useStudentStore = create<StudentStore>()(
       filters: {
         search: '',
         grade: '',
+        roomId: undefined,
         status: undefined,
         enrollmentYear: undefined
       },
@@ -160,7 +164,9 @@ export const useStudentStore = create<StudentStore>()(
           // Appliquer les filtres
           let filteredStudents = searchStudents(mockStudents, filters.search || '', {
             grade: filters.grade || undefined,
-            status: filters.status || undefined
+            status: filters.status || undefined,
+            gender: filters.gender || undefined,
+            roomId: filters.roomId || undefined
           });
           
           // Appliquer le tri
@@ -254,6 +260,8 @@ export const useStudentStore = create<StudentStore>()(
             ninthGradeOrderNumber: data.ninthGradeOrderNumber !== undefined ? data.ninthGradeOrderNumber : existingStudent.ninthGradeOrderNumber,
             level: data.level !== undefined ? data.level : existingStudent.level,
             grade: data.grade !== undefined ? data.grade : existingStudent.grade,
+            roomId: data.roomId !== undefined ? (data.roomId === 'none' ? undefined : data.roomId) : existingStudent.roomId,
+            roomName: data.roomId !== undefined ? (data.roomId && data.roomId !== 'none' ? getRoomNameById(data.roomId) : undefined) : existingStudent.roomName,
             ninthGradeSchool: data.ninthGradeSchool !== undefined ? data.ninthGradeSchool : existingStudent.ninthGradeSchool,
             ninthGradeGraduationYear: data.ninthGradeGraduationYear !== undefined ? data.ninthGradeGraduationYear : existingStudent.ninthGradeGraduationYear,
             lastSchool: data.lastSchool !== undefined ? data.lastSchool : existingStudent.lastSchool,
@@ -350,10 +358,15 @@ export const useStudentStore = create<StudentStore>()(
         
         let filteredStudents = searchStudents(mockStudents, filters.search || '', {
           grade: filters.grade || undefined,
-          status: filters.status || undefined
+          status: filters.status || undefined,
+          gender: filters.gender || undefined,
+          roomId: filters.roomId || undefined
         });
         
+        // Appliquer le tri
         filteredStudents = sortStudents(filteredStudents, sortOptions.field, sortOptions.order);
+        
+        // Appliquer la pagination
         const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
         
         set(state => {
@@ -372,7 +385,9 @@ export const useStudentStore = create<StudentStore>()(
         
         let filteredStudents = searchStudents(mockStudents, filters.search || '', {
           grade: filters.grade || undefined,
-          status: filters.status || undefined
+          status: filters.status || undefined,
+          gender: filters.gender || undefined,
+          roomId: filters.roomId || undefined
         });
         
         filteredStudents = sortStudents(filteredStudents, sortOptions.field, sortOptions.order);
@@ -394,7 +409,9 @@ export const useStudentStore = create<StudentStore>()(
         
         let filteredStudents = searchStudents(mockStudents, filters.search || '', {
           grade: filters.grade || undefined,
-          status: filters.status || undefined
+          status: filters.status || undefined,
+          gender: filters.gender || undefined,
+          roomId: filters.roomId || undefined
         });
         
         filteredStudents = sortStudents(filteredStudents, sortOptions.field, sortOptions.order);
@@ -421,6 +438,7 @@ export const useStudentStore = create<StudentStore>()(
           state.filters = {
             search: '',
             grade: '',
+            roomId: undefined,
             status: undefined,
             enrollmentYear: undefined
           };

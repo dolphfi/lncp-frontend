@@ -42,6 +42,7 @@ import {
   RELATIONSHIP_OPTIONS
 } from '../../schemas/studentSchema';
 import { Student } from '../../types/student';
+import { useRoomStore } from '../../stores/roomStore';
 
 // =====================================================
 // TYPES ET INTERFACES
@@ -67,6 +68,9 @@ export const StudentForm: React.FC<StudentFormProps> = ({
   mode = student ? 'edit' : 'create'
 }) => {
   const [imagePreview, setImagePreview] = useState<string>('');
+  
+  // Récupération des salles pour le formulaire
+  const { rooms, fetchRooms } = useRoomStore();
 
   // =====================================================
   // CONFIGURATION DU FORMULAIRE
@@ -77,7 +81,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-    setValue
+    setValue,
+    watch
   } = useForm<StudentFormData>({
     resolver: zodResolver(createStudentSchema),
     defaultValues: {
@@ -90,6 +95,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
       ninthGradeOrderNumber: '',
       level: 'nouveauSecondaire',
       grade: 'NSI',
+      roomId: 'none',
       ninthGradeSchool: '',
       ninthGradeGraduationYear: '',
       lastSchool: '',
@@ -108,6 +114,19 @@ export const StudentForm: React.FC<StudentFormProps> = ({
     }
   });
 
+  // Surveiller la classe sélectionnée pour filtrer les salles
+  const selectedGrade = watch('grade');
+
+  // =====================================================
+  // CHARGEMENT DES SALLES
+  // =====================================================
+  useEffect(() => {
+    fetchRooms();
+  }, [fetchRooms]);
+
+  // Filtrer les salles par classe
+  const filteredRooms = rooms.filter(room => room.classLevel === selectedGrade);
+
   // =====================================================
   // EFFET POUR PRÉREMPLIR LE FORMULAIRE EN MODE ÉDITION
   // =====================================================
@@ -123,6 +142,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
         ninthGradeOrderNumber: student.ninthGradeOrderNumber || '',
         level: student.level || 'nouveauSecondaire',
         grade: student.grade,
+        roomId: student.roomId || 'none',
         ninthGradeSchool: student.ninthGradeSchool || '',
         ninthGradeGraduationYear: student.ninthGradeGraduationYear || '',
         lastSchool: student.lastSchool || '',
@@ -149,10 +169,16 @@ export const StudentForm: React.FC<StudentFormProps> = ({
   // GESTION DE LA SOUMISSION
   // =====================================================
   const onFormSubmit = (data: StudentFormData) => {
+    // Convertir "none" en undefined pour roomId
+    const formData = {
+      ...data,
+      roomId: data.roomId === 'none' ? undefined : data.roomId
+    };
+
     if (mode === 'edit' && student) {
-      onSubmit(data, student.id);
+      onSubmit(formData, student.id);
     } else {
-      onSubmit(data);
+      onSubmit(formData);
     }
   };
 
@@ -341,8 +367,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                       </Button>
                     </div>
                   ) : (
-                    <div className="w-12 h-12 border border-dashed border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center">
-                      <ImageIcon className="h-4 w-4 text-gray-400" />
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm">
+                      {student?.firstName?.charAt(0) || ''}{student?.lastName?.charAt(0) || ''}
                     </div>
                   )}
                   
@@ -414,6 +440,28 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                         {GRADE_OPTIONS.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+
+              <FormField label="Salle" error={errors.roomId?.message}>
+                <Controller
+                  name="roomId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Sélectionner une salle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Aucune salle assignée</SelectItem>
+                        {filteredRooms.map((room) => (
+                          <SelectItem key={room.id} value={room.id}>
+                            {room.classLevel} - {room.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

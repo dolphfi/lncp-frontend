@@ -42,6 +42,7 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu"
+
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 
 interface SidebarLinkProps {
@@ -49,9 +50,11 @@ interface SidebarLinkProps {
   label: string
   icon: React.ElementType
   subItems?: { to: string; label: string }[]
+  openAccordion?: string | undefined
+  setOpenAccordion?: (value: string | undefined) => void
 }
 
-const SidebarLink = ({ to, label, icon: Icon, subItems }: SidebarLinkProps) => {
+const SidebarLink = ({ to, label, icon: Icon, subItems, openAccordion, setOpenAccordion }: SidebarLinkProps) => {
   const { state } = useSidebar()
   const location = useLocation()
 
@@ -67,18 +70,20 @@ const SidebarLink = ({ to, label, icon: Icon, subItems }: SidebarLinkProps) => {
         type="single"
         collapsible
         className="w-full"
-        defaultValue={isSubItemActive ? label : undefined}
+        value={openAccordion}
+        onValueChange={setOpenAccordion}
       >
         <AccordionItem value={label} className="border-b-0">
           <AccordionTrigger
             className={cn(
-              "flex w-full justify-start rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground hover:no-underline",
+              "flex w-full justify-start rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground hover:no-underline [&>div]:justify-start [&>div]:text-left",
               isSubItemActive && "bg-accent text-accent-foreground"
             )}
+            style={{ textAlign: 'left' }}
           >
-            <div className="flex flex-1 items-center">
+            <div className="flex flex-1 items-center justify-start text-left">
               <Icon className="mr-4 h-5 w-5" />
-              <span>{label}</span>
+              <span className="text-left">{label}</span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="py-1 pl-7">
@@ -142,7 +147,8 @@ const SidebarLink = ({ to, label, icon: Icon, subItems }: SidebarLinkProps) => {
 }
 
 const AppSidebar = () => {
-  const { state, toggleSidebar } = useSidebar()
+  const { state, toggleSidebar, isMobile } = useSidebar()
+  const [openAccordion, setOpenAccordion] = React.useState<string | undefined>(undefined)
 
   const navGroups = [
     {
@@ -279,12 +285,12 @@ const AppSidebar = () => {
       </SidebarHeader>
       <Separator />
 
-      <SidebarContent>
+      <SidebarContent className="space-y-0">
         {navGroups.map((group) => (
-          <SidebarGroup key={group.title}>
-            <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+          <SidebarGroup key={group.title} className="mb-0 mt-0">
+            <SidebarGroupLabel className="px-2 py-0 text-xs font-medium text-muted-foreground mb-0 mt-0">{group.title}</SidebarGroupLabel>
             {group.items.map(item => (
-              <SidebarLink key={item.label} {...item} />
+              <SidebarLink key={item.label} {...item} openAccordion={openAccordion} setOpenAccordion={setOpenAccordion} />
             ))}
           </SidebarGroup>
         ))}
@@ -293,29 +299,37 @@ const AppSidebar = () => {
       <SidebarFooter>
         <DropdownMenu>
           <DropdownMenuTrigger className="w-full flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 rounded-full border-2 border-primary">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <Avatar className="h-8 w-8 rounded-full border-2 border-primary flex-shrink-0">
                 <AvatarImage src="https://github.com/shadcn.png" />
                 <AvatarFallback>CN</AvatarFallback>
               </Avatar>
               {state === "expanded" && (
-                <div className="flex flex-col">
-                  <p className="text-sm font-semibold">Rodolph Phayendy Delon</p>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate">Rodolph Phayendy Delon</p>
                   <p className="text-xs text-muted-foreground">Admin</p>
                 </div>
               )}
             </div>
             {state === "expanded" && (
-              <EllipsisVertical className="h-5 w-5" />
+              <EllipsisVertical className="h-5 w-5 flex-shrink-0" />
             )}
           </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuContent 
+            side={isMobile ? "bottom" : "right"} 
+            align={isMobile ? "start" : "end"} 
+            className="w-64" 
+            sideOffset={8} 
+            alignOffset={isMobile ? 0 : 40}
+          >
+            <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Billing</DropdownMenuItem>
-            <DropdownMenuItem>Team</DropdownMenuItem>
-            <DropdownMenuItem>Subscription</DropdownMenuItem>
+            <DropdownMenuItem>Profil</DropdownMenuItem>
+            <DropdownMenuItem>Paramètres</DropdownMenuItem>
+            <DropdownMenuItem>Équipe</DropdownMenuItem>
+            <DropdownMenuItem>Abonnement</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Déconnexion</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarFooter>

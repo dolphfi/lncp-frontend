@@ -7,6 +7,7 @@
  */
 
 import { Student, StudentStats } from '../types/student';
+import { getRoomNameById } from './mockRooms';
 
 // =====================================================
 // DONNÉES SIMULÉES DES ÉLÈVES
@@ -23,6 +24,8 @@ export const mockStudents: Student[] = [
     ninthGradeOrderNumber: '2020/001234',
     level: 'nouveauSecondaire',
     grade: 'NSII',
+    roomId: '3',
+    roomName: 'Salle C',
     ninthGradeSchool: 'École Nationale de Port-au-Prince',
     ninthGradeGraduationYear: '2020',
     lastSchool: 'Lycée Alexandre Pétion',
@@ -53,6 +56,8 @@ export const mockStudents: Student[] = [
     ninthGradeOrderNumber: '2021/005678',
     level: 'nouveauSecondaire',
     grade: 'NSI',
+    roomId: '1',
+    roomName: 'Salle A',
     ninthGradeSchool: 'Collège Saint-Pierre',
     ninthGradeGraduationYear: '2021',
     lastSchool: 'Institution Mixte Clarisse',
@@ -83,6 +88,8 @@ export const mockStudents: Student[] = [
     ninthGradeOrderNumber: '2022/009876',
     level: 'nouveauSecondaire',
     grade: 'NSIV',
+    roomId: '7',
+    roomName: 'Salle G',
     ninthGradeSchool: 'École Nationale de Carrefour',
     ninthGradeGraduationYear: '2022',
     lastSchool: 'Lycée des Jeunes Filles',
@@ -112,6 +119,8 @@ export const mockStudents: Student[] = [
     ninthGradeOrderNumber: '2023/001122',
     level: 'nouveauSecondaire',
     grade: 'NSIII',
+    roomId: '5',
+    roomName: 'Salle E',
     ninthGradeSchool: 'Collège Canado-Haïtien',
     ninthGradeGraduationYear: '2023',
     lastSchool: 'Lycée Philippe Guerrier',
@@ -141,6 +150,8 @@ export const mockStudents: Student[] = [
     ninthGradeOrderNumber: '2019/003344',
     level: 'nouveauSecondaire',
     grade: 'NSI',
+    roomId: '2',
+    roomName: 'Salle B',
     ninthGradeSchool: 'École Baptiste de Croix-des-Bouquets',
     ninthGradeGraduationYear: '2019',
     lastSchool: 'Lycée de Pétion-Ville',
@@ -170,6 +181,8 @@ export const mockStudents: Student[] = [
     ninthGradeOrderNumber: '2020/005566',
     level: 'nouveauSecondaire',
     grade: 'NSII',
+    roomId: '4',
+    roomName: 'Salle D',
     ninthGradeSchool: 'Institution Sainte-Rose de Lima',
     ninthGradeGraduationYear: '2020',
     lastSchool: 'Lycée Toussaint Louverture',
@@ -198,6 +211,8 @@ export const mockStudents: Student[] = [
     ninthGradeOrderNumber: '2021/007788',
     level: 'nouveauSecondaire',
     grade: 'NSIII',
+    roomId: '6',
+    roomName: 'Salle F',
     ninthGradeSchool: 'Collège Saint-Louis de Gonzague',
     ninthGradeGraduationYear: '2021',
     lastSchool: 'Lycée Anténor Firmin',
@@ -227,6 +242,8 @@ export const mockStudents: Student[] = [
     ninthGradeOrderNumber: '2022/009900',
     level: 'nouveauSecondaire',
     grade: 'NSIV',
+    roomId: '8',
+    roomName: 'Salle H',
     ninthGradeSchool: 'École Presbytérienne',
     ninthGradeGraduationYear: '2022',
     lastSchool: 'Institution Mixte Bethesda',
@@ -290,6 +307,7 @@ export const searchStudents = (
     grade?: string;
     status?: string;
     gender?: string;
+    roomId?: string;
   } = {}
 ): Student[] => {
   let filteredStudents = students;
@@ -305,6 +323,10 @@ export const searchStudents = (
 
   if (filters.gender) {
     filteredStudents = filteredStudents.filter(student => student.gender === filters.gender);
+  }
+
+  if (filters.roomId) {
+    filteredStudents = filteredStudents.filter(student => student.roomId === filters.roomId);
   }
 
   // Appliquer la recherche textuelle
@@ -343,6 +365,14 @@ export const sortStudents = (
         : bValue.localeCompare(aValue);
     }
 
+    // Gérer les comparaisons numériques
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      if (aValue < bValue) return order === 'asc' ? -1 : 1;
+      if (aValue > bValue) return order === 'asc' ? 1 : -1;
+      return 0;
+    }
+
+    // Gérer les autres types
     if (aValue < bValue) return order === 'asc' ? -1 : 1;
     if (aValue > bValue) return order === 'asc' ? 1 : -1;
     return 0;

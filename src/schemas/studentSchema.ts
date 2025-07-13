@@ -144,6 +144,11 @@ export const createStudentSchema = z.object({
     errorMap: () => ({ message: 'Veuillez sélectionner une classe valide' })
   }),
   
+  // Salle assignée
+  roomId: z.string()
+    .min(1, 'Veuillez sélectionner une salle')
+    .optional(),
+  
   // Informations scolaires précédentes
   ninthGradeSchool: z.string()
     .min(1, 'L\'école où l\'élève a fait la 9e est requise')
@@ -243,6 +248,11 @@ export const updateStudentSchema = z.object({
   ], {
     errorMap: () => ({ message: 'Veuillez sélectionner une classe valide' })
   }).optional(),
+  
+  // Salle assignée
+  roomId: z.string()
+    .min(1, 'Veuillez sélectionner une salle')
+    .optional(),
   
   enrollmentDate: z.string()
     .refine((date) => {
