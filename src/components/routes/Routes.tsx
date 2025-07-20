@@ -10,6 +10,7 @@ import Dashboard from '../pages/dashboard/Dashboard';
 import { StudentsManagement } from '../pages/dashboard/StudentsManagement';
 import { CoursesManagement } from '../pages/dashboard/CoursesManagement';
 import { EmployeesManagement } from '../pages/dashboard/EmployeesManagement';
+import AdminPanel from '../pages/dashboard/AdminPanel';
 // import PrivateRoute from '../utils/PrivateRoute.tsx';
 
 function AppRoutes() {
@@ -37,6 +38,7 @@ function AppRoutes() {
                 <Route path="/students" element={<StudentsManagement />} />
                 <Route path="/courses" element={<CoursesManagement />} />
                 <Route path="/employee" element={<EmployeesManagement />} />
+                <Route path="/admin_panel" element={<AdminPanel />} />
             </Route>
 
 
