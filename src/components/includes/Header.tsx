@@ -9,7 +9,7 @@ const Header: React.FC = () => {
                 <SidebarTrigger className="md:hidden">
                     <Menu className="h-5 w-5" />
                 </SidebarTrigger>
-                <h1 className="text-lg font-semibold text-card-foreground">Documents</h1>
+            <h1 className="text-lg font-semibold text-card-foreground">Documents</h1>
             </div>
         </header>
     );

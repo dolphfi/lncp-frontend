@@ -8,6 +8,8 @@ import SiteLayout from '../layouts/SiteLayout';
 import DashboardLayout from '../layouts/DashboardLayout';
 import Dashboard from '../pages/dashboard/Dashboard';
 import { StudentsManagement } from '../pages/dashboard/StudentsManagement';
+import { CoursesManagement } from '../pages/dashboard/CoursesManagement';
+import { EmployeesManagement } from '../pages/dashboard/EmployeesManagement';
 // import PrivateRoute from '../utils/PrivateRoute.tsx';
 
 function AppRoutes() {
@@ -33,6 +35,8 @@ function AppRoutes() {
             <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/students" element={<StudentsManagement />} />
+                <Route path="/courses" element={<CoursesManagement />} />
+                <Route path="/employee" element={<EmployeesManagement />} />
             </Route>
 
 

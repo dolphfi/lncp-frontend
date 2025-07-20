@@ -9,17 +9,14 @@ import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
-  CalendarDays, 
   User, 
   Mail, 
   Phone, 
   MapPin, 
-  GraduationCap, 
-  Users, 
-  School,
-  FileText,
-  Image as ImageIcon,
-  Upload,
+  Calendar, 
+  Target, 
+  BookOpen, 
+  Plus,
   X
 } from 'lucide-react';
 
@@ -29,15 +26,12 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
 
 import { 
   createStudentSchema,
   CreateStudentFormData,
   GRADE_OPTIONS,
   LEVEL_OPTIONS,
-  STATUS_OPTIONS,
   GENDER_OPTIONS,
   RELATIONSHIP_OPTIONS
 } from '../../schemas/studentSchema';
@@ -291,7 +285,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
             <div className="grid grid-cols-3 gap-4">
               <FormField label="Date de naissance" required error={errors.dateOfBirth?.message}>
                 <div className="relative">
-                  <CalendarDays className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
                   <Input
                     {...register('dateOfBirth')}
                     type="date"
@@ -332,7 +326,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
               <div className="col-span-2">
                 <FormField label="N° d'ordre 9ème AF" required error={errors.ninthGradeOrderNumber?.message}>
                   <div className="relative">
-                    <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
+                    <BookOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
                     <Input
                       {...register('ninthGradeOrderNumber')}
                       placeholder="Ex: 2023/001234"
@@ -374,7 +368,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                   
                   <Label htmlFor="avatar-upload" className="cursor-pointer">
                     <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 rounded text-xs border border-blue-200 dark:border-blue-700 transition-colors">
-                      <Upload className="h-3 w-3 text-blue-600" />
+                      <Plus className="h-3 w-3 text-blue-600" />
                       <span className="text-blue-600 font-medium">Choisir</span>
                     </div>
                   </Label>
@@ -399,7 +393,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
         <Card className="shadow-sm border-0 w-full">
           <CardHeader className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-t-lg py-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <School className="h-4 w-4" />
+              <Target className="h-4 w-4" />
               Informations Scolaires
             </CardTitle>
           </CardHeader>
@@ -509,7 +503,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
         <Card className="shadow-sm border-0 w-full">
           <CardHeader className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-t-lg py-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-4 w-4" />
+              <User className="h-4 w-4" />
               Informations des Parents
             </CardTitle>
           </CardHeader>

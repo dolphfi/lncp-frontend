@@ -7,7 +7,6 @@
  */
 
 import { Student, StudentStats } from '../types/student';
-import { getRoomNameById } from './mockRooms';
 
 // =====================================================
 // DONNÉES SIMULÉES DES ÉLÈVES
@@ -296,7 +295,11 @@ export const delay = (ms: number): Promise<void> => {
 
 // Générer un ID unique
 export const generateId = (): string => {
-  return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  return Math.random().toString(36).substr(2, 9);
+};
+
+export const generateStudentId = (): string => {
+  return `STU${String(mockStudents.length + 1).padStart(3, '0')}`;
 };
 
 // Simuler une recherche/filtrage
@@ -405,5 +408,34 @@ export const paginateStudents = (
       total: students.length,
       totalPages: Math.ceil(students.length / limit)
     }
+  };
+}; 
+
+export const calculateStudentStats = (students: Student[]): StudentStats => {
+  const total = students.length;
+  const active = students.filter(s => s.status === 'active').length;
+  const inactive = students.filter(s => s.status === 'inactive').length;
+  const suspended = students.filter(s => s.status === 'suspended').length;
+
+  // Statistiques par classe
+  const byGrade = students.reduce((acc, student) => {
+    acc[student.grade] = (acc[student.grade] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Statistiques par genre
+  const byGender = students.reduce((acc, student) => {
+    acc[student.gender] = (acc[student.gender] || 0) + 1;
+    return acc;
+  }, { male: 0, female: 0 } as { male: number; female: number });
+
+  return {
+    total,
+    active,
+    inactive,
+    suspended,
+    totalClasses: Object.keys(byGrade).length,
+    byGender,
+    byGrade
   };
 }; 

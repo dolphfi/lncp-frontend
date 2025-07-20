@@ -188,12 +188,13 @@ const AppSidebar = () => {
       title: "Gestion Cours et Notes",
       items: [
         {
-          to: "/course",
+          to: "/courses",
           label: "Cours",
           icon: BookOpen,
           subItems: [
-            { to: "/courses", label: "Cours" },
+            { to: "/courses", label: "Liste des cours" },
             { to: "/schedules", label: "Horaires" },
+            { to: "/enrollments", label: "Inscriptions" },
           ],
         },
         {

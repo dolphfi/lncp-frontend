@@ -12,22 +12,19 @@
 
 import React, { useState } from 'react';
 import { 
-  ArrowUpDown, 
-  ChevronUp, 
   ChevronDown, 
-  Search, 
-  Filter, 
+  ChevronUp,
   MoreHorizontal,
-  Edit,
-  Trash2,
-  Eye,
   X,
-  Check,
-  School,
+  Search,
+  Filter,
+  Building,
   Users,
   Activity,
   RotateCcw,
-  Building
+  Eye,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { Button } from './button';
 import { Input } from './input';
@@ -41,12 +38,11 @@ import {
 } from './table';
 import { 
   DropdownMenu, 
+  DropdownMenuCheckboxItem, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
   DropdownMenuLabel,
-  DropdownMenuCheckboxItem
+  DropdownMenuTrigger 
 } from './dropdown-menu';
 import { Badge } from './badge';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
@@ -82,12 +78,14 @@ export interface SortOption {
   order: 'asc' | 'desc';          // Ordre de tri
 }
 
-// Type pour les filtres
-export interface FilterOption {
-  field: string;                   // Champ à filtrer
-  value: any;                      // Valeur du filtre
-  operator: 'equals' | 'contains' | 'startsWith' | 'endsWith'; // Opérateur de comparaison
-}
+// Types pour les filtres
+// type ColumnFiltersState = any[];
+// type VisibilityState = Record<string, boolean>;
+type FilterOption = {
+  field: string;
+  value: any;
+  label: string;
+};
 
 // Type pour la pagination
 export interface PaginationInfo {
@@ -169,7 +167,11 @@ export function DataTable<T>({
   // =====================================================
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<SortOption | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  // Variables d'état pour les filtres (commentées car non utilisées pour l'instant)
+  // const [globalFilter, setGlobalFilter] = useState('');
+  // const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  // const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  // const [rowSelection, setRowSelection] = useState({});
   
   // =====================================================
   // GESTION DU TRI
@@ -208,7 +210,7 @@ export function DataTable<T>({
   // =====================================================
   const renderSortIcon = (field: string) => {
     if (!sortConfig || sortConfig.field !== field) {
-      return <ArrowUpDown className="ml-2 h-4 w-4" />;
+      return <ChevronDown className="ml-2 h-4 w-4" />;
     }
     
     return sortConfig.order === 'asc' 

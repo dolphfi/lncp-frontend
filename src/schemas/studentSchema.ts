@@ -65,21 +65,22 @@ export const parentContactSchema = z.object({
   
   // Contact
   phone: z.string()
-    .min(8, 'Le numéro de téléphone doit contenir au moins 8 caractères')
-    .max(20, 'Le numéro de téléphone ne peut pas dépasser 20 caractères')
-    .regex(/^[\+]?[0-9\s\-\(\)]+$/, 'Format de téléphone invalide'),
+    .min(10, "Le numéro de téléphone doit contenir au moins 10 chiffres")
+    .regex(/^[+]?[0-9\s\-()]+$/, "Format de téléphone invalide"),
   
   email: z.string()
-    .email('Format email invalide')
-    .min(5, 'L\'email doit contenir au moins 5 caractères')
-    .max(100, 'L\'email ne peut pas dépasser 100 caractères')
-    .optional(),
+    .email("Format d'email invalide")
+    .min(1, "L'email est requis"),
   
   // Adresse des parents
   address: z.string()
     .min(10, 'L\'adresse doit contenir au moins 10 caractères')
     .max(200, 'L\'adresse ne peut pas dépasser 200 caractères')
     .optional(),
+  
+  postalCode: z.string()
+    .min(5, "Le code postal doit contenir 5 chiffres")
+    .regex(/^[0-9]{5}$/, "Format de code postal invalide"),
   
   relationship: z.enum(['père', 'mère', 'tuteur', 'tutrice', 'grand-parent', 'autre'], {
     errorMap: () => ({ message: 'Veuillez sélectionner une relation valide' })
@@ -94,12 +95,12 @@ export const createStudentSchema = z.object({
   firstName: z.string()
     .min(2, 'Le prénom doit contenir au moins 2 caractères')
     .max(50, 'Le prénom ne peut pas dépasser 50 caractères')
-    .regex(/^[a-zA-ZÀ-ÿ\s\-\']+$/, 'Le prénom ne peut contenir que des lettres'),
+    .regex(/^[a-zA-ZÀ-ÿ\s\-']+$/, 'Le prénom ne peut contenir que des lettres'),
   
   lastName: z.string()
     .min(2, 'Le nom doit contenir au moins 2 caractères')
     .max(50, 'Le nom ne peut pas dépasser 50 caractères')
-    .regex(/^[a-zA-ZÀ-ÿ\s\-\']+$/, 'Le nom ne peut contenir que des lettres'),
+    .regex(/^[a-zA-ZÀ-ÿ\s\-']+$/, 'Le nom ne peut contenir que des lettres'),
   
   gender: z.enum(['male', 'female'], {
     errorMap: () => ({ message: 'Veuillez sélectionner le sexe' })
@@ -131,7 +132,7 @@ export const createStudentSchema = z.object({
   ninthGradeOrderNumber: z.string()
     .min(1, 'Le N° d\'ordre 9ème AF est requis')
     .max(20, 'Le N° d\'ordre ne peut pas dépasser 20 caractères')
-    .regex(/^[A-Z0-9\-\/]+$/, 'Format de N° d\'ordre invalide'),
+    .regex(/^[A-Z0-9\-/]+$/, 'Format de N° d\'ordre invalide'),
   
   // Informations scolaires actuelles
   level: z.enum(['secondaire', 'nouveauSecondaire'], {
@@ -200,13 +201,13 @@ export const updateStudentSchema = z.object({
   firstName: z.string()
     .min(2, 'Le prénom doit contenir au moins 2 caractères')
     .max(50, 'Le prénom ne peut pas dépasser 50 caractères')
-    .regex(/^[a-zA-ZÀ-ÿ\s\-\']+$/, 'Le prénom ne peut contenir que des lettres')
+    .regex(/^[a-zA-ZÀ-ÿ\s\-']+$/, 'Le prénom ne peut contenir que des lettres')
     .optional(),
   
   lastName: z.string()
     .min(2, 'Le nom doit contenir au moins 2 caractères')
     .max(50, 'Le nom ne peut pas dépasser 50 caractères')
-    .regex(/^[a-zA-ZÀ-ÿ\s\-\']+$/, 'Le nom ne peut contenir que des lettres')
+    .regex(/^[a-zA-ZÀ-ÿ\s\-']+$/, 'Le nom ne peut contenir que des lettres')
     .optional(),
   
   email: z.string()
@@ -218,7 +219,7 @@ export const updateStudentSchema = z.object({
   phone: z.string()
     .min(8, 'Le numéro de téléphone doit contenir au moins 8 caractères')
     .max(20, 'Le numéro de téléphone ne peut pas dépasser 20 caractères')
-    .regex(/^[\+]?[0-9\s\-\(\)]+$/, 'Format de téléphone invalide')
+    .regex(/^[+]?[0-9\s\-()]+$/, 'Format de téléphone invalide')
     .optional(),
   
   dateOfBirth: z.string()

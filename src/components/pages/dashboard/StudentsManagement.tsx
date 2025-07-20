@@ -13,26 +13,21 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
-  Users, 
-  Search, 
-  Filter, 
-  Download, 
-  Upload,
+  Edit, 
+  Trash2, 
   Eye,
-  Edit,
-  Trash2,
-  AlertCircle,
   CheckCircle,
-  XCircle,
-  FileText,
+  AlertCircle,
+  Upload,
+  Download,
   FileSpreadsheet,
-  FileDown
+  FileDown,
+  Users
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
+import { Card, CardContent } from '../../ui/card';
 import { Badge } from '../../ui/badge';
-import { Input } from '../../ui/input';
 import { 
   Dialog, 
   DialogContent, 
@@ -41,7 +36,7 @@ import {
   DialogDescription 
 } from '../../ui/dialog';
 import { Alert, AlertDescription } from '../../ui/alert';
-import { DataTable, createDefaultActions, createStatusBadge } from '../../ui/data-table';
+import { DataTable } from '../../ui/data-table';
 import type { Column, RowAction } from '../../ui/data-table';
 import { 
   DropdownMenu, 
@@ -54,13 +49,7 @@ import {
 
 import { StudentForm } from '../../forms/StudentForm';
 import {
-  useStudentStore,
-  useStudents,
-  useStudentLoading,
-  useStudentError,
-  useStudentStats,
-  useStudentFilters,
-  useStudentPagination
+  useStudentStore
 } from '../../../stores/studentStore';
 import { Student } from '../../../types/student';
 import { CreateStudentFormData } from '../../../schemas/studentSchema';
@@ -92,7 +81,6 @@ export const StudentsManagement: React.FC = () => {
     loadingAction,
     pagination,
     filters,
-    sortOptions,
     stats,
     
     // Actions
@@ -186,11 +174,11 @@ export const StudentsManagement: React.FC = () => {
             </Badge>
           );
         } else if (student.grade) {
-          return (
+        return (
             <Badge variant="secondary" className="text-xs whitespace-nowrap">
               {student.grade} - Non assignée
-            </Badge>
-          );
+          </Badge>
+        );
         } else {
           return (
             <span className="text-xs text-gray-400 whitespace-nowrap">Non assignée</span>
@@ -391,7 +379,9 @@ export const StudentsManagement: React.FC = () => {
                   <p className="text-xs text-muted-foreground">Total Élèves</p>
                   <p className="text-xl font-bold">{stats.total}</p>
                 </div>
-                <Users className="h-4 w-4 text-blue-500" />
+                <div className="h-4 w-4 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-blue-600 font-bold text-xs">👥</span>
+                </div>
               </div>
               <div className="flex justify-between text-xs border-t pt-1">
                 <div className="text-center">
@@ -458,7 +448,7 @@ export const StudentsManagement: React.FC = () => {
                           <span className="text-xs font-medium text-gray-600">{grade}</span>
                           <span className={`text-xs font-bold ${color.text}`}>{count}</span>
                         </div>
-                      </div>
+                    </div>
                     );
                   })}
                 </div>
@@ -527,10 +517,10 @@ export const StudentsManagement: React.FC = () => {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={loading}>
-                <Download className="h-4 w-4 mr-2" />
-                Exporter
-              </Button>
+          <Button variant="outline" disabled={loading}>
+            <Download className="h-4 w-4 mr-2" />
+            Exporter
+          </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Format d'exportation</DropdownMenuLabel>

@@ -12,23 +12,20 @@ import { subscribeWithSelector } from 'zustand/middleware';
 
 import { 
   Student, 
-  CreateStudentDto, 
-  UpdateStudentDto, 
   StudentFilters, 
   PaginationOptions,
   StudentStats,
-  StudentSortOptions,
   ApiError 
 } from '../types/student';
 
 import { 
   mockStudents, 
-  mockStats, 
   delay, 
-  generateId, 
+  generateStudentId, 
   searchStudents, 
   sortStudents, 
-  paginateStudents 
+  paginateStudents,
+  calculateStudentStats
 } from '../data/mockStudents';
 import { getRoomNameById } from '../data/mockRooms';
 
@@ -47,7 +44,7 @@ interface StudentStore {
   // Filtres et pagination
   filters: StudentFilters;
   pagination: PaginationOptions;
-  sortOptions: StudentSortOptions;
+  sortOptions: { field: string; order: 'asc' | 'desc' };
   
   // Statistiques
   stats: StudentStats | null;
@@ -60,7 +57,7 @@ interface StudentStore {
   
   // Actions de filtrage et tri
   setFilters: (filters: Partial<StudentFilters>) => void;
-  setSortOptions: (sort: StudentSortOptions) => void;
+  setSortOptions: (sort: { field: string; order: 'asc' | 'desc' }) => void;
   changePage: (page: number) => void;
   
   // Actions utilitaires
@@ -76,7 +73,7 @@ interface StudentStore {
 // Convertir CreateStudentFormData en Student
 const convertFormDataToStudent = (data: CreateStudentFormData): Student => {
   return {
-    id: generateId(),
+    id: generateStudentId(),
     firstName: data.firstName,
     lastName: data.lastName,
     gender: data.gender,
@@ -170,7 +167,7 @@ export const useStudentStore = create<StudentStore>()(
           });
           
           // Appliquer le tri
-          filteredStudents = sortStudents(filteredStudents, sortOptions.field, sortOptions.order);
+          filteredStudents = sortStudents(filteredStudents, sortOptions.field as keyof Student, sortOptions.order);
           
           // Appliquer la pagination
           const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
@@ -364,7 +361,7 @@ export const useStudentStore = create<StudentStore>()(
         });
         
         // Appliquer le tri
-        filteredStudents = sortStudents(filteredStudents, sortOptions.field, sortOptions.order);
+        filteredStudents = sortStudents(filteredStudents, sortOptions.field as keyof Student, sortOptions.order);
         
         // Appliquer la pagination
         const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
@@ -375,7 +372,7 @@ export const useStudentStore = create<StudentStore>()(
         });
       },
       
-      setSortOptions: (sort: StudentSortOptions) => {
+      setSortOptions: (sort: { field: string; order: 'asc' | 'desc' }) => {
         set(state => {
           state.sortOptions = sort;
         });
@@ -390,7 +387,7 @@ export const useStudentStore = create<StudentStore>()(
           roomId: filters.roomId || undefined
         });
         
-        filteredStudents = sortStudents(filteredStudents, sortOptions.field, sortOptions.order);
+        filteredStudents = sortStudents(filteredStudents, sortOptions.field as keyof Student, sortOptions.order);
         const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
         
         set(state => {
@@ -414,7 +411,7 @@ export const useStudentStore = create<StudentStore>()(
           roomId: filters.roomId || undefined
         });
         
-        filteredStudents = sortStudents(filteredStudents, sortOptions.field, sortOptions.order);
+        filteredStudents = sortStudents(filteredStudents, sortOptions.field as keyof Student, sortOptions.order);
         const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
         
         set(state => {
@@ -455,23 +452,7 @@ export const useStudentStore = create<StudentStore>()(
           await delay(500);
           
           // Calculer les statistiques basées sur les données mockées
-          const gradeCount = mockStudents.reduce((acc, student) => {
-            acc[student.grade] = (acc[student.grade] || 0) + 1;
-            return acc;
-          }, {} as Record<string, number>);
-          
-          const stats = {
-            total: mockStudents.length,
-            active: mockStudents.filter(s => s.status === 'active').length,
-            inactive: mockStudents.filter(s => s.status === 'inactive').length,
-            suspended: mockStudents.filter(s => s.status === 'suspended').length,
-            totalClasses: Object.keys(gradeCount).length,
-            byGender: {
-              male: mockStudents.filter(s => s.gender === 'male').length,
-              female: mockStudents.filter(s => s.gender === 'female').length
-            },
-            byGrade: gradeCount
-          };
+          const stats = calculateStudentStats(mockStudents);
           
           set(state => {
             state.stats = stats;
