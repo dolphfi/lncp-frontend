@@ -198,12 +198,23 @@ const AppSidebar = () => {
           ],
         },
         {
-          to: "/notes",
-          label: "Notes",
+          to: "/academic/notes",
+          label: "Gestion Notes",
           icon: ListPlus,
           subItems: [
-            { to: "/notes", label: "Notes" },
-            { to: "/bulletins", label: "Bulletin" },
+            { to: "/academic/notes/entry", label: "Saisie de notes" },
+            { to: "/academic/notes/list", label: "Consultation des notes" },
+            { to: "/academic/bulletins/individual", label: "Bulletin Individuel" },
+            { to: "/academic/bulletins/collective", label: "Bulletin Collectif" },
+          ],
+        },
+        {
+          to: "/academic/statistics",
+          label: "Statistiques",
+          icon: BarChart,
+          subItems: [
+            { to: "/academic/statistics/laureates", label: "Palmarès" },
+            { to: "/academic/statistics/classes", label: "Analyse par Classe" },
           ],
         },
       ],

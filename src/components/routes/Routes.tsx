@@ -11,6 +11,14 @@ import { StudentsManagement } from '../pages/dashboard/StudentsManagement';
 import { CoursesManagement } from '../pages/dashboard/CoursesManagement';
 import { EmployeesManagement } from '../pages/dashboard/EmployeesManagement';
 import AdminPanel from '../pages/dashboard/AdminPanel';
+// Academic System Components
+import AcademicDashboard from '../pages/dashboard/AcademicDashboard';
+import NoteEntry from '../pages/notes/NoteEntry';
+import NotesList from '../pages/notes/NotesList';
+import IndividualBulletin from '../pages/bulletins/IndividualBulletin';
+import CollectiveBulletin from '../pages/bulletins/CollectiveBulletin';
+import TopLaureates from '../pages/statistics/TopLaureates';
+
 // import PrivateRoute from '../utils/PrivateRoute.tsx';
 
 function AppRoutes() {
@@ -40,6 +48,45 @@ function AppRoutes() {
                 <Route path="/employee" element={<EmployeesManagement />} />
                 <Route path="/admin_panel" element={<AdminPanel />} />
             </Route>
+
+{ /* Routes du système académique */
+}
+<Route path="/academic"
+    element={<DashboardLayout/>}>
+    <Route index
+        element={<AcademicDashboard/>}/>
+    <Route path="dashboard"
+        element={<AcademicDashboard/>}/> {/* Gestion des notes */}
+    <Route path="notes">
+        <Route index
+            element={<NotesList/>}/>
+        <Route path="entry"
+            element={<NoteEntry/>}/>
+        <Route path="list"
+            element={<NotesList/>}/>
+    </Route>
+
+    {/* Bulletins */}
+    <Route path="bulletins">
+        <Route index
+            element={<IndividualBulletin/>}/>
+        <Route path="individual"
+            element={<IndividualBulletin/>}/>
+        <Route path="collective"
+            element={<CollectiveBulletin/>}/>
+    </Route>
+
+    {/* Statistiques */}
+    <Route path="statistics">
+        <Route index
+            element={<TopLaureates/>}/>
+        <Route path="laureates"
+            element={<TopLaureates/>}/>
+        <Route path="classes"
+            element={<AcademicDashboard/>}/>
+    </Route>
+</Route>
+
 
 
 
