@@ -1,14 +1,29 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Mail, Send, ArrowLeft } from "lucide-react";
+import authService from "../../services/authService";
+import { toast } from "react-toastify";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement forgot password logic
-    console.log("Forgot password request for:", email);
+    if (!email) {
+      toast.error("Veuillez saisir votre email");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await authService.forgotPassword({ email });
+      toast.success("Si l'email existe, un lien de réinitialisation a été envoyé.");
+    } catch (err: any) {
+      const message = err?.message || "Impossible d'envoyer le lien";
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -82,10 +97,11 @@ const ForgotPassword = () => {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full bg-blue-500 text-white py-2 px-4 rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 flex items-center justify-center text-sm font-medium"
+                  disabled={isLoading}
+                  className="w-full bg-blue-500 text-white py-2 px-4 rounded-full hover:bg-blue-600 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 flex items-center justify-center text-sm font-medium"
                 >
                   <Send className="w-4 h-4 mr-2" />
-                  Envoyer le lien
+                  {isLoading ? "Envoi..." : "Envoyer le lien"}
                 </button>
               </form>
             </div>

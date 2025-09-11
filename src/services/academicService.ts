@@ -17,48 +17,55 @@ import {
   MOCK_COURSES,
   MOCK_NOTES
 } from '../types/academic';
+import { config } from '../config/environment';
+import authService from './authService';
 
 // Configuration de base d'axios
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000/api',
-  timeout: 10000,
+  baseURL: config.API_BASE_URL,
+  timeout: config.API_TIMEOUT,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
 });
 
 // Intercepteur pour ajouter le token d'authentification
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
+  const token = authService.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Intercepteur pour gérer le refresh token
+// Intercepteur pour gérer le refresh token et les erreurs
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (refreshToken) {
-        try {
-          const response = await axios.post('/auth/token/refresh/', {
-            refresh: refreshToken
-          });
-          localStorage.setItem('access_token', response.data.access);
-          return api.request(error.config);
-        } catch (refreshError) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
-        }
+    const originalRequest = error.config;
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        // Tenter de rafraîchir le token
+        const newToken = await authService.refreshToken();
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return api.request(originalRequest);
+      } catch (refreshError) {
+        // Si le refresh échoue, rediriger vers la page de connexion
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
       }
     }
+    
     return Promise.reject(error);
   }
 );
 
 // Mode développement - utiliser des données fictives
-const USE_MOCK_DATA = process.env.NODE_ENV === 'development' || !process.env.REACT_APP_API_URL;
+const USE_MOCK_DATA = process.env.NODE_ENV === 'development' || (!config.API_BASE_URL.includes('10.150.50.37') && !config.API_BASE_URL.includes('192.168') && !config.API_BASE_URL.includes('localhost:3000'));
 
 class AcademicService {
   // ========== GESTION DES NOTES ==========

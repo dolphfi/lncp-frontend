@@ -1,27 +1,73 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { Lock, Key, Eye, EyeOff } from "lucide-react";
+import authService from "../../services/authService";
+import { toast } from "react-toastify";
 
 const ResetPassword = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [token, setToken] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     password: "",
     confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [invalidToken, setInvalidToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const t = params.get("token");
+    setToken(t);
+    if (!t) {
+      setInvalidToken("Lien de réinitialisation invalide ou manquant.");
+    }
+  }, [location.search]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement reset password logic
-    if (formData.password !== formData.confirmPassword) {
-      alert("Les mots de passe ne correspondent pas.");
+    if (!token) {
+      setInvalidToken("Lien de réinitialisation invalide.");
       return;
     }
-    console.log("Resetting password with:", formData.password);
+    // contraintes backend: au moins 8 chars, 1 maj, 1 min, 1 chiffre, 1 spécial
+    if (formData.password.length < 8) {
+      toast.error("Le mot de passe doit contenir au moins 8 caractères.");
+      return;
+    }
+    const strongPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).+$/;
+    if (!strongPattern.test(formData.password)) {
+      toast.error("Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial (@$!%*?&)");
+      return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Les mots de passe ne correspondent pas");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await authService.resetPassword({ token, newPassword: formData.password });
+      toast.success("Mot de passe réinitialisé avec succès. Redirection vers la connexion...");
+      setTimeout(() => navigate('/login', { replace: true }), 1500);
+    } catch (err: any) {
+      const message = err?.message || "Une erreur est survenue";
+      // N'afficher l'encart rouge que pour les erreurs liées au token
+      const status = err?.status_code ?? err?.status ?? null;
+      const tokenRelated = /token|lien|expired|invalid/i.test(message) || status === 400 || status === 401;
+      if (tokenRelated) {
+        setInvalidToken(message || "Lien de réinitialisation invalide ou expiré.");
+      }
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -57,89 +103,103 @@ const ResetPassword = () => {
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-full"></div>
 
             <div className="relative z-10">
-              <div className="flex items-center mb-6">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center mr-3">
-                  <Lock className="w-4 h-4 text-white" />
+              {!!invalidToken && (
+                <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50/60 backdrop-blur p-3 text-red-700 text-xs">
+                  {invalidToken}
+                  <div className="mt-2">
+                    <Link to="/forgot_password" className="underline">Demander un nouveau lien</Link>
+                  </div>
                 </div>
-                <h2 className="text-sm font-medium text-blue-900">
-                  Entrez votre nouveau mot de passe
-                </h2>
+              )}
+
+              {!invalidToken && (
+              <div>
+                <div className="flex items-center mb-6">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                    <Lock className="w-4 h-4 text-white" />
+                  </div>
+                  <h2 className="text-sm font-medium text-blue-900">
+                    Entrez votre nouveau mot de passe
+                  </h2>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Password Field */}
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="block text-blue-900 font-medium mb-2 text-sm"
+                    >
+                      Nouveau mot de passe
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Lock className="w-4 h-4 text-blue-900/50" />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className="w-full pl-10 pr-10 py-2 bg-white/50 border border-gray-100 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 text-xs text-blue-900 placeholder-blue-700/50"
+                        placeholder="Nouveau mot de passe"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-900/60 hover:text-blue-900"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm Password Field */}
+                  <div>
+                    <label
+                      htmlFor="confirmPassword"
+                      className="block text-blue-900 font-medium mb-2 text-sm"
+                    >
+                      Confirmer le mot de passe
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Lock className="w-4 h-4 text-blue-900/50" />
+                      </div>
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        className="w-full pl-10 pr-10 py-2 bg-white/50 border border-gray-100 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 text-xs text-blue-900 placeholder-blue-700/50"
+                        placeholder="Confirmez le mot de passe"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-900/60 hover:text-blue-900"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-blue-500 text-white py-2 px-4 rounded-full hover:bg-blue-600 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 flex items-center justify-center text-sm font-medium"
+                  >
+                    <Key className="w-4 h-4 mr-2" />
+                    {isLoading ? "Réinitialisation..." : "Réinitialiser le mot de passe"}
+                  </button>
+                </form>
               </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Password Field */}
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="block text-blue-900 font-medium mb-2 text-sm"
-                  >
-                    Nouveau mot de passe
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="w-4 h-4 text-blue-900/50" />
-                    </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      id="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-10 py-2 bg-white/50 border border-gray-100 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 text-xs text-blue-900 placeholder-blue-700/50"
-                      placeholder="Nouveau mot de passe"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-900/60 hover:text-blue-900"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Confirm Password Field */}
-                <div>
-                  <label
-                    htmlFor="confirmPassword"
-                    className="block text-blue-900 font-medium mb-2 text-sm"
-                  >
-                    Confirmer le mot de passe
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="w-4 h-4 text-blue-900/50" />
-                    </div>
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-10 py-2 bg-white/50 border border-gray-100 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 text-xs text-blue-900 placeholder-blue-700/50"
-                      placeholder="Confirmez le mot de passe"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-900/60 hover:text-blue-900"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  className="w-full bg-blue-500 text-white py-2 px-4 rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 flex items-center justify-center text-sm font-medium"
-                >
-                  <Key className="w-4 h-4 mr-2" />
-                  Réinitialiser le mot de passe
-                </button>
-              </form>
+              )}
             </div>
           </div>
         </div>

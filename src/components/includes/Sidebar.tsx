@@ -16,7 +16,7 @@ import {
   UserRoundCog,
   Wallet,
 } from "lucide-react"
-import { NavLink, useLocation } from "react-router-dom"
+import { NavLink, useLocation, useNavigate } from "react-router-dom"
 
 import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
@@ -42,6 +42,8 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu"
+import { useAuthStore } from "../../stores/authStoreSimple"
+import authService from "../../services/authService"
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 
@@ -148,6 +150,46 @@ const SidebarLink = ({ to, label, icon: Icon, subItems, openAccordion, setOpenAc
 
 const AppSidebar = () => {
   const { state, toggleSidebar, isMobile } = useSidebar()
+  const navigate = useNavigate()
+  const { logout, isLoading, user } = useAuthStore()
+  const [displayName, setDisplayName] = React.useState<string>("")
+  const [displayRole, setDisplayRole] = React.useState<string>("")
+  const [displayAvatar, setDisplayAvatar] = React.useState<string | undefined>(undefined)
+
+  React.useEffect(() => {
+    // Fallback depuis le store
+    if (user) {
+      const name = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email
+      setDisplayName(name)
+      setDisplayRole(user.role)
+      // tentative d'avatar depuis le store si présent
+      const avatarFromStore = (user as any).avatarUrl || (user as any).avatar_url
+      if (avatarFromStore) setDisplayAvatar(avatarFromStore)
+    }
+    // Tenter de récupérer le profil complet
+    let cancelled = false
+    authService.getMe().then((me) => {
+      if (cancelled) return
+      const name = [me.firstName, me.lastName].filter(Boolean).join(" ") || me.email
+      setDisplayName(name)
+      setDisplayRole(me.role)
+      if (me.avatarUrl) setDisplayAvatar(me.avatarUrl)
+    }).catch(() => {/* ignore */})
+    return () => { cancelled = true }
+  }, [user])
+
+  // Écoute les mises à jour du profil pour rafraîchir instantanément l'UI
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      const name = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || displayName
+      setDisplayName(name)
+      if (detail.role) setDisplayRole(detail.role)
+      if (detail.avatarUrl) setDisplayAvatar(detail.avatarUrl)
+    }
+    document.addEventListener('profile:updated', handler as EventListener)
+    return () => document.removeEventListener('profile:updated', handler as EventListener)
+  }, [displayName])
   const [openAccordion, setOpenAccordion] = React.useState<string | undefined>(undefined)
 
   const navGroups = [
@@ -312,14 +354,16 @@ const AppSidebar = () => {
         <DropdownMenu>
           <DropdownMenuTrigger className="w-full flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <Avatar className="h-8 w-8 rounded-full border-2 border-primary flex-shrink-0">
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>CN</AvatarFallback>
+              <Avatar className="h-8 w-8 rounded-full border-2 border-primary flex-shrink-0 overflow-hidden">
+                {displayAvatar ? (
+                  <AvatarImage src={displayAvatar} />
+                ) : null}
+                <AvatarFallback>{(displayName || "U").slice(0,2).toUpperCase()}</AvatarFallback>
               </Avatar>
               {state === "expanded" && (
                 <div className="flex flex-col min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate">Rodolph Phayendy Delon</p>
-                  <p className="text-xs text-muted-foreground">Admin</p>
+                  <p className="text-sm font-semibold truncate">{displayName || "Utilisateur"}</p>
+                  <p className="text-xs text-muted-foreground">{displayRole || "Rôle"}</p>
                 </div>
               )}
             </div>
@@ -336,12 +380,20 @@ const AppSidebar = () => {
           >
             <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profil</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/profile')}>Profil</DropdownMenuItem>
             <DropdownMenuItem>Paramètres</DropdownMenuItem>
             <DropdownMenuItem>Équipe</DropdownMenuItem>
             <DropdownMenuItem>Abonnement</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Déconnexion</DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={isLoading}
+              onClick={() => {
+                logout()
+                navigate('/login', { replace: true })
+              }}
+            >
+              Déconnexion
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarFooter>

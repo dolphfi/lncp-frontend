@@ -36,7 +36,9 @@ export interface EnvironmentConfig {
 // =====================================================
 const developmentConfig: EnvironmentConfig = {
   // API
-  API_BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:3001/api',
+  API_BASE_URL: process.env.REACT_APP_API_URL || 'http://127.0.0.1:3000',
+
+
   API_TIMEOUT: 10000,
   
   // Application
@@ -59,7 +61,8 @@ const developmentConfig: EnvironmentConfig = {
 
 const productionConfig: EnvironmentConfig = {
   // API
-  API_BASE_URL: process.env.REACT_APP_API_URL || 'https://api.lncp.edu.ht/api',
+  API_BASE_URL: process.env.REACT_APP_API_URL || 'http://127.0.0.1:3000',
+
   API_TIMEOUT: 15000,
   
   // Application

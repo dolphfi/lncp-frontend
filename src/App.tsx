@@ -2,13 +2,14 @@
 
 import React from "react";
 import { BrowserRouter } from "react-router-dom";
-import {ToastContainer} from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
 
 import AppRoutes from "./components/routes/Routes";
 import 'react-toastify/dist/ReactToastify.css';
 
 
 function App() {
+
   return (
     <BrowserRouter>
       <AppRoutes />

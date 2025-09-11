@@ -1,29 +1,93 @@
-import React, { useState } from "react";
+import React, {useState, useEffect} from "react";
+
 import { Link, useNavigate } from "react-router-dom";
-import { LogIn, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import {
+    LogIn,
+    Mail,
+    Lock,
+    Eye,
+    EyeOff,
+    Loader2
+} from "lucide-react";
+import {useAuthStore} from '../../stores/authStoreSimple';
+import {toast} from "react-toastify";
+
 
 const Login = () => {
   const navigate = useNavigate();
+const {
+    login,
+    clearError,
+    isLoading,
+    error,
+    isAuthenticated
+} = useAuthStore();
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+remember_me : false,
+
   });
   const [showPassword, setShowPassword] = useState(false);
+const [isSubmitting, setIsSubmitting] = useState(false);
+
+// Rediriger si déjà authentifié
+useEffect(() => {
+    if (isAuthenticated) {
+        navigate('/dashboard', {replace: true});
+    }
+}, [isAuthenticated, navigate]);
+
+// Nettoyer les erreurs au démontage
+useEffect(() => {
+    return() => {
+        clearError();
+    };
+}, [clearError]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+const {name, value, type, checked} = e.target;
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+[name] : type === 'checkbox' ? checked : value,
+
     }));
+// Nettoyer les erreurs lors de la saisie
+if (error) {
+    clearError();
+}
+
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+const handleSubmit = async (e : React.FormEvent) => {
+
     e.preventDefault();
-    // Simuler une authentification réussie
-    localStorage.setItem('isAuthenticated', 'true');
-    // Rediriger vers le tableau de bord
-    navigate('/dashboard');
+if (isSubmitting) 
+    return;
+
+
+// Validation basique
+if (!formData.email || !formData.password) {
+    toast.error('Veuillez remplir tous les champs');
+    return;
+}
+
+setIsSubmitting(true);
+
+try {
+    await login({ email: formData.email, password: formData.password });
+    // si aucune erreur, on navigue
+    navigate('/dashboard', { replace: true });
+} catch (error) {
+    // L'erreur est déjà gérée dans le store
+    console.error('Erreur de connexion:', error);
+} finally {
+    setIsSubmitting(false);
+}
+
   };
 
   return (
@@ -137,8 +201,16 @@ const Login = () => {
                   <div className="flex items-center">
                     <input
                       id="remember-me"
-                      name="remember-me"
+name = "remember_me"
+
                       type="checkbox"
+checked = {
+    formData.remember_me
+}
+onChange = {
+    handleInputChange
+}
+
                       className="h-4 w-4 text-blue-600 focus:ring-blue-400 border-gray-300 rounded-full"
                     />
                     <label
@@ -156,13 +228,26 @@ const Login = () => {
                   </Link>
                 </div>
 
+                {/* Les erreurs sont gérées uniquement via toast */}
+
+
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 text-white font-medium py-2.5 px-4 rounded-full hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center space-x-2 text-xs"
+                  disabled={isSubmitting || isLoading}
+                  className="w-full bg-blue-600 text-white font-medium py-2.5 px-4 rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center space-x-2 text-xs"
                 >
-                  <LogIn className="w-4 h-4" />
-                  <span>Se connecter</span>
+                  {isSubmitting || isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Connexion...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4" />
+                      <span>Se connecter</span>
+                    </>
+                  )}
                 </button>
               </form>
 
