@@ -67,6 +67,8 @@ import {
 } from '../../ui/tabs';
 import { Switch } from '../../ui/switch';
 import { Textarea } from '../../ui/textarea';
+import { useClassroomStore } from '../../../stores/classroomStore';
+import { toast } from 'react-toastify';
 
 // Types pour les données d'administration
 interface SystemUser {
@@ -166,9 +168,7 @@ const AdminPanel: React.FC = () => {
 
   // Nouveaux états pour les années académiques et classes
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
   const [showAcademicYearDialog, setShowAcademicYearDialog] = useState(false);
-  const [showClassDialog, setShowClassDialog] = useState(false);
 //   const [selectedAcademicYear, setSelectedAcademicYear] = useState<AcademicYear | null>(null);
 //   const [selectedClass, setSelectedClass] = useState<SchoolClass | null>(null);
 
@@ -297,57 +297,7 @@ const AdminPanel: React.FC = () => {
       }
     ]);
 
-    // Charger les classes
-    setSchoolClasses([
-      {
-        id: '1',
-        level: 'NSI',
-        roomName: 'Salle A',
-        status: 'active',
-        createdAt: '2024-09-01',
-        updatedAt: '2024-06-28'
-      },
-      {
-        id: '2',
-        level: 'NSI',
-        roomName: 'Salle B',
-        status: 'active',
-        createdAt: '2024-09-01',
-        updatedAt: '2024-06-28'
-      },
-      {
-        id: '3',
-        level: 'NSII',
-        roomName: 'Salle C',
-        status: 'active',
-        createdAt: '2024-09-01',
-        updatedAt: '2024-06-28'
-      },
-      {
-        id: '4',
-        level: 'NSII',
-        roomName: 'Salle D',
-        status: 'inactive',
-        createdAt: '2024-09-01',
-        updatedAt: '2024-06-28'
-      },
-      {
-        id: '5',
-        level: 'NSIII',
-        roomName: 'Salle E',
-        status: 'active',
-        createdAt: '2024-09-01',
-        updatedAt: '2024-06-28'
-      },
-      {
-        id: '6',
-        level: 'NSIV',
-        roomName: 'Salle F',
-        status: 'active',
-        createdAt: '2024-09-01',
-        updatedAt: '2024-06-28'
-      }
-    ]);
+    // Supprimé: chargement de classes fictives (désormais géré par l'onglet Classes via API)
   };
 
   const getLogLevelBadge = (level: string) => {
@@ -571,6 +521,11 @@ const AdminPanel: React.FC = () => {
           </div>
         </TabsContent>
 
+        {/* Gestion des classes (branché sur l'API) */}
+        <TabsContent value="classes" className="space-y-6">
+          <ClassroomsTab />
+        </TabsContent>
+
         {/* Gestion des utilisateurs */}
         <TabsContent value="users" className="space-y-6">
           <div className="flex justify-between items-center">
@@ -667,12 +622,8 @@ const AdminPanel: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>{getAcademicYearStatusBadge(year.status)}</TableCell>
-                      <TableCell>
-                        {schoolClasses.filter(c => c.status === 'active').length}
-                      </TableCell>
-                      <TableCell>
-                        {schoolClasses.filter(c => c.status === 'active').length}
-                      </TableCell>
+                      <TableCell>—</TableCell>
+                      <TableCell>—</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Button variant="outline" size="sm">
@@ -696,55 +647,7 @@ const AdminPanel: React.FC = () => {
           </Card>
         </TabsContent>
 
-        {/* Gestion des classes */}
-        <TabsContent value="classes" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Gestion des Classes</h2>
-            <Button onClick={() => setShowClassDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle Classe
-            </Button>
-          </div>
-
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Niveau</TableHead>
-                    <TableHead>Salle</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {schoolClasses.map((classe) => (
-                    <TableRow key={classe.id}>
-                      <TableCell>
-                        <Badge variant="outline" className="font-medium">{classe.level}</Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">{classe.roomName}</TableCell>
-                      <TableCell>{getClassStatusBadge(classe.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        
 
         {/* Logs système */}
         <TabsContent value="logs" className="space-y-6">
@@ -1086,42 +989,264 @@ const AdminPanel: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialogue pour nouvelle classe */}
-      <Dialog open={showClassDialog} onOpenChange={setShowClassDialog}>
+      {/* Section de création de classe fictive retirée: gérée par l'onglet Classes */}
+
+    </div>
+  );
+};
+
+// ---- Tab component: Classes ----
+const ClassroomsTab: React.FC = () => {
+  const { items, loading, error, fetchAll, create, remove, addRoom, page, limit, total } = useClassroomStore();
+  const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
+  const toggleExpanded = (id: string) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  // Section 1: création de niveau/classe
+  const [name, setName] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [initialRooms, setInitialRooms] = React.useState<Array<{ id: string; name: string; capacity: number | '' }>>([]);
+  const [showCreate, setShowCreate] = React.useState(false);
+  // Section 2: ajout de salle
+  const [selectedClassId, setSelectedClassId] = React.useState<string>('');
+  const [roomName, setRoomName] = React.useState('');
+  const [roomCapacity, setRoomCapacity] = React.useState<number | ''>('');
+  const [showAddRoom, setShowAddRoom] = React.useState(false);
+
+  React.useEffect(() => {
+    fetchAll(page || 1, limit || 10);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCreate = async () => {
+    if (!name.trim()) { toast.error('Le nom est requis'); return; }
+    try {
+      const rooms = initialRooms
+        .filter(r => r.name.trim() && Number(r.capacity) >= 0)
+        .map(r => ({ name: r.name.trim(), capacity: Number(r.capacity) }));
+      await create({ name: name.trim(), description: description || undefined, rooms: rooms.length ? rooms : undefined });
+      setName(''); setDescription(''); setInitialRooms([]);
+      toast.success('Classe créée');
+    } catch (e: any) {
+      toast.error(e?.message || 'Erreur lors de la création');
+    }
+  };
+
+  const handleAddRoom = async () => {
+    if (!selectedClassId) { toast.error('Sélectionnez une classe'); return; }
+    if (!roomName.trim()) { toast.error('Le nom de la salle est requis'); return; }
+    if (roomCapacity === '' || Number(roomCapacity) <= 0) { toast.error('La capacité doit être > 0'); return; }
+    try {
+      await addRoom(selectedClassId, { name: roomName.trim(), capacity: Number(roomCapacity) });
+      setRoomName(''); setRoomCapacity('');
+      toast.success('Salle ajoutée');
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur lors de l'ajout de la salle");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Section 1: Gestion des classes (Niveaux) */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Gestion des Classes (Niveaux)</h2>
+        <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2"/>Nouveau Niveau</Button>
+      </div>
+
+      {error && <div className="text-red-600 text-sm">{error}</div>}
+
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nom (Niveau)</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Salles</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((c) => (
+                <React.Fragment key={c.id}>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={()=>toggleExpanded(c.id)} className="px-2">
+                          {expanded[c.id] ? '▾' : '▸'}
+                        </Button>
+                        <span>{c.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[320px] truncate text-muted-foreground">{c.description || '—'}</TableCell>
+                    <TableCell>{c.rooms?.length ?? 0}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" title="Gérer les salles"><Edit className="h-4 w-4"/></Button>
+                        <Button variant="outline" size="sm" onClick={async()=>{ try{ await remove(c.id); toast.success('Supprimée'); } catch(e:any){ toast.error(e?.message||'Erreur'); } }}>
+                          <Trash2 className="h-4 w-4"/>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {expanded[c.id] && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="bg-muted/40">
+                        <div className="py-3">
+                          <div className="text-sm font-medium mb-2">Salles</div>
+                          {(!c.rooms || c.rooms.length === 0) ? (
+                            <div className="text-sm text-muted-foreground">Aucune salle pour ce niveau.</div>
+                          ) : (
+                            <div className="grid gap-2">
+                              {c.rooms.map(r => (
+                                <div key={r.id} className="flex items-center justify-between rounded-md border p-2 bg-white">
+                                  <div className="flex items-center gap-3">
+                                    <span className="font-medium">{r.name}</span>
+                                    <span className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700">Capacité: {r.capacity ?? '—'}</span>
+                                    {('status' in (r as any)) && (
+                                      <span className={`text-xs px-2 py-0.5 rounded ${((r as any).status === 'Disponible') ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                                        {(r as any).status}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button variant="outline" size="sm" title="Éditer"><Edit className="h-4 w-4"/></Button>
+                                    <Button variant="outline" size="sm" title="Supprimer"><Trash2 className="h-4 w-4"/></Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              ))}
+              {items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-6">
+                    Aucune classe pour le moment
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      {/* Pagination controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="text-sm text-muted-foreground">
+          {total > 0 ? (
+            <span>
+              {Math.min((page - 1) * limit + 1, total)}–{Math.min(page * limit, total)} sur {total}
+            </span>
+          ) : (
+            <span>Aucune donnée</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm">Par page</Label>
+          <Select value={String(limit)} onValueChange={(v)=> fetchAll(1, Number(v))}>
+            <SelectTrigger className="w-[88px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {[5,10,20,50].map(sz => <SelectItem key={sz} value={String(sz)}>{sz}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={()=> fetchAll(page - 1, limit)}>Précédent</Button>
+            <Button variant="outline" size="sm" disabled={page * limit >= total || loading} onClick={()=> fetchAll(page + 1, limit)}>Suivant</Button>
+          </div>
+        </div>
+      </div>
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Nouvelle Classe</DialogTitle>
-            <DialogDescription>
-              Créez une nouvelle classe
-            </DialogDescription>
+            <DialogTitle>Nouveau Niveau</DialogTitle>
+            <DialogDescription>Créer un niveau (ex: NSI). Vous pouvez optionnellement ajouter une description et une liste de salles initiales.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Niveau</Label>
-              <Select>
+              <Label>Nom</Label>
+              <Input placeholder="Ex: NSI" value={name} onChange={e=>setName(e.target.value)} />
+            </div>
+            <div>
+              <Label>Description (optionnel)</Label>
+              <Input placeholder="Première année du cycle secondaire" value={description} onChange={e=>setDescription(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Salles initiales</Label>
+                <Button type="button" size="sm" variant="outline" onClick={() => setInitialRooms(prev => [...prev, { id: crypto.randomUUID(), name: '', capacity: 0 }])}>
+                  <Plus className="w-4 h-4 mr-1"/>Ajouter une salle
+                </Button>
+              </div>
+              {initialRooms.length === 0 && (
+                <p className="text-xs text-muted-foreground">Aucune salle. Cliquez sur "Ajouter une salle" pour commencer.</p>
+              )}
+              <div className="space-y-2 max-h-60 overflow-auto pr-1">
+                {initialRooms.map((r, idx) => (
+                  <div key={r.id} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-7">
+                      <Label className="text-xs">Nom</Label>
+                      <Input value={r.name} onChange={e=> setInitialRooms(prev => prev.map(x => x.id===r.id ? { ...x, name: e.target.value } : x))} placeholder={`Ex: Salle ${String.fromCharCode(65+idx)}`} />
+                    </div>
+                    <div className="col-span-3">
+                      <Label className="text-xs">Capacité</Label>
+                      <Input type="number" min={0} value={r.capacity} onChange={e=> setInitialRooms(prev => prev.map(x => x.id===r.id ? { ...x, capacity: e.target.value === '' ? '' : Number(e.target.value) } : x))} />
+                    </div>
+                    <div className="col-span-2 flex justify-end">
+                      <Button type="button" variant="outline" size="sm" onClick={() => setInitialRooms(prev => prev.filter(x => x.id !== r.id))}>Supprimer</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={()=>setShowCreate(false)}>Annuler</Button>
+              <Button onClick={async()=>{ await handleCreate(); setShowCreate(false); }}>Créer</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Section 2: Gestion des Salles */}
+      <div className="pt-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Gestion des Salles</h3>
+          <Button onClick={()=> setShowAddRoom(true)}><Plus className="h-4 w-4 mr-2"/>Ajouter une salle</Button>
+        </div>
+        <p className="text-sm text-muted-foreground">Ajoutez des salles à un niveau existant via le formulaire.</p>
+      </div>
+      <Dialog open={showAddRoom} onOpenChange={setShowAddRoom}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ajouter une salle</DialogTitle>
+            <DialogDescription>Associez une salle à un niveau existant.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Choisir un niveau</Label>
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un niveau" />
+                  <SelectValue placeholder="Sélectionnez un niveau" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NSI">NSI</SelectItem>
-                  <SelectItem value="NSII">NSII</SelectItem>
-                  <SelectItem value="NSIII">NSIII</SelectItem>
-                  <SelectItem value="NSIV">NSIV</SelectItem>
+                  {items.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label>Nom de la salle</Label>
-              <Input placeholder="Salle A" />
+              <Input placeholder="Ex: Salle de TP 1" value={roomName} onChange={e=>setRoomName(e.target.value)} />
+            </div>
+            <div>
+              <Label>Capacité</Label>
+              <Input type="number" min={1} placeholder="ex: 30" value={roomCapacity} onChange={e=> setRoomCapacity(e.target.value === '' ? '' : Number(e.target.value))} />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowClassDialog(false)}>
-                Annuler
-              </Button>
-              <Button onClick={() => setShowClassDialog(false)}>
-                <Save className="h-4 w-4 mr-2" />
-                Créer
-              </Button>
+              <Button variant="outline" onClick={()=> setShowAddRoom(false)}>Annuler</Button>
+              <Button onClick={async()=>{ await handleAddRoom(); setShowAddRoom(false); }}>Ajouter</Button>
             </div>
           </div>
         </DialogContent>
@@ -1130,4 +1255,4 @@ const AdminPanel: React.FC = () => {
   );
 };
 
-export default AdminPanel; 
+export default AdminPanel;
