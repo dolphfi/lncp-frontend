@@ -27,25 +27,34 @@ import {
   Trash2
 } from 'lucide-react';
 import { Button } from './button';
-import { Input } from './input';
 import { 
   Table, 
   TableBody, 
   TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+  TableHead,
+  TableHeader,
+  TableRow
 } from './table';
+import { Input } from './input';
 import { 
   DropdownMenu, 
-  DropdownMenuCheckboxItem, 
   DropdownMenuContent, 
   DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
   DropdownMenuLabel,
-  DropdownMenuTrigger 
+  DropdownMenuSeparator
 } from './dropdown-menu';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from './select';
 import { Badge } from './badge';
-import { Card, CardContent, CardHeader, CardTitle } from './card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card';
+import { StudentFilters } from '../../types/student';
 
 // =====================================================
 // TYPES POUR LA CONFIGURATION DU DATA TABLE
@@ -95,14 +104,6 @@ export interface PaginationInfo {
   totalPages: number;              // Total de pages
 }
 
-// Type pour les filtres spécifiques aux élèves
-export interface StudentFilters {
-  search?: string;
-  grade?: string;
-  roomId?: string;
-  status?: 'active' | 'inactive' | 'suspended';
-  gender?: 'male' | 'female';
-}
 
 // Type pour une salle (pour les filtres)
 export interface Room {
@@ -128,7 +129,7 @@ interface DataTableProps<T> {
   onFilter?: (filters: FilterOption[]) => void; // Callback lors du filtrage
   // ✨ Nouveaux props pour les filtres étudiants
   onStudentFilter?: (filters: Partial<StudentFilters>) => void; // Callback spécifique élèves
-  currentFilters?: Partial<StudentFilters>; // Filtres actuels pour l'affichage
+  currentFilters?: StudentFilters; // Filtres actuels pour l'affichage
   rooms?: Room[];                  // Liste des salles pour les filtres
   emptyStateMessage?: string;      // Message lorsqu'il n'y a pas de données
   title?: string;                  // Titre de la table

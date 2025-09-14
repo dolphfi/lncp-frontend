@@ -1,6 +1,6 @@
 // Configuration API statique pour contourner les problèmes d'environnement
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || '',
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://192.168.12.212:3000',
   ENDPOINTS: {
     AUTH: {
       LOGIN: '/auth/login',

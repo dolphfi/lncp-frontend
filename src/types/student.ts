@@ -166,7 +166,7 @@ export interface StudentFilters {
   grade?: string;                // Filtrer par classe
   roomId?: string;               // Filtrer par salle
   status?: 'active' | 'inactive' | 'suspended';
-  gender?: 'male' | 'female';    // Filtrer par sexe
+  gender?: 'male' | 'female' | 'Homme' | 'Femme';    // Filtrer par sexe (support backend et frontend)
   enrollmentYear?: number;       // Filtrer par année d'inscription
 }
 

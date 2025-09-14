@@ -21,7 +21,7 @@ interface ClassroomState {
   remove: (id: string) => Promise<void>;
 
   addRoom: (classroomId: string, payload: { name: string; capacity: number }) => Promise<Classroom>;
-  updateRoom: (classroomId: string, roomId: string, payload: Partial<{ name: string; capacity: number }>) => Promise<Classroom>;
+  updateRoom: (classroomId: string, roomId: string, payload: Partial<{ name: string; capacity: number; status: string }>) => Promise<Classroom>;
   deleteRoom: (classroomId: string, roomId: string) => Promise<Classroom>;
 }
 

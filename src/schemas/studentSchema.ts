@@ -34,6 +34,16 @@ export const GENDER_OPTIONS = [
   { value: 'female', label: 'Femme' }
 ] as const;
 
+export const VACATION_OPTIONS = [
+  { value: 'AM', label: 'AM' },
+  { value: 'PM', label: 'PM' }
+];
+
+export const TEACHING_LEVEL_OPTIONS = [
+  { value: 'Fondamentale', label: 'Fondamentale' },
+  { value: 'Secondaire', label: 'Secondaire' }
+];
+
 export const RELATIONSHIP_OPTIONS = [
   { value: 'père', label: 'Père' },
   { value: 'mère', label: 'Mère' },
@@ -118,9 +128,14 @@ export const createStudentSchema = z.object({
       return birthDate <= new Date();
     }, 'La date de naissance ne peut pas être dans le futur'),
   
-  placeOfBirth: z.string()
+  placeOfBirth: z.string().trim()
     .min(2, 'Le lieu de naissance doit contenir au moins 2 caractères')
     .max(100, 'Le lieu de naissance ne peut pas dépasser 100 caractères'),
+
+  // Champs backend supplémentaires
+  communeDeNaissance: z.string().trim()
+    .min(2, 'La commune de naissance doit contenir au moins 2 caractères')
+    .max(100, 'La commune de naissance ne peut pas dépasser 100 caractères'),
   
   email: z.string()
     .email('Format email invalide')
@@ -144,11 +159,25 @@ export const createStudentSchema = z.object({
   ], {
     errorMap: () => ({ message: 'Veuillez sélectionner une classe valide' })
   }),
+
+  // Id de la classe backend choisie (pilotera la liste des salles)
+  selectedClassroomId: z.string().min(1, 'Veuillez sélectionner une classe (backend)'),
   
   // Salle assignée
   roomId: z.string()
     .min(1, 'Veuillez sélectionner une salle')
     .optional(),
+
+  // Informations administratives requises par l'API
+  vacation: z.enum(['AM', 'PM'], {
+    errorMap: () => ({ message: 'Veuillez sélectionner la vacation (AM/PM)' })
+  }),
+  niveauEnseignement: z.enum(['Fondamentale', 'Secondaire'], {
+    errorMap: () => ({ message: "Veuillez sélectionner le niveau d'enseignement" })
+  }),
+  hasHandicap: z.boolean().default(false),
+  handicapDetails: z.string().optional(),
+  adresse: z.string().trim().min(1, "L'adresse de l'élève est requise"),
   
   // Informations scolaires précédentes
   ninthGradeSchool: z.string()
@@ -180,11 +209,35 @@ export const createStudentSchema = z.object({
   studentId: z.string()
     .min(5, 'Le matricule doit contenir au moins 5 caractères')
     .max(20, 'Le matricule ne peut pas dépasser 20 caractères')
-    .regex(/^[A-Z0-9]+$/, 'Le matricule ne peut contenir que des lettres majuscules et des chiffres'),
+    .regex(/^[A-Z0-9]+$/, 'Le matricule ne peut contenir que des lettres majuscules et des chiffres')
+    .optional(),
   
   status: z.enum(['active', 'inactive', 'suspended'], {
     errorMap: () => ({ message: 'Veuillez sélectionner un statut valide' })
   }),
+
+  // Champs parentaux détaillés (backend)
+  nomMere: z.string().trim().min(1, 'Le nom de la mère est requis'),
+  prenomMere: z.string().trim().min(1, 'Le prénom de la mère est requis'),
+  statutMere: z.string().trim().min(1, 'Le statut de la mère est requis'),
+  occupationMere: z.string().optional(),
+  nomPere: z.string().trim().min(1, 'Le nom du père est requis'),
+  prenomPere: z.string().trim().min(1, 'Le prénom du père est requis'),
+  statutPere: z.string().trim().min(1, 'Le statut du père est requis'),
+  occupationPere: z.string().optional(),
+
+  // Gestion de la personne responsable: sélectionner ou créer
+  responsableMode: z.enum(['select', 'create']).default('create'),
+  personneResponsableId: z.string().optional(),
+  responsable: z.object({
+    firstName: z.string().min(1, 'Le prénom du responsable est requis'),
+    lastName: z.string().min(1, 'Le nom du responsable est requis'),
+    email: z.string().email('Email du responsable invalide').optional(),
+    phone: z.string().optional(),
+    lienParente: z.string().min(1, 'Le lien de parenté est requis'),
+    nif: z.string().optional(),
+    ninu: z.string().optional()
+  }).optional(),
   
   // Image de profil
   avatar: z.string().url('Format d\'URL invalide').optional().or(z.literal('')),

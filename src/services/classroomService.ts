@@ -16,6 +16,7 @@ export interface Room {
   id: string;
   name: string;
   capacity?: number;
+  status?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -86,7 +87,11 @@ export const classroomService = {
     return res.data;
   },
 
-  async updateRoom(classroomId: string, roomId: string, data: Partial<{ name: string; capacity: number }>): Promise<Classroom> {
+  async updateRoom(
+    classroomId: string,
+    roomId: string,
+    data: Partial<{ name: string; capacity: number; status: string }>
+  ): Promise<Classroom> {
     const res = await api.patch(`/classroom/${classroomId}/room/${roomId}`, data, { headers: { ...authHeaders() } });
     return res.data;
   },

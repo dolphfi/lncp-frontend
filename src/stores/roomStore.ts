@@ -21,17 +21,10 @@ import {
   ApiError 
 } from '../types/student';
 
-import { 
-  mockRooms, 
-  mockRoomStats, 
-  delay, 
-  generateRoomId, 
-  searchRooms, 
-  sortRooms, 
-  paginateRooms,
-  getRoomsByClassLevel,
-  getRoomById
-} from '../data/mockRooms';
+import { studentsService } from '../services/students/studentsService';
+
+// Fonction utilitaire pour simuler un délai (remplace l'import manquant)
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // =====================================================
 // INTERFACE DU STORE
@@ -118,30 +111,33 @@ export const useRoomStore = create<RoomStore>()(
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1000);
+          // Récupérer les salles depuis l'API backend
+          const roomsData = await studentsService.getAllRooms();
           
-          const { filters, sortOptions, pagination } = get();
-          
-          // Appliquer les filtres
-          let filteredRooms = searchRooms(mockRooms, filters.search || '', {
-            classLevel: filters.classLevel || undefined,
-            isActive: filters.isActive
-          });
-          
-          // Appliquer le tri
-          filteredRooms = sortRooms(filteredRooms, sortOptions.field, sortOptions.order);
-          
-          // Appliquer la pagination
-          const paginatedResult = paginateRooms(filteredRooms, pagination.page, pagination.limit);
+          // Convertir les données API au format Room attendu
+          const convertedRooms: Room[] = roomsData.map((room: any) => ({
+            id: room.id,
+            name: room.name,
+            classLevel: 'NSI' as ClassLevel, // Valeur par défaut, à adapter selon vos besoins
+            capacity: room.capacity,
+            description: `Salle ${room.name} - Classe ${room.classroom?.name || 'N/A'}`,
+            isActive: room.status === 'Disponible',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }));
           
           set(state => {
-            state.rooms = paginatedResult.data;
-            state.pagination = paginatedResult.pagination;
+            state.rooms = convertedRooms;
+            state.pagination = {
+              ...state.pagination,
+              total: convertedRooms.length,
+              totalPages: Math.ceil(convertedRooms.length / state.pagination.limit)
+            };
             state.loading = false;
           });
           
         } catch (error) {
+          console.error('Erreur lors du chargement des salles:', error);
           set(state => {
             state.loading = false;
             state.error = {
@@ -160,31 +156,17 @@ export const useRoomStore = create<RoomStore>()(
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1500);
+          // TODO: Implémenter l'appel API pour créer une salle
+          console.log('Création de salle non implémentée:', data);
           
-          // Créer la nouvelle salle
-          const newRoom: Room = {
-            id: generateRoomId(),
-            name: data.name,
-            classLevel: data.classLevel,
-            capacity: data.capacity,
-            description: data.description,
-            isActive: data.isActive ?? true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          
-          // Ajouter à la liste des salles mock
-          mockRooms.push(newRoom);
-          
-          // Mettre à jour l'état
           set(state => {
             state.loadingAction = null;
+            state.error = {
+              message: 'Création de salle non implémentée',
+              code: 'NOT_IMPLEMENTED',
+              details: [{ field: 'general', message: 'Cette fonctionnalité nécessite une API backend' }]
+            };
           });
-          
-          // Recharger les données
-          await get().fetchRooms();
           
         } catch (error) {
           set(state => {
@@ -195,7 +177,6 @@ export const useRoomStore = create<RoomStore>()(
               details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
             };
           });
-          throw error;
         }
       },
       
@@ -206,35 +187,17 @@ export const useRoomStore = create<RoomStore>()(
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1500);
+          // TODO: Implémenter l'appel API pour mettre à jour une salle
+          console.log('Mise à jour de salle non implémentée:', data);
           
-          // Trouver la salle à mettre à jour
-          const existingRoomIndex = mockRooms.findIndex(r => r.id === data.id);
-          if (existingRoomIndex === -1) {
-            throw new Error('Salle non trouvée');
-          }
-          
-          const existingRoom = mockRooms[existingRoomIndex];
-          
-          // Mettre à jour la salle
-          mockRooms[existingRoomIndex] = {
-            ...existingRoom,
-            name: data.name !== undefined ? data.name : existingRoom.name,
-            classLevel: data.classLevel !== undefined ? data.classLevel : existingRoom.classLevel,
-            capacity: data.capacity !== undefined ? data.capacity : existingRoom.capacity,
-            description: data.description !== undefined ? data.description : existingRoom.description,
-            isActive: data.isActive !== undefined ? data.isActive : existingRoom.isActive,
-            updatedAt: new Date().toISOString()
-          };
-          
-          // Mettre à jour l'état
           set(state => {
             state.loadingAction = null;
+            state.error = {
+              message: 'Mise à jour de salle non implémentée',
+              code: 'NOT_IMPLEMENTED',
+              details: [{ field: 'general', message: 'Cette fonctionnalité nécessite une API backend' }]
+            };
           });
-          
-          // Recharger les données
-          await get().fetchRooms();
           
         } catch (error) {
           set(state => {
@@ -245,7 +208,6 @@ export const useRoomStore = create<RoomStore>()(
               details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
             };
           });
-          throw error;
         }
       },
       
@@ -256,24 +218,17 @@ export const useRoomStore = create<RoomStore>()(
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1000);
+          // TODO: Implémenter l'appel API pour supprimer une salle
+          console.log('Suppression de salle non implémentée:', id);
           
-          // Supprimer la salle
-          const roomIndex = mockRooms.findIndex(r => r.id === id);
-          if (roomIndex === -1) {
-            throw new Error('Salle non trouvée');
-          }
-          
-          mockRooms.splice(roomIndex, 1);
-          
-          // Mettre à jour l'état
           set(state => {
             state.loadingAction = null;
+            state.error = {
+              message: 'Suppression de salle non implémentée',
+              code: 'NOT_IMPLEMENTED',
+              details: [{ field: 'general', message: 'Cette fonctionnalité nécessite une API backend' }]
+            };
           });
-          
-          // Recharger les données
-          await get().fetchRooms();
           
         } catch (error) {
           set(state => {
@@ -284,7 +239,6 @@ export const useRoomStore = create<RoomStore>()(
               details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
             };
           });
-          throw error;
         }
       },
       
@@ -345,19 +299,39 @@ export const useRoomStore = create<RoomStore>()(
       },
       
       fetchStats: async () => {
+        set(state => {
+          state.loading = true;
+          state.error = null;
+        });
+        
         try {
-          // Simuler un délai d'API
-          await delay(500);
+          // Calculer les statistiques à partir des salles actuelles
+          const { rooms } = get();
+          const stats: RoomStats = {
+            total: rooms.length,
+            active: rooms.filter(room => room.isActive).length,
+            inactive: rooms.filter(room => !room.isActive).length,
+            byClassLevel: {
+              NSI: rooms.filter(room => room.classLevel === 'NSI').length,
+              NSII: rooms.filter(room => room.classLevel === 'NSII').length,
+              NSIII: rooms.filter(room => room.classLevel === 'NSIII').length,
+              NSIV: rooms.filter(room => room.classLevel === 'NSIV').length
+            },
+            totalCapacity: rooms.reduce((sum, room) => sum + room.capacity, 0),
+            averageCapacity: rooms.length > 0 ? Math.round(rooms.reduce((sum, room) => sum + room.capacity, 0) / rooms.length) : 0
+          };
           
           set(state => {
-            state.stats = mockRoomStats;
+            state.stats = stats;
+            state.loading = false;
           });
           
         } catch (error) {
           set(state => {
+            state.loading = false;
             state.error = {
               message: 'Erreur lors du chargement des statistiques',
-              code: 'STATS_ERROR',
+              code: 'FETCH_STATS_ERROR',
               details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
             };
           });
@@ -365,11 +339,13 @@ export const useRoomStore = create<RoomStore>()(
       },
       
       getRoomsByClassLevel: (classLevel: ClassLevel) => {
-        return getRoomsByClassLevel(classLevel);
+        const { rooms } = get();
+        return rooms.filter(room => room.classLevel === classLevel);
       },
       
       getRoomById: (id: string) => {
-        return getRoomById(id);
+        const { rooms } = get();
+        return rooms.find(room => room.id === id);
       }
     }))
   )

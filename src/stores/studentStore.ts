@@ -18,18 +18,11 @@ import {
   ApiError 
 } from '../types/student';
 
-import { 
-  mockStudents, 
-  delay, 
-  generateStudentId, 
-  searchStudents, 
-  sortStudents, 
-  paginateStudents,
-  calculateStudentStats
-} from '../data/mockStudents';
-import { getRoomNameById } from '../data/mockRooms';
+// Suppression des imports de données mock - utilisation des données réelles uniquement
 
 import { CreateStudentFormData, UpdateStudentFormData } from '../schemas/studentSchema';
+import { studentsService } from '../services/students/studentsService';
+import type { Responsable, ResponsableDTO, AddStudentApiPayload } from '../services/students/studentsService';
 
 // =====================================================
 // INTERFACE DU STORE
@@ -37,9 +30,11 @@ import { CreateStudentFormData, UpdateStudentFormData } from '../schemas/student
 interface StudentStore {
   // État
   students: Student[];
+  allStudents: Student[]; // Tous les étudiants pour recherche et stats
   loading: boolean;
   error: ApiError | null;
   loadingAction: 'create' | 'update' | 'delete' | null;
+  responsables: Responsable[];
   
   // Filtres et pagination
   filters: StudentFilters;
@@ -52,6 +47,7 @@ interface StudentStore {
   // Actions principales
   fetchStudents: () => Promise<void>;
   createStudent: (data: CreateStudentFormData) => Promise<void>;
+  createStudentApi: (payload: AddStudentApiPayload) => Promise<void>;
   updateStudent: (data: UpdateStudentFormData & { id: string }) => Promise<void>;
   deleteStudent: (id: string) => Promise<void>;
   
@@ -59,50 +55,177 @@ interface StudentStore {
   setFilters: (filters: Partial<StudentFilters>) => void;
   setSortOptions: (sort: { field: string; order: 'asc' | 'desc' }) => void;
   changePage: (page: number) => void;
+  applyFiltersLocally: () => void;
   
   // Actions utilitaires
   clearError: () => void;
   resetFilters: () => void;
   fetchStats: () => Promise<void>;
+  
+  // Actions pour les responsables
+  fetchResponsables: () => Promise<void>;
+  createResponsable: (dto: ResponsableDTO) => Promise<Responsable>;
+  
+  // Nouvelles actions pour les endpoints spécifiques
+  getStudentByMatricule: (matricule: string) => Promise<Student | null>;
+  getStudentsByClassroom: (classroomId: string) => Promise<Student[]>;
+  getStudentsByRoom: (roomId: string) => Promise<Student[]>;
+  getStudentById: (id: string) => Promise<Student | null>;
+  updateStudentApi: (id: string, updateData: Partial<AddStudentApiPayload>) => Promise<void>;
 }
 
 // =====================================================
-// UTILITAIRES POUR LA CONVERSION DES DONNÉES
+// UTILITAIRES POUR LA RECHERCHE ET FILTRAGE
 // =====================================================
 
-// Convertir CreateStudentFormData en Student
-const convertFormDataToStudent = (data: CreateStudentFormData): Student => {
-  return {
-    id: generateStudentId(),
-    firstName: data.firstName,
-    lastName: data.lastName,
-    gender: data.gender,
-    dateOfBirth: new Date(data.dateOfBirth).toISOString(),
-    placeOfBirth: data.placeOfBirth,
-    email: data.email,
-    ninthGradeOrderNumber: data.ninthGradeOrderNumber,
-    level: data.level,
-    grade: data.grade,
-    roomId: data.roomId === 'none' ? undefined : data.roomId,
-    roomName: data.roomId && data.roomId !== 'none' ? getRoomNameById(data.roomId) : undefined,
-    ninthGradeSchool: data.ninthGradeSchool,
-    ninthGradeGraduationYear: data.ninthGradeGraduationYear,
-    lastSchool: data.lastSchool,
-    enrollmentDate: new Date(data.enrollmentDate).toISOString(),
-    studentId: data.studentId,
+// Fonction pour convertir les données API en Student
+const convertApiStudentToStudent = (student: any): Student => {
+  console.log('Conversion API Student:', student);
+  
+  const converted = {
+    id: student.id,
+    firstName: student.user?.firstName || '',
+    lastName: student.user?.lastName || '',
+    gender: (student.sexe === 'Homme' ? 'male' : 'female') as 'male' | 'female',
+    dateOfBirth: student.dateOfBirth,
+    placeOfBirth: student.lieuDeNaissance || '',
+    email: student.user?.email || '',
+    level: student.niveauEnseignement || '',
+    grade: student.niveauEtude || '',
+    roomId: student.room?.id || '',
+    roomName: student.room?.name || '',
+    studentId: student.matricule || '',
+    enrollmentDate: student.user?.createdAt || new Date().toISOString(),
+    status: (student.user?.isActive ? 'active' : 'inactive') as 'active' | 'inactive' | 'suspended',
+    avatar: student.user?.avatarUrl || '',
+    ninthGradeOrderNumber: '',
+    ninthGradeSchool: '',
+    ninthGradeGraduationYear: '',
+    lastSchool: '',
     parentContact: {
-      fatherName: data.parentContact.fatherName,
-      motherName: data.parentContact.motherName,
-      responsiblePerson: data.parentContact.responsiblePerson,
-      phone: data.parentContact.phone,
-      email: data.parentContact.email,
-      address: data.parentContact.address,
-      relationship: data.parentContact.relationship
+      fatherName: student.nomPere || '',
+      motherName: student.nomMere || '',
+      responsiblePerson: student.personneResponsable?.user?.firstName + ' ' + student.personneResponsable?.user?.lastName || 'Non défini',
+      phone: student.personneResponsable?.user?.phone || '',
+      email: student.personneResponsable?.user?.email || '',
+      address: student.adresse?.adresseLigne1 || '',
+      relationship: student.personneResponsable?.lienParente || 'Tuteur'
     },
-    status: data.status,
-    avatar: data.avatar || undefined,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: student.user?.createdAt || new Date().toISOString(),
+    updatedAt: student.user?.updatedAt || new Date().toISOString()
+  };
+  
+  console.log('Student converti:', converted);
+  return converted;
+};
+
+// Fonction pour filtrer les étudiants
+const filterStudents = (students: Student[], filters: StudentFilters): Student[] => {
+  console.log('Filtrage des étudiants:', { totalStudents: students.length, filters });
+  
+  return students.filter(student => {
+    // Recherche par nom, prénom, email, matricule
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      const matchesSearch = 
+        student.firstName.toLowerCase().includes(searchTerm) ||
+        student.lastName.toLowerCase().includes(searchTerm) ||
+        (student.email?.toLowerCase().includes(searchTerm) || false) ||
+        student.studentId.toLowerCase().includes(searchTerm);
+      if (!matchesSearch) return false;
+    }
+    
+    // Filtre par classe/grade
+    if (filters.grade && student.grade !== filters.grade) {
+      console.log(`Étudiant ${student.firstName} ${student.lastName} exclu par grade: ${student.grade} !== ${filters.grade}`);
+      return false;
+    }
+    
+    // Filtre par salle
+    if (filters.roomId && student.roomId !== filters.roomId) {
+      console.log(`Étudiant ${student.firstName} ${student.lastName} exclu par salle: ${student.roomId} !== ${filters.roomId}`);
+      return false;
+    }
+    
+    // Filtre par statut
+    if (filters.status && student.status !== filters.status) {
+      console.log(`Étudiant ${student.firstName} ${student.lastName} exclu par statut: ${student.status} !== ${filters.status}`);
+      return false;
+    }
+    
+    // Filtre par genre - conversion nécessaire car les filtres utilisent 'Homme'/'Femme' mais student.gender est 'male'/'female'
+    if (filters.gender) {
+      let expectedGender: string;
+      if (filters.gender === 'Homme') {
+        expectedGender = 'male';
+      } else if (filters.gender === 'Femme') {
+        expectedGender = 'female';
+      } else {
+        expectedGender = filters.gender;
+      }
+      
+      if (student.gender !== expectedGender) {
+        console.log(`Étudiant ${student.firstName} ${student.lastName} exclu par genre: ${student.gender} !== ${expectedGender} (filtre: ${filters.gender})`);
+        return false;
+      }
+    }
+    
+    // Filtre par année d'inscription
+    if (filters.enrollmentYear) {
+      const enrollmentYear = new Date(student.enrollmentDate).getFullYear();
+      if (enrollmentYear !== filters.enrollmentYear) return false;
+    }
+    
+    return true;
+  });
+};
+
+// Fonction pour trier les étudiants
+const sortStudents = (students: Student[], sortOptions: { field: string; order: 'asc' | 'desc' }): Student[] => {
+  return [...students].sort((a, b) => {
+    const aValue = (a as any)[sortOptions.field];
+    const bValue = (b as any)[sortOptions.field];
+    
+    if (aValue < bValue) return sortOptions.order === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortOptions.order === 'asc' ? 1 : -1;
+    return 0;
+  });
+};
+
+// Fonction pour paginer les étudiants
+const paginateStudents = (students: Student[], page: number, limit: number) => {
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+  return students.slice(startIndex, endIndex);
+};
+
+// Fonction pour calculer les statistiques
+const calculateStudentStats = (students: Student[]): StudentStats => {
+  const total = students.length;
+  const active = students.filter(s => s.status === 'active').length;
+  const inactive = students.filter(s => s.status === 'inactive').length;
+  const suspended = students.filter(s => s.status === 'suspended').length;
+  
+  const byGender = {
+    male: students.filter(s => s.gender === 'male').length,
+    female: students.filter(s => s.gender === 'female').length
+  };
+  
+  const byGrade: Record<string, number> = {};
+  students.forEach(student => {
+    byGrade[student.grade] = (byGrade[student.grade] || 0) + 1;
+  });
+  
+  const uniqueGrades = new Set(students.map(s => s.grade));
+  
+  return {
+    total,
+    active,
+    inactive,
+    suspended,
+    totalClasses: uniqueGrades.size,
+    byGender,
+    byGrade
   };
 };
 
@@ -116,9 +239,11 @@ export const useStudentStore = create<StudentStore>()(
       // ÉTAT INITIAL
       // =====================================================
       students: [],
+      allStudents: [], // Tous les étudiants pour recherche et stats
       loading: false,
       error: null,
       loadingAction: null,
+      responsables: [],
       
       // Filtres et pagination
       filters: {
@@ -153,30 +278,37 @@ export const useStudentStore = create<StudentStore>()(
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1000);
+          const { pagination } = get();
           
-          const { filters, sortOptions, pagination } = get();
+          // Utiliser l'API réelle au lieu des données mockées
+          const apiResponse = await studentsService.getAllStudents(pagination.page, pagination.limit);
           
-          // Appliquer les filtres
-          let filteredStudents = searchStudents(mockStudents, filters.search || '', {
-            grade: filters.grade || undefined,
-            status: filters.status || undefined,
-            gender: filters.gender || undefined,
-            roomId: filters.roomId || undefined
-          });
+          // Récupérer aussi tous les étudiants pour la recherche et les stats
+          const allStudentsResponse = await studentsService.getAllStudentsComplete();
+          const allConvertedStudents = allStudentsResponse.data.map(convertApiStudentToStudent);
           
-          // Appliquer le tri
-          filteredStudents = sortStudents(filteredStudents, sortOptions.field as keyof Student, sortOptions.order);
+          // Appliquer les filtres et le tri sur tous les étudiants
+          const { filters, sortOptions } = get();
+          const filteredStudents = filterStudents(allConvertedStudents, filters);
+          const sortedStudents = sortStudents(filteredStudents, sortOptions);
           
-          // Appliquer la pagination
-          const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
+          // Paginer les résultats filtrés
+          const paginatedStudents = paginateStudents(sortedStudents, pagination.page, pagination.limit);
           
           set(state => {
-            state.students = paginatedResult.data;
-            state.pagination = paginatedResult.pagination;
+            state.allStudents = allConvertedStudents;
+            state.students = paginatedStudents;
+            state.pagination = {
+              page: pagination.page,
+              limit: pagination.limit,
+              total: filteredStudents.length,
+              totalPages: Math.ceil(filteredStudents.length / pagination.limit)
+            };
             state.loading = false;
           });
+          
+          // Calculer les statistiques automatiquement après le chargement des données
+          await get().fetchStats();
           
         } catch (error) {
           set(state => {
@@ -191,35 +323,63 @@ export const useStudentStore = create<StudentStore>()(
       },
       
       createStudent: async (data: CreateStudentFormData) => {
+        // Cette méthode est dépréciée - utiliser createStudentApi à la place
+        throw new Error('Méthode dépréciée - utiliser createStudentApi');
+      },
+
+      // Méthodes pour les responsables
+      fetchResponsables: async () => {
+        try {
+          set(state => { state.loading = true; });
+          const responsables = await studentsService.getResponsables();
+          set(state => { 
+            state.responsables = responsables;
+            state.loading = false;
+          });
+        } catch (error) {
+          console.error('Erreur lors du chargement des responsables:', error);
+          set(state => { state.loading = false; });
+          throw error;
+        }
+      },
+      createResponsable: async (dto: ResponsableDTO) => {
+        try {
+          const created = await studentsService.addResponsable(dto);
+          set(state => {
+            state.responsables = [created, ...state.responsables];
+          });
+          return created;
+        } catch (error) {
+          set(state => {
+            state.error = {
+              message: 'Erreur lors de la création du responsable',
+              code: 'RESPONSABLE_CREATE_ERROR',
+              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
+            };
+          });
+          throw error;
+        }
+      },
+
+      // -------- Création élève via API officielle (multipart) --------
+      createStudentApi: async (payload: AddStudentApiPayload) => {
         set(state => {
           state.loadingAction = 'create';
           state.error = null;
         });
-        
         try {
-          // Simuler un délai d'API
-          await delay(1500);
-          
-          // Créer le nouvel élève
-          const newStudent = convertFormDataToStudent(data);
-          
-          // Ajouter à la liste des élèves mock
-          mockStudents.push(newStudent);
-          
-          // Mettre à jour l'état
+          await studentsService.addStudent(payload);
           set(state => {
             state.loadingAction = null;
           });
-          
-          // Recharger les données
+          // Après succès, recharger (pour l'instant on reste sur mock list)
           await get().fetchStudents();
-          
         } catch (error) {
           set(state => {
             state.loadingAction = null;
             state.error = {
-              message: 'Erreur lors de la création de l\'élève',
-              code: 'CREATE_ERROR',
+              message: 'Erreur lors de la création de l\'élève (API)',
+              code: 'CREATE_API_ERROR',
               details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
             };
           });
@@ -227,117 +387,14 @@ export const useStudentStore = create<StudentStore>()(
         }
       },
       
-      updateStudent: async (data: any) => {
-        set(state => {
-          state.loadingAction = 'update';
-          state.error = null;
-        });
-        
-        try {
-          // Simuler un délai d'API
-          await delay(1500);
-          
-          // Trouver l'élève à mettre à jour
-          const existingStudentIndex = mockStudents.findIndex(s => s.id === data.id);
-          if (existingStudentIndex === -1) {
-            throw new Error('Élève non trouvé');
-          }
-          
-          const existingStudent = mockStudents[existingStudentIndex];
-          
-          // Créer l'élève mis à jour avec les nouvelles données
-          const updatedStudent: Student = {
-            ...existingStudent,
-            firstName: data.firstName !== undefined ? data.firstName : existingStudent.firstName,
-            lastName: data.lastName !== undefined ? data.lastName : existingStudent.lastName,
-            gender: data.gender !== undefined ? data.gender : existingStudent.gender,
-            dateOfBirth: data.dateOfBirth !== undefined ? new Date(data.dateOfBirth).toISOString() : existingStudent.dateOfBirth,
-            placeOfBirth: data.placeOfBirth !== undefined ? data.placeOfBirth : existingStudent.placeOfBirth,
-            email: data.email !== undefined ? data.email : existingStudent.email,
-            ninthGradeOrderNumber: data.ninthGradeOrderNumber !== undefined ? data.ninthGradeOrderNumber : existingStudent.ninthGradeOrderNumber,
-            level: data.level !== undefined ? data.level : existingStudent.level,
-            grade: data.grade !== undefined ? data.grade : existingStudent.grade,
-            roomId: data.roomId !== undefined ? (data.roomId === 'none' ? undefined : data.roomId) : existingStudent.roomId,
-            roomName: data.roomId !== undefined ? (data.roomId && data.roomId !== 'none' ? getRoomNameById(data.roomId) : undefined) : existingStudent.roomName,
-            ninthGradeSchool: data.ninthGradeSchool !== undefined ? data.ninthGradeSchool : existingStudent.ninthGradeSchool,
-            ninthGradeGraduationYear: data.ninthGradeGraduationYear !== undefined ? data.ninthGradeGraduationYear : existingStudent.ninthGradeGraduationYear,
-            lastSchool: data.lastSchool !== undefined ? data.lastSchool : existingStudent.lastSchool,
-            enrollmentDate: data.enrollmentDate !== undefined ? new Date(data.enrollmentDate).toISOString() : existingStudent.enrollmentDate,
-            studentId: data.studentId !== undefined ? data.studentId : existingStudent.studentId,
-            status: data.status !== undefined ? data.status : existingStudent.status,
-            avatar: data.avatar !== undefined ? data.avatar : existingStudent.avatar,
-            parentContact: data.parentContact !== undefined ? {
-              fatherName: data.parentContact.fatherName !== undefined ? data.parentContact.fatherName : existingStudent.parentContact.fatherName,
-              motherName: data.parentContact.motherName !== undefined ? data.parentContact.motherName : existingStudent.parentContact.motherName,
-              responsiblePerson: data.parentContact.responsiblePerson !== undefined ? data.parentContact.responsiblePerson : existingStudent.parentContact.responsiblePerson,
-              phone: data.parentContact.phone !== undefined ? data.parentContact.phone : existingStudent.parentContact.phone,
-              email: data.parentContact.email !== undefined ? data.parentContact.email : existingStudent.parentContact.email,
-              address: data.parentContact.address !== undefined ? data.parentContact.address : existingStudent.parentContact.address,
-              relationship: data.parentContact.relationship !== undefined ? data.parentContact.relationship : existingStudent.parentContact.relationship
-            } : existingStudent.parentContact,
-            updatedAt: new Date().toISOString()
-          };
-          
-          // Mettre à jour dans la liste mock
-          mockStudents[existingStudentIndex] = updatedStudent;
-          
-          set(state => {
-            state.loadingAction = null;
-          });
-          
-          // Recharger les données
-          await get().fetchStudents();
-          
-        } catch (error) {
-          set(state => {
-            state.loadingAction = null;
-            state.error = {
-              message: 'Erreur lors de la mise à jour de l\'élève',
-              code: 'UPDATE_ERROR',
-              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
-            };
-          });
-          throw error;
-        }
+      updateStudent: async (data: UpdateStudentFormData & { id: string }) => {
+        // Cette méthode sera implémentée avec l'API réelle plus tard
+        throw new Error('Méthode non implémentée - API update à venir');
       },
       
       deleteStudent: async (id: string) => {
-        set(state => {
-          state.loadingAction = 'delete';
-          state.error = null;
-        });
-        
-        try {
-          // Simuler un délai d'API
-          await delay(1000);
-          
-          // Trouver l'index de l'élève à supprimer
-          const studentIndex = mockStudents.findIndex(s => s.id === id);
-          if (studentIndex === -1) {
-            throw new Error('Élève non trouvé');
-          }
-          
-          // Supprimer l'élève de la liste mock
-          mockStudents.splice(studentIndex, 1);
-          
-          set(state => {
-            state.loadingAction = null;
-          });
-          
-          // Recharger les données
-          await get().fetchStudents();
-          
-        } catch (error) {
-          set(state => {
-            state.loadingAction = null;
-            state.error = {
-              message: 'Erreur lors de la suppression de l\'élève',
-              code: 'DELETE_ERROR',
-              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
-            };
-          });
-          throw error;
-        }
+        // Cette méthode sera implémentée avec l'API réelle plus tard
+        throw new Error('Méthode non implémentée - API delete à venir');
       },
       
       // =====================================================
@@ -350,74 +407,55 @@ export const useStudentStore = create<StudentStore>()(
           state.pagination.page = 1; // Reset à la première page
         });
         
-        // ✨ Appliquer les filtres IMMÉDIATEMENT sans loading ni delay
-        const { filters, sortOptions, pagination } = get();
-        
-        let filteredStudents = searchStudents(mockStudents, filters.search || '', {
-          grade: filters.grade || undefined,
-          status: filters.status || undefined,
-          gender: filters.gender || undefined,
-          roomId: filters.roomId || undefined
-        });
-        
-        // Appliquer le tri
-        filteredStudents = sortStudents(filteredStudents, sortOptions.field as keyof Student, sortOptions.order);
-        
-        // Appliquer la pagination
-        const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
-        
-        set(state => {
-          state.students = paginatedResult.data;
-          state.pagination = paginatedResult.pagination;
-        });
+        // Appliquer les filtres localement sans recharger depuis l'API
+        get().applyFiltersLocally();
       },
       
-      setSortOptions: (sort: { field: string; order: 'asc' | 'desc' }) => {
-        set(state => {
-          state.sortOptions = sort;
-        });
+      // Nouvelle méthode pour appliquer les filtres localement
+      applyFiltersLocally: () => {
+        const { allStudents, filters, sortOptions, pagination } = get();
         
-        // ✨ Appliquer le tri IMMÉDIATEMENT sans loading ni delay
-        const { filters, sortOptions, pagination } = get();
+        if (!allStudents || allStudents.length === 0) {
+          // Si pas de données, charger depuis l'API
+          get().fetchStudents();
+          return;
+        }
         
-        let filteredStudents = searchStudents(mockStudents, filters.search || '', {
-          grade: filters.grade || undefined,
-          status: filters.status || undefined,
-          gender: filters.gender || undefined,
-          roomId: filters.roomId || undefined
-        });
-        
-        filteredStudents = sortStudents(filteredStudents, sortOptions.field as keyof Student, sortOptions.order);
-        const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
+        // Appliquer les filtres sur les données déjà chargées
+        const filteredStudents = filterStudents(allStudents, filters);
+        const sortedStudents = sortStudents(filteredStudents, sortOptions);
+        const paginatedStudents = paginateStudents(sortedStudents, pagination.page, pagination.limit);
         
         set(state => {
-          state.students = paginatedResult.data;
-          state.pagination = paginatedResult.pagination;
+          state.students = paginatedStudents;
+          state.pagination = {
+            page: pagination.page,
+            limit: pagination.limit,
+            total: filteredStudents.length,
+            totalPages: Math.ceil(filteredStudents.length / pagination.limit)
+          };
         });
+        
+        // Recalculer les statistiques avec les données filtrées
+        get().fetchStats();
       },
       
-      changePage: (page: number) => {
+      setSortOptions: (newSort: { field: string; order: 'asc' | 'desc' }) => {
         set(state => {
-          state.pagination.page = page;
+          state.sortOptions = newSort;
         });
         
-        // ✨ Appliquer la pagination IMMÉDIATEMENT sans loading ni delay
-        const { filters, sortOptions, pagination } = get();
-        
-        let filteredStudents = searchStudents(mockStudents, filters.search || '', {
-          grade: filters.grade || undefined,
-          status: filters.status || undefined,
-          gender: filters.gender || undefined,
-          roomId: filters.roomId || undefined
-        });
-        
-        filteredStudents = sortStudents(filteredStudents, sortOptions.field as keyof Student, sortOptions.order);
-        const paginatedResult = paginateStudents(filteredStudents, pagination.page, pagination.limit);
-        
+        // Appliquer le tri localement
+        get().applyFiltersLocally();
+      },
+      
+      changePage: (newPage: number) => {
         set(state => {
-          state.students = paginatedResult.data;
-          state.pagination = paginatedResult.pagination;
+          state.pagination.page = newPage;
         });
+        
+        // Appliquer la pagination localement
+        get().applyFiltersLocally();
       },
       
       // =====================================================
@@ -434,38 +472,175 @@ export const useStudentStore = create<StudentStore>()(
         set(state => {
           state.filters = {
             search: '',
-            grade: '',
+            grade: undefined,
             roomId: undefined,
             status: undefined,
+            gender: undefined,
             enrollmentYear: undefined
           };
           state.pagination.page = 1;
         });
         
-        // Recharger les données
-        get().fetchStudents();
+        // Appliquer la remise à zéro localement
+        get().applyFiltersLocally();
       },
       
       fetchStats: async () => {
         try {
-          // Simuler un délai d'API
-          await delay(500);
+          // Calculer les stats à partir de tous les étudiants réels
+          const { allStudents } = get();
           
-          // Calculer les statistiques basées sur les données mockées
-          const stats = calculateStudentStats(mockStudents);
+          // Vérifier que nous avons des données
+          if (!allStudents || allStudents.length === 0) {
+            console.log('Aucun étudiant trouvé pour calculer les statistiques');
+            return;
+          }
+          
+          console.log('Calcul des statistiques pour', allStudents.length, 'étudiants');
+          const stats = calculateStudentStats(allStudents);
+          console.log('Statistiques calculées:', stats);
           
           set(state => {
             state.stats = stats;
           });
-          
         } catch (error) {
-          set(state => {
+          console.error('Erreur lors du calcul des statistiques:', error);
+        }
+      },
+
+      // =====================================================
+      // NOUVELLES ACTIONS POUR LES ENDPOINTS SPÉCIFIQUES
+      // =====================================================
+
+      // GET /students/by-matricule/{matricule}
+      getStudentByMatricule: async (matricule: string) => {
+        try {
+          set(state => { state.loading = true; });
+          const apiStudent = await studentsService.getStudentByMatricule(matricule);
+          const student = convertApiStudentToStudent(apiStudent);
+          set(state => { state.loading = false; });
+          return student;
+        } catch (error) {
+          console.error('Erreur lors de la recherche par matricule:', error);
+          set(state => { 
+            state.loading = false;
             state.error = {
-              message: 'Erreur lors du chargement des statistiques',
-              code: 'STATS_ERROR',
+              message: 'Erreur lors de la recherche par matricule',
+              code: 'STUDENT_BY_MATRICULE_ERROR',
+              details: error instanceof Error ? [{ field: 'matricule', message: error.message }] : []
+            };
+          });
+          return null;
+        }
+      },
+
+      // GET /students/by-classroom/{classroomId}
+      getStudentsByClassroom: async (classroomId: string) => {
+        try {
+          set(state => { state.loading = true; });
+          const apiStudents = await studentsService.getStudentsByClassroom(classroomId);
+          const students = apiStudents.map(convertApiStudentToStudent);
+          
+          // Mettre à jour les étudiants affichés avec les résultats filtrés
+          set(state => { 
+            state.students = students;
+            state.loading = false; 
+          });
+          
+          return students;
+        } catch (error) {
+          console.error('Erreur lors de la recherche par classe:', error);
+          set(state => { 
+            state.loading = false;
+            state.error = {
+              message: 'Erreur lors de la recherche par classe',
+              code: 'STUDENTS_BY_CLASSROOM_ERROR',
+              details: error instanceof Error ? [{ field: 'classroomId', message: error.message }] : []
+            };
+          });
+          return [];
+        }
+      },
+
+      // GET /students/by-room/{roomId}
+      getStudentsByRoom: async (roomId: string) => {
+        try {
+          set(state => { state.loading = true; });
+          const apiStudents = await studentsService.getStudentsByRoom(roomId);
+          const students = apiStudents.map(convertApiStudentToStudent);
+          
+          // Mettre à jour les étudiants affichés avec les résultats filtrés
+          set(state => { 
+            state.students = students;
+            state.loading = false; 
+          });
+          
+          return students;
+        } catch (error) {
+          console.error('Erreur lors de la recherche par salle:', error);
+          set(state => { 
+            state.loading = false;
+            state.error = {
+              message: 'Erreur lors de la recherche par salle',
+              code: 'STUDENTS_BY_ROOM_ERROR',
+              details: error instanceof Error ? [{ field: 'roomId', message: error.message }] : []
+            };
+          });
+          return [];
+        }
+      },
+
+      // GET /students/{id}
+      getStudentById: async (id: string) => {
+        try {
+          set(state => { state.loading = true; });
+          const apiStudent = await studentsService.getStudentById(id);
+          const student = convertApiStudentToStudent(apiStudent);
+          set(state => { state.loading = false; });
+          return student;
+        } catch (error) {
+          console.error('Erreur lors de la recherche par ID:', error);
+          set(state => { 
+            state.loading = false;
+            state.error = {
+              message: 'Erreur lors de la recherche par ID',
+              code: 'STUDENT_BY_ID_ERROR',
+              details: error instanceof Error ? [{ field: 'id', message: error.message }] : []
+            };
+          });
+          return null;
+        }
+      },
+
+      // PATCH /students/{id}
+      updateStudentApi: async (id: string, updateData: Partial<AddStudentApiPayload>) => {
+        try {
+          set(state => { 
+            state.loading = true;
+            state.loadingAction = 'update';
+          });
+          
+          await studentsService.updateStudent(id, updateData);
+          
+          // Recharger la liste des étudiants après mise à jour
+          await get().fetchStudents();
+          
+          set(state => { 
+            state.loading = false;
+            state.loadingAction = null;
+          });
+        } catch (error) {
+          console.error('Erreur lors de la mise à jour:', error);
+          set(state => { 
+            state.loading = false;
+            state.loadingAction = null;
+            state.error = {
+              message: 'Erreur lors de la mise à jour de l\'étudiant',
+              code: 'STUDENT_UPDATE_ERROR',
               details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
             };
           });
+          throw error;
         }
       }
     }))

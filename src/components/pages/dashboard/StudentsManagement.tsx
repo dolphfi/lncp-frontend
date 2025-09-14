@@ -26,34 +26,54 @@ import {
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
-import { Card, CardContent } from '../../ui/card';
+import { 
+  DataTable, 
+  Column, 
+  RowAction 
+} from '../../ui/data-table';
 import { Badge } from '../../ui/badge';
 import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from '../../ui/card';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from '../../ui/dialog';
 import { Alert, AlertDescription } from '../../ui/alert';
-import { DataTable } from '../../ui/data-table';
-import type { Column, RowAction } from '../../ui/data-table';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '../../ui/dropdown-menu';
-
-import { StudentForm } from '../../forms/StudentForm';
 import {
-  useStudentStore
-} from '../../../stores/studentStore';
-import { Student } from '../../../types/student';
-import { CreateStudentFormData } from '../../../schemas/studentSchema';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../ui/dropdown-menu';
+import { toast } from 'react-toastify';
+
+// Import des types
+import { Student, StudentFilters, StudentStats } from '../../../types/student';
+
+// Import des stores
+import { useStudentStore } from '../../../stores/studentStore';
 import { useRoomStore } from '../../../stores/roomStore';
+import { useClassroomStore } from '../../../stores/classroomStore';
+
+// Import des composants de formulaire
+import { StudentForm } from '../../forms/StudentForm';
+import AddStudentModal from '../../forms/AddStudentModal';
+
+// Import du hook de debouncing
+import { useDebounce } from '../../../hooks/useDebounce';
+import { CreateStudentFormData } from '../../../schemas/studentSchema';
+import { API_CONFIG } from '../../../config/api';
+import { AddStudentApiPayload } from '../../../services/students/studentsService';
 
 // =====================================================
 // COMPOSANT PRINCIPAL DE GESTION DES ÉLÈVES
@@ -65,6 +85,7 @@ export const StudentsManagement: React.FC = () => {
   // =====================================================
   const navigate = useNavigate();
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
@@ -85,15 +106,21 @@ export const StudentsManagement: React.FC = () => {
     
     // Actions
     fetchStudents,
-    createStudent,
+    createStudent, // mock path (conservé)
+    createStudentApi,
     updateStudent,
     deleteStudent,
     setFilters,
     setSortOptions,
     changePage,
     clearError,
-    fetchStats
+    fetchStats,
+    getStudentsByClassroom,
+    getStudentsByRoom
   } = useStudentStore();
+
+  // Classes (niveaux) pour récupérer classroomId depuis le grade
+  const { items: classrooms, fetchAll: fetchClassrooms } = useClassroomStore();
 
   // Récupération des salles pour les filtres
   const { rooms, fetchRooms } = useRoomStore();
@@ -102,11 +129,12 @@ export const StudentsManagement: React.FC = () => {
   // CHARGEMENT INITIAL DES DONNÉES
   // =====================================================
   useEffect(() => {
-    // Charger les élèves et les statistiques au montage du composant
+    // Charger les élèves (les stats seront calculées automatiquement après)
     fetchStudents();
-    fetchStats();
     fetchRooms();
-  }, [fetchStudents, fetchStats, fetchRooms]);
+    // Charger les classes pour mapping grade -> classroomId
+    fetchClassrooms(1, 50);
+  }, [fetchStudents, fetchRooms, fetchClassrooms]);
   
   // =====================================================
   // CONFIGURATION DES COLONNES DE LA TABLE
@@ -263,14 +291,186 @@ export const StudentsManagement: React.FC = () => {
   // GESTIONNAIRES D'ÉVÉNEMENTS
   // =====================================================
   
+  // =====================================================
+  // GESTION DES FILTRES PAR CLASSE ET SALLE
+  // =====================================================
+  
+  const handleClassroomFilter = async (grade: string, className: string) => {
+    try {
+      // Les grades des étudiants sont comme "NS I", "NS II", etc.
+      // Chercher d'abord par correspondance exacte avec le grade des étudiants
+      let classroom = classrooms.find(c => 
+        c.name === grade || 
+        c.level === grade
+      );
+      
+      // Si pas trouvé, essayer des correspondances partielles
+      if (!classroom) {
+        classroom = classrooms.find(c => 
+          c.name?.includes(grade) ||
+          c.level?.includes(grade) ||
+          grade.includes(c.name || '') ||
+          grade.includes(c.level || '')
+        );
+      }
+      
+      // Si toujours pas trouvé, créer un mapping manuel basé sur les données visibles
+      if (!classroom && classrooms.length > 0) {
+        // Essayer de mapper NS I -> première classe, NS II -> deuxième, etc.
+        const gradeToIndex = {
+          'NS I': 0,
+          'NS II': 1, 
+          'NS III': 2,
+          'NS IV': 3
+        };
+        const index = gradeToIndex[grade as keyof typeof gradeToIndex];
+        if (index !== undefined && classrooms[index]) {
+          classroom = classrooms[index];
+          console.log(`Mapping manuel: ${grade} -> ${classroom.name} (${classroom.id})`);
+        }
+      }
+      
+      if (!classroom) {
+        console.error(`Classe ${grade} non trouvée dans:`, classrooms.map(c => ({ id: c.id, name: c.name, level: c.level })));
+        toast.error(`Classe ${grade} non trouvée`);
+        return;
+      }
+
+      console.log(`Filtrage par classe: ${grade} -> ${classroom.name} (ID: ${classroom.id})`);
+      const studentsInClassroom = await getStudentsByClassroom(classroom.id);
+      console.log(`Étudiants trouvés pour la classe ${classroom.name}:`, studentsInClassroom);
+      
+      // Les étudiants filtrés sont maintenant automatiquement mis à jour dans le store
+      // Réinitialiser les filtres pour éviter les conflits
+      setFilters({ 
+        search: `Classe: ${className}`,
+        gender: undefined,
+        status: undefined,
+        roomId: undefined
+      });
+    } catch (error) {
+      console.error('Erreur lors du filtrage par classe:', error);
+      toast.error('Erreur lors du chargement des étudiants de la classe');
+    }
+  };
+
+  const handleRoomFilter = async (roomId: string) => {
+    if (!roomId || roomId === 'all') {
+      // Réinitialiser le filtre
+      setFilters({ ...filters, roomId: undefined });
+      return;
+    }
+
+    try {
+      const studentsInRoom = await getStudentsByRoom(roomId);
+      
+      // Mettre à jour le filtre de salle
+      setFilters({ ...filters, roomId });
+    } catch (error) {
+      console.error('Erreur lors du filtrage par salle:', error);
+      toast.error('Erreur lors du chargement des étudiants de la salle');
+    }
+  };
+
   // Gestion de la création d'un nouvel élève
   const handleCreateStudent = async (data: CreateStudentFormData) => {
     try {
-      await createStudent(data);
+      setCreateError(null);
+      if (!API_CONFIG.BASE_URL) {
+        setCreateError("Configuration API manquante: définissez REACT_APP_API_URL dans l'environnement.");
+        return;
+      }
+      // Utiliser l'ID de la classe backend sélectionnée par le formulaire
+      const classroomId = (data as any).selectedClassroomId as string;
+      if (!classroomId) {
+        setCreateError("Veuillez sélectionner une classe (backend).");
+        return;
+      }
+
+      // roomId requis par l'API
+      const selectedRoomId = data.roomId && data.roomId !== 'none' ? data.roomId : '';
+      if (!selectedRoomId) {
+        setCreateError("Veuillez sélectionner une salle (room) pour l'élève.");
+        return;
+      }
+
+      // Construire la partie Responsable selon le mode
+      let personneResponsableId: string | undefined = undefined;
+      let createPersonneResponsable: AddStudentApiPayload['createPersonneResponsable'] | undefined = undefined;
+      const mode = (data as any).responsableMode as ('select'|'create'|undefined);
+      if (mode === 'select' && (data as any).personneResponsableId) {
+        personneResponsableId = (data as any).personneResponsableId as string;
+      } else if ((data as any).responsable) {
+        const r = (data as any).responsable as any;
+        createPersonneResponsable = {
+          firstName: r.firstName,
+          lastName: r.lastName,
+          email: r.email || undefined,
+          phone: r.phone || undefined,
+          lienParente: r.lienParente,
+          nif: r.nif || undefined,
+          ninu: r.ninu || undefined
+        };
+      }
+
+      // Construire l'adresse attendue (objet obligatoire côté API)
+      const rawAdresse = (data as any).adresse;
+      let adresse: any = undefined;
+      if (rawAdresse && typeof rawAdresse === 'string') {
+        try {
+          const parsed = JSON.parse(rawAdresse);
+          adresse = parsed && typeof parsed === 'object' ? parsed : { description: rawAdresse };
+        } catch {
+          adresse = { description: rawAdresse };
+        }
+      } else if (rawAdresse && typeof rawAdresse === 'object') {
+        adresse = rawAdresse;
+      }
+
+      const payload: AddStudentApiPayload = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email || undefined,
+        // Sexe M/F depuis gender
+        sexe: data.gender === 'male' ? 'Homme' : 'Femme',
+        // date-time ISO pour l'API ($date-time)
+        dateOfBirth: new Date(data.dateOfBirth).toISOString().split('T')[0],
+        // Lieu et commune de naissance
+        lieuDeNaissance: data.placeOfBirth,
+        communeDeNaissance: (data as any).communeDeNaissance,
+        // Handicap et adresse
+        hasHandicap: (data as any).hasHandicap ?? false,
+        handicapDetails: (data as any).handicapDetails || undefined,
+        // Adresse objet obligatoire
+        adresse: adresse || { description: '' },
+        // Vacation et niveau d'enseignement
+        vacation: (data as any).vacation === 'AM' ? 'Matin (AM)' : 'Après-midi (PM)',
+        niveauEnseignement: (data as any).niveauEnseignement,
+        // Niveau d'étude = grade (NSI..NSIV)
+        niveauEtude: data.grade === 'NSI' ? 'NS I' : data.grade === 'NSII' ? 'NS II' : data.grade === 'NSIII' ? 'NS III' : 'NS IV',
+        // Infos parents (obligatoires API)
+        nomMere: (data as any).nomMere,
+        prenomMere: (data as any).prenomMere,
+        statutMere: (data as any).statutMere === 'vivant' ? 'Vivant' : 'Mort',
+        occupationMere: (data as any).occupationMere || undefined,
+        nomPere: (data as any).nomPere,
+        prenomPere: (data as any).prenomPere,
+        statutPere: (data as any).statutPere === 'vivant' ? 'Vivant' : 'Mort',
+        occupationPere: (data as any).occupationPere || undefined,
+        // Responsable: id ou création
+        personneResponsableId,
+        createPersonneResponsable,
+        // Classe et salle
+        classroomId,
+        roomId: selectedRoomId
+      };
+
+      await createStudentApi(payload);
       setShowAddDialog(false);
-      // Afficher une notification de succès (à implémenter)
     } catch (error) {
-      // L'erreur est gérée par le store
+      // Erreur gérée par le store, on ajoute un fallback local
+      const message = (error as any)?.message || "Une erreur est survenue lors de la création.";
+      setCreateError(message);
     }
   };
   
@@ -307,9 +507,18 @@ export const StudentsManagement: React.FC = () => {
     }
   };
   
-  // Gestion de la recherche
-  const handleSearch = (searchTerm: string) => {
-    setFilters({ search: searchTerm });
+  // État local pour la recherche avec debouncing
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300); // 300ms de délai
+  
+  // Effet pour appliquer la recherche debouncée
+  useEffect(() => {
+    setFilters({ search: debouncedSearchTerm });
+  }, [debouncedSearchTerm, setFilters]);
+  
+  // Gestion de la recherche (mise à jour immédiate de l'état local)
+  const handleSearch = (searchValue: string) => {
+    setSearchTerm(searchValue);
   };
   
   // ✨ Gestion des filtres avancés
@@ -443,7 +652,17 @@ export const StudentsManagement: React.FC = () => {
                     const color = colors[index % colors.length];
                     
                     return (
-                      <div key={grade} className={`${color.bg} rounded-md p-0.4 px-2 border ${color.border}`}>
+                      <div 
+                        key={grade} 
+                        className={`${color.bg} rounded-md p-0.4 px-2 border ${color.border} cursor-pointer hover:opacity-80 transition-opacity`}
+                        onClick={() => {
+                          console.log('Clic sur grade:', grade);
+                          console.log('Classrooms disponibles:', classrooms.map(c => ({ id: c.id, name: c.name, level: c.level })));
+                          console.log('Students avec ce grade:', students.filter(s => s.grade === grade));
+                          handleClassroomFilter(grade, `${grade}`);
+                        }}
+                        title={`Cliquer pour filtrer les étudiants de ${grade}`}
+                      >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-medium text-gray-600">{grade}</span>
                           <span className={`text-xs font-bold ${color.text}`}>{count}</span>
@@ -562,7 +781,15 @@ export const StudentsManagement: React.FC = () => {
         onPageChange={changePage}
         onSort={handleSort}
         onSearch={handleSearch}
-        onStudentFilter={handleStudentFilter}
+        onStudentFilter={(filters) => {
+          // Gérer le filtre par salle avec l'endpoint
+          if (filters.roomId !== undefined) {
+            handleRoomFilter(filters.roomId);
+          } else {
+            // Autres filtres normaux
+            handleStudentFilter(filters);
+          }
+        }}
         currentFilters={filters}
         rooms={rooms}
         searchPlaceholder="Rechercher par nom, prénom, email ou matricule..."
@@ -575,23 +802,14 @@ export const StudentsManagement: React.FC = () => {
           DIALOGS ET MODALES
           ===================================================== */}
       
-      {/* Dialog d'ajout d'élève */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Ajouter un nouvel élève</DialogTitle>
-            <DialogDescription>
-              Remplissez tous les champs requis pour créer un nouvel élève.
-            </DialogDescription>
-          </DialogHeader>
-          <StudentForm
-            onSubmit={handleCreateStudent}
-            onCancel={() => setShowAddDialog(false)}
-            loading={loadingAction === 'create'}
-            mode="create"
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Dialog d'ajout d'élève (nouveau composant dédié) */}
+      {showAddDialog && (
+        <AddStudentModal 
+          open={showAddDialog} 
+          onOpenChange={setShowAddDialog}
+          onSuccess={() => { fetchStudents(); }}
+        />
+      )}
       
       {/* Dialog de modification d'élève */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>

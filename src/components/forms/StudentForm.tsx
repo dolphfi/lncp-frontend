@@ -26,6 +26,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Alert, AlertDescription } from '../ui/alert';
 
 import { 
   createStudentSchema,
@@ -33,10 +34,15 @@ import {
   GRADE_OPTIONS,
   LEVEL_OPTIONS,
   GENDER_OPTIONS,
-  RELATIONSHIP_OPTIONS
+  RELATIONSHIP_OPTIONS,
+  VACATION_OPTIONS,
+  TEACHING_LEVEL_OPTIONS
 } from '../../schemas/studentSchema';
 import { Student } from '../../types/student';
 import { useRoomStore } from '../../stores/roomStore';
+import useClassroomStore from '../../stores/classroomStore';
+import type { Room } from '../../services/classroomService';
+import { useStudentStore } from '../../stores/studentStore';
 
 // =====================================================
 // TYPES ET INTERFACES
@@ -65,6 +71,9 @@ export const StudentForm: React.FC<StudentFormProps> = ({
   
   // Récupération des salles pour le formulaire
   const { rooms, fetchRooms } = useRoomStore();
+  const { items: classrooms, fetchAll: fetchClassrooms, getDetails } = useClassroomStore();
+  const [classRooms, setClassRooms] = useState<Room[]>([]);
+  const { responsables, fetchResponsables } = useStudentStore();
 
   // =====================================================
   // CONFIGURATION DU FORMULAIRE
@@ -76,8 +85,9 @@ export const StudentForm: React.FC<StudentFormProps> = ({
     formState: { errors, isSubmitting },
     reset,
     setValue,
-    watch
-  } = useForm<StudentFormData>({
+    watch,
+    setFocus
+  } = useForm<any>({
     resolver: zodResolver(createStudentSchema),
     defaultValues: {
       firstName: '',
@@ -85,16 +95,44 @@ export const StudentForm: React.FC<StudentFormProps> = ({
       gender: 'male',
       dateOfBirth: '',
       placeOfBirth: '',
+      communeDeNaissance: '' as any,
       email: '',
       ninthGradeOrderNumber: '',
       level: 'nouveauSecondaire',
       grade: 'NSI',
+      selectedClassroomId: '' as any,
       roomId: 'none',
       ninthGradeSchool: '',
       ninthGradeGraduationYear: '',
       lastSchool: '',
       enrollmentDate: new Date().toISOString().split('T')[0],
       avatar: '',
+      vacation: '' as any,
+      niveauEnseignement: '' as any,
+      hasHandicap: false as any,
+      handicapDetails: '' as any,
+      adresse: '' as any,
+      // Parents (backend)
+      nomMere: '' as any,
+      prenomMere: '' as any,
+      statutMere: '' as any,
+      occupationMere: '' as any,
+      nomPere: '' as any,
+      prenomPere: '' as any,
+      statutPere: '' as any,
+      occupationPere: '' as any,
+      // Responsable
+      responsableMode: 'create' as any,
+      personneResponsableId: '' as any,
+      responsable: {
+        firstName: '' as any,
+        lastName: '' as any,
+        email: '' as any,
+        phone: '' as any,
+        lienParente: '' as any,
+        nif: '' as any,
+        ninu: '' as any
+      } as any,
       parentContact: {
         fatherName: '',
         motherName: '',
@@ -108,18 +146,22 @@ export const StudentForm: React.FC<StudentFormProps> = ({
     }
   });
 
-  // Surveiller la classe sélectionnée pour filtrer les salles
-  const selectedGrade = watch('grade');
+  // Surveiller la classe sélectionnée (backend) pour charger ses salles
+  const selectedClassroomId = watch('selectedClassroomId' as any);
 
   // =====================================================
   // CHARGEMENT DES SALLES
   // =====================================================
   useEffect(() => {
     fetchRooms();
+    // Charger les classes pour piloter le grade
+    try { fetchClassrooms(1, 50); } catch {}
+    // Charger la liste des personnes responsables
+    try { fetchResponsables(); } catch {}
   }, [fetchRooms]);
 
-  // Filtrer les salles par classe
-  const filteredRooms = rooms.filter(room => room.classLevel === selectedGrade);
+  // Salles proposées = salles de la classe backend sélectionnée (si présentes)
+  const filteredRooms = classRooms?.length ? classRooms : [];
 
   // =====================================================
   // EFFET POUR PRÉREMPLIR LE FORMULAIRE EN MODE ÉDITION
@@ -162,6 +204,30 @@ export const StudentForm: React.FC<StudentFormProps> = ({
   // =====================================================
   // GESTION DE LA SOUMISSION
   // =====================================================
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const extractFirstErrorMessage = (e: any): string | null => {
+    if (!e) return null;
+    if (typeof e.message === 'string') return e.message;
+    // Explorer récursivement le premier sous-champ en erreur
+    for (const key of Object.keys(e)) {
+      const val = (e as any)[key];
+      const msg = extractFirstErrorMessage(val);
+      if (msg) return msg;
+    }
+    return null;
+  };
+
+  const onInvalid = (errs: any) => {
+    // Tenter de se focaliser sur le premier champ en erreur connu
+    const keys = Object.keys(errs || {});
+    if (keys.length) {
+      try { setFocus(keys[0] as any); } catch {}
+    }
+    const msg = extractFirstErrorMessage(errs) || 'Veuillez corriger les champs en erreur.';
+    setFormError(msg);
+  };
+
   const onFormSubmit = (data: StudentFormData) => {
     // Convertir "none" en undefined pour roomId
     const formData = {
@@ -208,7 +274,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
   }: { 
     label: string; 
     required?: boolean; 
-    error?: string; 
+    error?: React.ReactNode; 
     children: React.ReactNode;
   }) => (
     <div className="space-y-2">
@@ -227,7 +293,12 @@ export const StudentForm: React.FC<StudentFormProps> = ({
   // =====================================================
   return (
     <div className="w-full space-y-4">
-      <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onFormSubmit as any, onInvalid)} className="space-y-4">
+        {formError && (
+          <Alert variant="destructive">
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
+        )}
         {/* =====================================================
             SECTION 1: INFORMATIONS PERSONNELLES + PHOTO
         ===================================================== */}
@@ -241,7 +312,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           <CardContent className="p-4 space-y-4">
             {/* Ligne 1: Nom, Prénom, Sexe */}
             <div className="grid grid-cols-3 gap-4">
-              <FormField label="Nom" required error={errors.lastName?.message}>
+              <FormField label="Nom" required error={(errors as any).lastName?.message}>
                 <Input
                   {...register('lastName')}
                   placeholder="Nom de famille"
@@ -250,7 +321,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                 />
               </FormField>
 
-              <FormField label="Prénom" required error={errors.firstName?.message}>
+              <FormField label="Prénom" required error={(errors as any).firstName?.message}>
                 <Input
                   {...register('firstName')}
                   placeholder="Prénom de l'élève"
@@ -259,7 +330,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                 />
               </FormField>
 
-              <FormField label="Sexe" required error={errors.gender?.message}>
+              <FormField label="Sexe" required error={(errors as any).gender?.message}>
                 <Controller
                   name="gender"
                   control={control}
@@ -283,7 +354,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
 
             {/* Ligne 2: Date naissance, Lieu naissance, Email */}
             <div className="grid grid-cols-3 gap-4">
-              <FormField label="Date de naissance" required error={errors.dateOfBirth?.message}>
+              <FormField label="Date de naissance" required error={(errors as any).dateOfBirth?.message}>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
                   <Input
@@ -295,7 +366,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                 </div>
               </FormField>
 
-              <FormField label="Lieu de naissance" required error={errors.placeOfBirth?.message}>
+              <FormField label="Lieu de naissance" required error={(errors as any).placeOfBirth?.message}>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
                   <Input
@@ -307,7 +378,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                 </div>
               </FormField>
 
-              <FormField label="Email" error={errors.email?.message}>
+              <FormField label="Email" error={(errors as any).email?.message}>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
                   <Input
@@ -324,7 +395,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
             {/* Ligne 3: N° ordre 9e, Photo */}
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-2">
-                <FormField label="N° d'ordre 9ème AF" required error={errors.ninthGradeOrderNumber?.message}>
+                <FormField label="N° d'ordre 9ème AF" required error={(errors as any).ninthGradeOrderNumber?.message}>
                   <div className="relative">
                     <BookOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
                     <Input
@@ -398,9 +469,47 @@ export const StudentForm: React.FC<StudentFormProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-4">
-            {/* Ligne 1: Niveau, Classe */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField label="Niveau" required error={errors.level?.message}>
+            {/* Ligne 1: Classe (backend), Niveau, Classe */}
+            <div className="grid grid-cols-3 gap-4">
+              {/* Classe (backend) pilote le grade et charge ses salles */}
+              <FormField label="Classe" required error={(errors as any).selectedClassroomId?.message}>
+                <Controller
+                  name={"selectedClassroomId" as any}
+                  control={control as any}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={async (val) => {
+                        field.onChange(val);
+                        const cls = classrooms.find(c => c.id === val);
+                        if (cls) {
+                          setValue('grade', cls.name as any, { shouldValidate: true, shouldDirty: true });
+                        }
+                        try {
+                          await getDetails(val);
+                          // Lire directement depuis le store (current)
+                          const st = (useClassroomStore as any).getState?.();
+                          const current = st?.current;
+                          setClassRooms(current?.rooms || []);
+                          // réinitialiser la salle sélectionnée
+                          setValue('roomId', 'none' as any, { shouldDirty: true });
+                        } catch {}
+                      }}
+                      value={field.value}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Sélectionner une classe " />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classrooms.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+
+              <FormField label="Niveau" required error={(errors as any).level?.message}>
                 <Controller
                   name="level"
                   control={control}
@@ -421,28 +530,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                 />
               </FormField>
 
-              <FormField label="Classe" required error={errors.grade?.message}>
-                <Controller
-                  name="grade"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Sélectionner" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GRADE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </FormField>
-
-              <FormField label="Salle" error={errors.roomId?.message}>
+            
+              <FormField label="Salle" error={(errors as any).roomId?.message}>
                 <Controller
                   name="roomId"
                   control={control}
@@ -455,19 +544,18 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                         <SelectItem value="none">Aucune salle assignée</SelectItem>
                         {filteredRooms.map((room) => (
                           <SelectItem key={room.id} value={room.id}>
-                            {room.classLevel} - {room.name}
+                            {room.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   )}
                 />
-              </FormField>
-            </div>
+              </FormField></div>
 
             {/* Ligne 2: École 9e, Année réussite, Dernier établissement */}
             <div className="grid grid-cols-3 gap-4">
-              <FormField label="École 9e" error={errors.ninthGradeSchool?.message}>
+              <FormField label="École 9e" error={(errors as any).ninthGradeSchool?.message}>
                 <Input
                   {...register('ninthGradeSchool')}
                   placeholder="École de 9e année"
@@ -476,7 +564,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                 />
               </FormField>
 
-              <FormField label="Année réussite 9e" error={errors.ninthGradeGraduationYear?.message}>
+              <FormField label="Année réussite 9e" error={(errors as any).ninthGradeGraduationYear?.message}>
                 <Input
                   {...register('ninthGradeGraduationYear')}
                   placeholder="Ex: 2023"
@@ -485,7 +573,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                 />
               </FormField>
 
-              <FormField label="Dernier établissement" error={errors.lastSchool?.message}>
+              <FormField label="Dernier établissement" error={(errors as any).lastSchool?.message}>
                 <Input
                   {...register('lastSchool')}
                   placeholder="Dernier établissement"
@@ -494,6 +582,100 @@ export const StudentForm: React.FC<StudentFormProps> = ({
                 />
               </FormField>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* =====================================================
+            SECTION 2B: INFORMATIONS ADMINISTRATIVES (API)
+        ===================================================== */}
+        <Card className="shadow-sm border-0 w-full">
+          <CardHeader className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-t-lg py-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              Informations Administratives (API)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-4">
+            {/* Ligne 1: Commune de naissance, Vacation, Niveau d'enseignement */}
+            <div className="grid grid-cols-3 gap-4">
+              <FormField label="Commune de naissance" required error={(errors as any).communeDeNaissance?.message}>
+                <Input
+                  {...register('communeDeNaissance' as any)}
+                  placeholder="Commune"
+                  className="h-9"
+                  disabled={loading}
+                />
+              </FormField>
+              <FormField label="Vacation" required error={(errors as any).vacation?.message}>
+                <Controller
+                  name={"vacation" as any}
+                  control={control as any}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="AM/PM" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VACATION_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+              <FormField label="Niveau d'enseignement" required error={(errors as any).niveauEnseignement?.message}>
+                <Controller
+                  name={"niveauEnseignement" as any}
+                  control={control as any}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Fondamentale / Secondaire" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TEACHING_LEVEL_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+            </div>
+
+            {/* Ligne 2: Handicap + détails */}
+            <div className="grid grid-cols-3 gap-4 items-center">
+              <FormField label="Handicap">
+                <div className="flex items-center gap-2 h-9">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    {...register('hasHandicap' as any)}
+                    aria-label="Élève en situation de handicap"
+                    disabled={loading}
+                  />
+                  <span className="text-sm text-muted-foreground">Élève en situation de handicap</span>
+                </div>
+              </FormField>
+              <FormField label="Détails du handicap" error={(errors as any).handicapDetails?.message}>
+                <Input
+                  {...register('handicapDetails' as any)}
+                  placeholder="Précisions si applicable"
+                  className="h-9"
+                  disabled={loading || !watch('hasHandicap' as any)}
+                />
+              </FormField>
+            </div>
+
+            {/* Adresse de l'élève (API) */}
+            <FormField label="Adresse de l'élève" required error={(errors as any).adresse?.message}>
+              <Textarea
+                {...register('adresse' as any)}
+                placeholder="Adresse complète (sera envoyée telle quelle au backend)"
+                className="min-h-[60px] w-full"
+                disabled={loading}
+              />
+            </FormField>
           </CardContent>
         </Card>
 
@@ -508,87 +690,163 @@ export const StudentForm: React.FC<StudentFormProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-4">
-            {/* Ligne 1: Père, Mère, Responsable */}
+            {/* Ligne 1: Père et Mère (API) */}
             <div className="grid grid-cols-3 gap-4">
-              <FormField label="Nom du père" error={errors.parentContact?.fatherName?.message}>
-                <Input
-                  {...register('parentContact.fatherName')}
-                  placeholder="Nom du père"
-                  className="h-9"
+              <FormField label="Nom du père" required error={(errors as any).nomPere?.message}>
+                <Input 
+                  {...register('nomPere' as any)} 
+                  placeholder="Nom du père" 
+                  className="h-9" 
                   disabled={loading}
+                  onBlur={(e) => setValue('nomPere' as any, e.target.value.trim(), { shouldValidate: true })}
                 />
               </FormField>
-
-              <FormField label="Nom de la mère" error={errors.parentContact?.motherName?.message}>
-                <Input
-                  {...register('parentContact.motherName')}
-                  placeholder="Nom de la mère"
-                  className="h-9"
+              <FormField label="Prénom du père" required error={(errors as any).prenomPere?.message}>
+                <Input 
+                  {...register('prenomPere' as any)} 
+                  placeholder="Prénom du père" 
+                  className="h-9" 
                   disabled={loading}
+                  onBlur={(e) => setValue('prenomPere' as any, e.target.value.trim(), { shouldValidate: true })}
                 />
               </FormField>
-
-              <FormField label="Personne responsable" required error={errors.parentContact?.responsiblePerson?.message}>
-                <Input
-                  {...register('parentContact.responsiblePerson')}
-                  placeholder="Personne responsable"
-                  className="h-9"
+              <FormField label="Statut du père" required error={(errors as any).statutPere?.message}>
+                <Input 
+                  {...register('statutPere' as any)} 
+                  placeholder="Ex: Actif" 
+                  className="h-9" 
                   disabled={loading}
+                  onBlur={(e) => setValue('statutPere' as any, e.target.value.trim(), { shouldValidate: true })}
                 />
               </FormField>
             </div>
-
-            {/* Ligne 2: Téléphone, Email, Relation */}
             <div className="grid grid-cols-3 gap-4">
-              <FormField label="Téléphone" required error={errors.parentContact?.phone?.message}>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
-                  <Input
-                    {...register('parentContact.phone')}
-                    placeholder="+509 XXXX XXXX"
-                    className="h-9 pl-9"
-                    disabled={loading}
-                  />
-                </div>
+              <FormField label="Nom de la mère" required error={(errors as any).nomMere?.message}>
+                <Input 
+                  {...register('nomMere' as any)} 
+                  placeholder="Nom de la mère" 
+                  className="h-9" 
+                  disabled={loading}
+                  onBlur={(e) => setValue('nomMere' as any, e.target.value.trim(), { shouldValidate: true })}
+                />
               </FormField>
-
-              <FormField label="Email" error={errors.parentContact?.email?.message}>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
-                  <Input
-                    {...register('parentContact.email')}
-                    type="email"
-                    placeholder="email@exemple.com"
-                    className="h-9 pl-9"
-                    disabled={loading}
-                  />
-                </div>
+              <FormField label="Prénom de la mère" required error={(errors as any).prenomMere?.message}>
+                <Input 
+                  {...register('prenomMere' as any)} 
+                  placeholder="Prénom de la mère" 
+                  className="h-9" 
+                  disabled={loading}
+                  onBlur={(e) => setValue('prenomMere' as any, e.target.value.trim(), { shouldValidate: true })}
+                />
               </FormField>
+              <FormField label="Statut de la mère" required error={(errors as any).statutMere?.message}>
+                <Input 
+                  {...register('statutMere' as any)} 
+                  placeholder="Ex: Active" 
+                  className="h-9" 
+                  disabled={loading}
+                  onBlur={(e) => setValue('statutMere' as any, e.target.value.trim(), { shouldValidate: true })}
+                />
+              </FormField>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Occupation du père">
+                <Input {...register('occupationPere' as any)} placeholder="Occupation" className="h-9" disabled={loading} />
+              </FormField>
+              <FormField label="Occupation de la mère">
+                <Input {...register('occupationMere' as any)} placeholder="Occupation" className="h-9" disabled={loading} />
+              </FormField>
+            </div>
 
-              <FormField label="Relation" required error={errors.parentContact?.relationship?.message}>
+            {/* Personne responsable */}
+            <div className="space-y-3">
+              <FormField label="Mode de responsable" required>
                 <Controller
-                  name="parentContact.relationship"
-                  control={control}
+                  name={"responsableMode" as any}
+                  control={control as any}
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Relation" />
+                        <SelectValue placeholder="Sélectionner" />
                       </SelectTrigger>
                       <SelectContent>
-                        {RELATIONSHIP_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="select">Sélectionner dans la liste</SelectItem>
+                        <SelectItem value="create">Créer un nouveau</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
                 />
               </FormField>
+
+              {/* Si sélection */}
+              { (watch('responsableMode' as any) === 'select') && (
+                <FormField label="Personne responsable existante" required>
+                  <Controller
+                    name={"personneResponsableId" as any}
+                    control={control as any}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Sélectionner un responsable" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {responsables.map(r => (
+                            <SelectItem key={r.id} value={r.id}>{r.firstName} {r.lastName} - {r.lienParente}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </FormField>
+              )}
+
+              {/* Si création */}
+              { (watch('responsableMode' as any) !== 'select') && (
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField label="Prénom responsable" required>
+                    <Input {...register('responsable.firstName' as any)} placeholder="Prénom" className="h-9" disabled={loading} />
+                  </FormField>
+                  <FormField label="Nom responsable" required>
+                    <Input {...register('responsable.lastName' as any)} placeholder="Nom" className="h-9" disabled={loading} />
+                  </FormField>
+                  <FormField label="Lien de parenté" required>
+                    <Controller
+                      name={"responsable.lienParente" as any}
+                      control={control as any}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Relation" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {RELATIONSHIP_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </FormField>
+                  <FormField label="Téléphone">
+                    <Input {...register('responsable.phone' as any)} placeholder="Téléphone" className="h-9" disabled={loading} />
+                  </FormField>
+                  <FormField label="Email">
+                    <Input {...register('responsable.email' as any)} type="email" placeholder="email@exemple.com" className="h-9" disabled={loading} />
+                  </FormField>
+                  <FormField label="NIF">
+                    <Input {...register('responsable.nif' as any)} placeholder="NIF" className="h-9" disabled={loading} />
+                  </FormField>
+                  <FormField label="NINU">
+                    <Input {...register('responsable.ninu' as any)} placeholder="NINU" className="h-9" disabled={loading} />
+                  </FormField>
+                </div>
+              )}
             </div>
 
-            {/* Adresse */}
-            <FormField label="Adresse" error={errors.parentContact?.address?.message}>
+            {/* Adresse parents (facultative, gardée) */}
+            <FormField label="Adresse (parents)" error={(errors as any).parentContact?.address?.message}>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-3 w-3 text-gray-400" />
                 <Textarea
