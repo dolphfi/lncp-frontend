@@ -262,14 +262,18 @@ export const studentsService = {
   async getStudentsByClassroom(classroomId: string): Promise<any[]> {
     const url = getApiUrl(`/students/by-classroom/${classroomId}`);
     const res = await http.get(url);
-    return res.data;
+    const payload = res.data;
+    // Normaliser: certains endpoints renvoient { data: [...] }, d'autres un tableau direct
+    return Array.isArray(payload) ? payload : (payload?.data ?? []);
   },
 
   // GET /students/by-room/{roomId} - Trouver tous les étudiants d'une salle
   async getStudentsByRoom(roomId: string): Promise<any[]> {
     const url = getApiUrl(`/students/by-room/${roomId}`);
     const res = await http.get(url);
-    return res.data;
+    const payload = res.data;
+    // Normaliser: certains endpoints renvoient { data: [...] }, d'autres un tableau direct
+    return Array.isArray(payload) ? payload : (payload?.data ?? []);
   },
 
   // GET /students/{id} - Trouver un étudiant par son ID
@@ -279,41 +283,32 @@ export const studentsService = {
     return res.data;
   },
 
+
   // PATCH /students/{id} - Mettre à jour un étudiant
   async updateStudent(id: string, updateData: Partial<AddStudentApiPayload>): Promise<any> {
     const url = getApiUrl(`/students/${id}`);
     
-    // Si des données de fichier sont présentes, utiliser FormData
-    if (updateData.avatar) {
-      const formData = new FormData();
-      
-      // Ajouter tous les champs au FormData
-      Object.entries(updateData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (key === 'avatar' && value instanceof File) {
-            formData.append(key, value);
-          } else if (typeof value === 'object') {
-            formData.append(key, JSON.stringify(value));
-          } else {
-            formData.append(key, String(value));
-          }
+    // Le backend attend TOUJOURS du multipart/form-data pour cet endpoint
+    const formData = new FormData();
+    
+    Object.entries(updateData).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (key === 'avatar' && value instanceof File) {
+          formData.append(key, value);
+        } else if (typeof value === 'object' && !(value instanceof File)) {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, String(value));
         }
-      });
+      }
+    });
 
-      const res = await http.patch(url, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return res.data;
-    } else {
-      // Sinon utiliser JSON
-      const res = await http.patch(url, updateData, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      return res.data;
-    }
+    const res = await http.patch(url, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return res.data;
   }
 };

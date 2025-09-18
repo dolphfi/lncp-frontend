@@ -36,7 +36,7 @@ export interface EnvironmentConfig {
 // =====================================================
 const developmentConfig: EnvironmentConfig = {
   // API
-  API_BASE_URL: process.env.REACT_APP_API_URL || 'http://192.168.12.212:3000',
+  API_BASE_URL: process.env.REACT_APP_API_URL || 'http://127.0.0.1:3000',
 
 
   API_TIMEOUT: 10000,

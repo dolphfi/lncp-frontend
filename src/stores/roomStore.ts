@@ -26,6 +26,17 @@ import { studentsService } from '../services/students/studentsService';
 // Fonction utilitaire pour simuler un délai (remplace l'import manquant)
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Helper: déduire le niveau de classe (ClassLevel) depuis le nom/level backend
+const toClassLevel = (nameOrLevel?: string): ClassLevel => {
+  const raw = (nameOrLevel || '').toUpperCase().replace(/\s+/g, '');
+  if (raw.includes('NSIII')) return 'NSIII';
+  if (raw.includes('NSIV')) return 'NSIV';
+  if (raw.includes('NSII')) return 'NSII';
+  if (raw.includes('NSI')) return 'NSI';
+  // Fallback par défaut
+  return 'NSI';
+};
+
 // =====================================================
 // INTERFACE DU STORE
 // =====================================================
@@ -118,7 +129,7 @@ export const useRoomStore = create<RoomStore>()(
           const convertedRooms: Room[] = roomsData.map((room: any) => ({
             id: room.id,
             name: room.name,
-            classLevel: 'NSI' as ClassLevel, // Valeur par défaut, à adapter selon vos besoins
+            classLevel: toClassLevel(room.classroom?.name || room.classroom?.level),
             capacity: room.capacity,
             description: `Salle ${room.name} - Classe ${room.classroom?.name || 'N/A'}`,
             isActive: room.status === 'Disponible',

@@ -544,9 +544,11 @@ export const useStudentStore = create<StudentStore>()(
           // Mettre à jour les étudiants affichés avec les résultats filtrés
           set(state => { 
             state.students = students;
+            state.allStudents = students; // Aussi mettre à jour allStudents pour les stats
             state.loading = false; 
           });
           
+          console.log('Store mis à jour avec étudiants filtrés par classe:', students.length);
           return students;
         } catch (error) {
           console.error('Erreur lors de la recherche par classe:', error);
@@ -572,9 +574,11 @@ export const useStudentStore = create<StudentStore>()(
           // Mettre à jour les étudiants affichés avec les résultats filtrés
           set(state => { 
             state.students = students;
+            state.allStudents = students; // Aussi mettre à jour allStudents pour les stats
             state.loading = false; 
           });
           
+          console.log('Store mis à jour avec étudiants filtrés par salle:', students.length);
           return students;
         } catch (error) {
           console.error('Erreur lors de la recherche par salle:', error);

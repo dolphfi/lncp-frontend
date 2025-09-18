@@ -24,6 +24,7 @@ interface AddStudentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  studentId?: string; // ID pour le mode édition
 }
 
 const FormField: React.FC<{ label: string; required?: boolean; error?: React.ReactNode; children: React.ReactNode }>=({label, required=false, error, children})=> (
@@ -36,7 +37,8 @@ const FormField: React.FC<{ label: string; required?: boolean; error?: React.Rea
   </div>
 );
 
-export default function AddStudentModal({ open, onOpenChange, onSuccess }: AddStudentModalProps) {
+export default function AddStudentModal({ open, onOpenChange, onSuccess, studentId }: AddStudentModalProps) {
+  const mode = studentId ? 'edit' : 'create';
   const { items: classrooms, fetchAll, getDetails } = useClassroomStore();
   const [rooms, setRooms] = useState<Array<{id: string; name: string}>>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
@@ -47,6 +49,7 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess }: AddSt
   const [showImageCrop, setShowImageCrop] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isLoadingStudent, setIsLoadingStudent] = useState(false);
 
   // Nettoyer l'URL de prévisualisation quand le modal se ferme
   React.useEffect(() => {
@@ -93,8 +96,61 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess }: AddSt
     if (open) {
       fetchResponsables();
       fetchAll(1, 50).catch(()=>{});
+
+      if (mode === 'edit' && studentId) {
+        setIsLoadingStudent(true);
+        // Charger les données de l'élève pour l'édition
+        studentsService.getStudentById(studentId).then((student: any) => {
+          // Pré-remplir le formulaire
+          const studentData = {
+            firstName: student.user.firstName,
+            lastName: student.user.lastName,
+            email: student.user.email,
+            gender: student.sexe === 'Homme' ? 'male' : 'female',
+            dateOfBirth: new Date(student.dateOfBirth).toISOString().split('T')[0],
+            placeOfBirth: student.lieuDeNaissance,
+            communeDeNaissance: student.communeDeNaissance,
+            hasHandicap: student.handicap === 'Oui' ? true : false,
+            handicapDetails: student.handicapDetails,
+            adresse: student.adresse ? JSON.stringify(student.adresse) : '',
+            vacation: student.vacation === 'Matin (AM)' ? 'AM' : 'PM',
+            niveauEnseignement: student.niveauEnseignement,
+            grade: student.niveauEtude.replace(/ /g, ''), // 'NS IV' -> 'NSIV'
+            nomMere: student.nomMere,
+            prenomMere: student.prenomMere,
+            statutMere: student.statutMere === 'Vivant' ? 'vivant' : 'mort',
+            occupationMere: student.occupationMere,
+            nomPere: student.nomPere,
+            prenomPere: student.prenomPere,
+            statutPere: student.statutPere === 'Vivant' ? 'vivant' : 'mort',
+            occupationPere: student.occupationPere,
+            responsableMode: 'select',
+            personneResponsableId: student.personneResponsable?.id || '',
+            selectedClassroomId: student.classroom?.id || '',
+            roomId: student.room?.id || 'none',
+          } as any; // Utiliser 'as any' pour contourner le typage strict de reset pour l'instant
+          reset(studentData);
+          if (student.user.avatarUrl) {
+            setAvatarPreview(student.user.avatarUrl);
+          }
+
+          // Charger les salles de la classe de l'élève
+          if (student.classroom?.id) {
+            getDetails(student.classroom.id).then(() => {
+              const state: any = (useClassroomStore as any).getState?.();
+              const current = state?.current;
+              setRooms((current?.rooms || []).map((r: any) => ({ id: r.id, name: r.name })));
+            });
+          }
+        }).catch((err: any) => {
+          console.error("Erreur lors du chargement de l'élève pour l'édition:", err);
+          toast.error("Impossible de charger les données de l'élève.");
+        }).finally(() => {
+          setIsLoadingStudent(false);
+        });
+      }
     }
-  }, [open]);
+  }, [open, mode, studentId, fetchAll, reset, getDetails]);
 
   useEffect(() => {
     // eslint-disable-next-line no-console
@@ -215,14 +271,25 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess }: AddSt
         createPersonneResponsable: undefined // Ne plus envoyer les données de création
       };
 
-      await studentsService.addStudent(finalPayload);
-      toast.success('Élève enregistré avec succès !');
+      if (mode === 'edit' && studentId) {
+        // En mode édition, ne pas envoyer l'avatar si non modifié
+        const updatePayload = { ...finalPayload };
+        if (!avatarFile) {
+          delete updatePayload.avatar;
+        }
+        await studentsService.updateStudent(studentId, updatePayload);
+        toast.success('Élève mis à jour avec succès !');
+      } else {
+        await studentsService.addStudent(finalPayload);
+        toast.success('Élève enregistré avec succès !');
+      }
       onOpenChange(false);
       reset();
       if (onSuccess) onSuccess();
     } catch (e: any) {
       const errorMsg = e?.response?.data?.message || e?.message || "Une erreur s'est produite lors de l'enregistrement.";
       setSubmitError(errorMsg);
+      toast.error(errorMsg);
     }
   };
 
@@ -231,8 +298,8 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess }: AddSt
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Ajouter un nouvel élève</DialogTitle>
-          <DialogDescription>Remplissez tous les champs requis.</DialogDescription>
+          <DialogTitle>{mode === 'edit' ? 'Modifier l\'élève' : 'Ajouter un nouvel élève'}</DialogTitle>
+          <DialogDescription>{mode === 'edit' ? 'Modifiez les informations de l\'élève.' : 'Remplissez tous les champs requis.'}</DialogDescription>
         </DialogHeader>
 
         {isSubmitting && (
@@ -246,7 +313,12 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess }: AddSt
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {isLoadingStudent ? (
+          <div className="flex justify-center items-center h-96">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
           {/* Identité et naissance */}
           <Card className="shadow-sm border-0 w-full">
@@ -561,10 +633,11 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess }: AddSt
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={()=>onOpenChange(false)} disabled={isSubmitting}>Annuler</Button>
             <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
-              {isSubmitting ? 'Enregistrement...' : 'Enregistrer l\'élève'}
+              {isSubmitting ? (mode === 'edit' ? 'Mise à jour...' : 'Enregistrement...') : (mode === 'edit' ? 'Mettre à jour' : 'Enregistrer l\'élève')}
             </Button>
           </div>
-        </form>
+          </form>
+        )}
 
         {/* Image Crop Modal */}
         <ImageCrop

@@ -13,16 +13,31 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
+  Download, 
+  Upload, 
+  Eye, 
   Edit, 
   Trash2, 
-  Eye,
   CheckCircle,
-  AlertCircle,
-  Upload,
-  Download,
-  FileSpreadsheet,
   FileDown,
-  Users
+  FileText,
+  RotateCcw,
+  AlertCircle,
+  Users,
+  X,
+  User,
+  Mail,
+  MapPin,
+  Calendar,
+  BookOpen,
+  Target,
+  Phone,
+  GraduationCap,
+  Home,
+  Clock,
+  School,
+  Accessibility,
+  Info
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
@@ -135,6 +150,15 @@ export const StudentsManagement: React.FC = () => {
     // Charger les classes pour mapping grade -> classroomId
     fetchClassrooms(1, 50);
   }, [fetchStudents, fetchRooms, fetchClassrooms]);
+
+  // =====================================================
+  // HELPERS D'AFFICHAGE
+  // =====================================================
+  const getInitials = (first?: string, last?: string) => {
+    const a = (first?.trim()?.charAt(0) || '').toUpperCase();
+    const b = (last?.trim()?.charAt(0) || '').toUpperCase();
+    return `${a}${b}` || 'ST';
+  };
   
   // =====================================================
   // CONFIGURATION DES COLONNES DE LA TABLE
@@ -298,36 +322,30 @@ export const StudentsManagement: React.FC = () => {
   const handleClassroomFilter = async (grade: string, className: string) => {
     try {
       // Les grades des étudiants sont comme "NS I", "NS II", etc.
-      // Chercher d'abord par correspondance exacte avec le grade des étudiants
-      let classroom = classrooms.find(c => 
-        c.name === grade || 
-        c.level === grade
-      );
-      
-      // Si pas trouvé, essayer des correspondances partielles
+      // Normaliser les libellés pour faire une correspondance robuste
+      const normalize = (s?: string) => (s || '')
+        .toUpperCase()
+        .replace(/\s+/g, '')
+        .replace(/_/g, '')
+        .replace(/\./g, '');
+
+      const target = normalize(grade);
+
+      // Chercher par correspondance normalisée sur name ou level
+      let classroom = classrooms.find(c => {
+        const n1 = normalize(c.name);
+        const n2 = normalize((c as any).level);
+        return n1 === target || n2 === target;
+      });
+
+      // Si pas trouvé, essayer des correspondances partielles (uniquement name/level qui CONTIENNENT le target)
       if (!classroom) {
-        classroom = classrooms.find(c => 
-          c.name?.includes(grade) ||
-          c.level?.includes(grade) ||
-          grade.includes(c.name || '') ||
-          grade.includes(c.level || '')
-        );
-      }
-      
-      // Si toujours pas trouvé, créer un mapping manuel basé sur les données visibles
-      if (!classroom && classrooms.length > 0) {
-        // Essayer de mapper NS I -> première classe, NS II -> deuxième, etc.
-        const gradeToIndex = {
-          'NS I': 0,
-          'NS II': 1, 
-          'NS III': 2,
-          'NS IV': 3
-        };
-        const index = gradeToIndex[grade as keyof typeof gradeToIndex];
-        if (index !== undefined && classrooms[index]) {
-          classroom = classrooms[index];
-          console.log(`Mapping manuel: ${grade} -> ${classroom.name} (${classroom.id})`);
-        }
+        classroom = classrooms.find(c => {
+          const n1 = normalize(c.name);
+          const n2 = normalize((c as any).level);
+          // Important: ne pas faire target.includes(n1) pour éviter que NSII corresponde à NSI
+          return n1.includes(target) || n2.includes(target);
+        });
       }
       
       if (!classroom) {
@@ -339,18 +357,24 @@ export const StudentsManagement: React.FC = () => {
       console.log(`Filtrage par classe: ${grade} -> ${classroom.name} (ID: ${classroom.id})`);
       const studentsInClassroom = await getStudentsByClassroom(classroom.id);
       console.log(`Étudiants trouvés pour la classe ${classroom.name}:`, studentsInClassroom);
+      // Marquer le filtre de classe actif pour l'UX (affichage du X)
+      setFilters({ ...filters, grade });
       
-      // Les étudiants filtrés sont maintenant automatiquement mis à jour dans le store
-      // Réinitialiser les filtres pour éviter les conflits
-      setFilters({ 
-        search: `Classe: ${className}`,
-        gender: undefined,
-        status: undefined,
-        roomId: undefined
-      });
+      // Forcer le recalcul des statistiques après le filtrage
+      fetchStats();
     } catch (error) {
       console.error('Erreur lors du filtrage par classe:', error);
       toast.error('Erreur lors du chargement des étudiants de la classe');
+    }
+  };
+
+  // Effacer le filtre de classe et recharger tous les élèves
+  const clearClassroomFilter = async () => {
+    try {
+      await fetchStudents();
+      setFilters({ ...filters, grade: undefined });
+    } catch (e) {
+      console.error('Erreur lors de la réinitialisation du filtre classe:', e);
     }
   };
 
@@ -369,6 +393,27 @@ export const StudentsManagement: React.FC = () => {
     } catch (error) {
       console.error('Erreur lors du filtrage par salle:', error);
       toast.error('Erreur lors du chargement des étudiants de la salle');
+    }
+  };
+
+  // Fonction pour réinitialiser tous les filtres et recharger tous les étudiants
+  const handleResetFilters = async () => {
+    try {
+      // Recharger tous les étudiants
+      await fetchStudents();
+      
+      // Réinitialiser tous les filtres
+      setFilters({
+        search: '',
+        gender: undefined,
+        status: undefined,
+        roomId: undefined
+      });
+      
+      toast.success('Filtres réinitialisés');
+    } catch (error) {
+      console.error('Erreur lors de la réinitialisation:', error);
+      toast.error('Erreur lors de la réinitialisation des filtres');
     }
   };
 
@@ -650,11 +695,12 @@ export const StudentsManagement: React.FC = () => {
                       { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-600' }
                     ];
                     const color = colors[index % colors.length];
+                    const isActive = filters?.grade === grade;
                     
                     return (
                       <div 
-                        key={grade} 
-                        className={`${color.bg} rounded-md p-0.4 px-2 border ${color.border} cursor-pointer hover:opacity-80 transition-opacity`}
+                        key={grade}
+                        className={`${isActive ? 'ring-2 ring-offset-1 ring-orange-400' : ''} ${color.bg} rounded-md p-0.5 px-2 border ${color.border} cursor-pointer hover:opacity-80 transition-opacity`}
                         onClick={() => {
                           console.log('Clic sur grade:', grade);
                           console.log('Classrooms disponibles:', classrooms.map(c => ({ id: c.id, name: c.name, level: c.level })));
@@ -663,11 +709,24 @@ export const StudentsManagement: React.FC = () => {
                         }}
                         title={`Cliquer pour filtrer les étudiants de ${grade}`}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-medium text-gray-600">{grade}</span>
-                          <span className={`text-xs font-bold ${color.text}`}>{count}</span>
+                          <div className="flex items-center gap-1">
+                            <span className={`${color.text} text-xs font-bold`}>{count}</span>
+                            {isActive && (
+                              <button
+                                type="button"
+                                aria-label="Effacer le filtre de classe"
+                                className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                                onClick={(e) => { e.stopPropagation(); clearClassroomFilter(); }}
+                                title="Effacer ce filtre"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                    </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -720,44 +779,54 @@ export const StudentsManagement: React.FC = () => {
   // =====================================================
   return (
     <div className="space-y-6">
-      {/* En-tête avec titre et actions */}
-      <div className="flex items-center justify-between">
+      {/* =====================================================
+          EN-TÊTE AVEC ACTIONS
+          ===================================================== */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Gestion des Élèves</h1>
-          <p className="text-muted-foreground">
-            Gérez les inscriptions, informations et statuts des élèves
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Gestion des Élèves
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Gérez les informations des élèves de votre établissement
           </p>
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" disabled={loading}>
-            <Upload className="h-4 w-4 mr-2" />
-            Importer
+          {/* Bouton de réinitialisation des filtres */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleResetFilters}
+            className="flex items-center gap-2"
+            title="Réinitialiser tous les filtres"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Réinitialiser Filtres
           </Button>
+          
+          {/* Menu d'export */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-          <Button variant="outline" disabled={loading}>
-            <Download className="h-4 w-4 mr-2" />
-            Exporter
-          </Button>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Exporter
+              </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Format d'exportation</DropdownMenuLabel>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Formats d'export</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={exportToCSV}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4 mr-2" />
                 Export CSV
               </DropdownMenuItem>
-              {/* <DropdownMenuItem onClick={exportToExcel}>
-                <FileText className="h-4 w-4 mr-2" />
-                Export Excel
-              </DropdownMenuItem> */}
               <DropdownMenuItem onClick={exportToPDF}>
                 <FileDown className="h-4 w-4 mr-2" />
                 Export PDF
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          
           <Button onClick={() => setShowAddDialog(true)} disabled={loading}>
             <Plus className="h-4 w-4 mr-2" />
             Nouvel Élève
@@ -812,28 +881,14 @@ export const StudentsManagement: React.FC = () => {
       )}
       
       {/* Dialog de modification d'élève */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Modifier l'élève</DialogTitle>
-            <DialogDescription>
-              Modifiez les informations de l'élève selon vos besoins.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedStudent && (
-            <StudentForm
-              student={selectedStudent}
-              onSubmit={handleUpdateStudent}
-              onCancel={() => {
-                setShowEditDialog(false);
-                setSelectedStudent(null);
-              }}
-              loading={loadingAction === 'update'}
-              mode="edit"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {showEditDialog && selectedStudent && (
+        <AddStudentModal
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          onSuccess={() => { fetchStudents(); }}
+          studentId={selectedStudent.id} // Passer l'ID pour le mode édition
+        />
+      )}
       
       {/* Dialog de suppression d'élève */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -886,78 +941,226 @@ export const StudentsManagement: React.FC = () => {
       
       {/* Dialog de visualisation d'élève */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Détails de l'élève</DialogTitle>
           </DialogHeader>
           
           {selectedStudent && (
             <div className="space-y-6">
-              {/* Photo et informations de base */}
+              {/* En-tête élève */}
               <div className="flex items-center gap-4">
                 {selectedStudent.avatar ? (
-                  <img 
-                    src={selectedStudent.avatar} 
+                  <img
+                    src={selectedStudent.avatar}
                     alt={`${selectedStudent.firstName} ${selectedStudent.lastName}`}
-                    className="w-16 h-16 rounded-full object-cover"
+                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                    <Users className="w-8 h-8 text-gray-500" />
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-xl">
+                    {getInitials(selectedStudent.firstName, selectedStudent.lastName)}
                   </div>
                 )}
-                <div>
-                  <h3 className="text-xl font-semibold">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-semibold truncate">
                     {selectedStudent.firstName} {selectedStudent.lastName}
                   </h3>
-                  <p className="text-muted-foreground">{selectedStudent.studentId}</p>
-                  <Badge variant={selectedStudent.status === 'active' ? 'default' : 'secondary'}>
-                    {selectedStudent.status}
-                  </Badge>
+                  <p className="text-sm text-muted-foreground truncate">{selectedStudent.studentId}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Badge variant={selectedStudent.status === 'active' ? 'default' : selectedStudent.status === 'inactive' ? 'secondary' : 'destructive'}>
+                      {selectedStudent.status === 'active' ? 'Actif' : selectedStudent.status === 'inactive' ? 'Inactif' : 'Suspendu'}
+                    </Badge>
+                    {selectedStudent.grade && (
+                      <Badge variant="outline">{selectedStudent.grade}</Badge>
+                    )}
+                    {selectedStudent.roomName && (
+                      <Badge variant="outline">Salle: {selectedStudent.roomName}</Badge>
+                    )}
+                  </div>
                 </div>
               </div>
-              
-              {/* Informations détaillées */}
+
+              {/* Cartes d'informations (exactement le style AddStudentModal) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium mb-2">Informations personnelles</h4>
-                  <div className="space-y-1 text-sm">
-                    <p><strong>Email :</strong> {selectedStudent.email || 'Non renseigné'}</p>
-                    <p><strong>Sexe :</strong> {selectedStudent.gender === 'male' ? 'Homme' : 'Femme'}</p>
-                    <p><strong>Date de naissance :</strong> {new Date(selectedStudent.dateOfBirth).toLocaleDateString('fr-FR')}</p>
-                    <p><strong>Lieu de naissance :</strong> {selectedStudent.placeOfBirth}</p>
-                    <p><strong>N° d'ordre 9ème AF :</strong> {selectedStudent.ninthGradeOrderNumber}</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium mb-2">Informations scolaires</h4>
-                  <div className="space-y-1 text-sm">
-                    <p><strong>Niveau :</strong> {selectedStudent.level === 'nouveauSecondaire' ? 'Nouveau Secondaire' : 'Secondaire'}</p>
-                    <p><strong>Classe :</strong> {selectedStudent.grade}</p>
-                    <p><strong>École 9e :</strong> {selectedStudent.ninthGradeSchool || 'Non renseigné'}</p>
-                    <p><strong>Année réussite 9e :</strong> {selectedStudent.ninthGradeGraduationYear || 'Non renseigné'}</p>
-                    <p><strong>Dernier établissement :</strong> {selectedStudent.lastSchool || 'Non renseigné'}</p>
-                    <p><strong>Inscription :</strong> {new Date(selectedStudent.enrollmentDate).toLocaleDateString('fr-FR')}</p>
-                  </div>
-                </div>
+                {/* Identité */}
+                <Card className="shadow-sm border-0 w-full">
+                  <CardHeader className="bg-blue-50 dark:bg-blue-900/20 rounded-t-lg">
+                    <CardTitle className="text-base text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      Identité
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 text-sm">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4" /> Sexe</div>
+                        <span className="font-medium">{selectedStudent.gender === 'male' ? 'Homme' : 'Femme'}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Calendar className="h-4 w-4" /> Date de naissance</div>
+                        <span className="font-medium">{new Date(selectedStudent.dateOfBirth).toLocaleDateString('fr-FR')}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4" /> Lieu de naissance</div>
+                        <span className="font-medium break-words text-right">{selectedStudent.placeOfBirth}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Mail className="h-4 w-4" /> Email</div>
+                        <span className="font-medium truncate text-right">
+                          {selectedStudent.email ? (
+                            <a href={`mailto:${selectedStudent.email}`} className="text-blue-600 hover:underline">{selectedStudent.email}</a>
+                          ) : 'Non renseigné'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><BookOpen className="h-4 w-4" /> N° ordre 9e</div>
+                        <span className="font-medium">{selectedStudent.ninthGradeOrderNumber || '—'}</span>
+                      </div>
+                      <div className="flex items-start justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><School className="h-4 w-4" /> Dernier établissement</div>
+                        <span className="font-medium break-words text-right">{selectedStudent.lastSchool || 'Non renseigné'}</span>
+                      </div>
+                      {((selectedStudent as any)?.communeDeNaissance) && (
+                        <div className="flex items-center justify-between gap-3 border-b pb-2">
+                          <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4" /> Commune</div>
+                          <span className="font-medium break-words text-right">{(selectedStudent as any).communeDeNaissance}</span>
+                        </div>
+                      )}
+                      {typeof (selectedStudent as any)?.hasHandicap !== 'undefined' && (
+                        <div className="flex items-center justify-between gap-3 border-b pb-2">
+                          <div className="flex items-center gap-2 text-muted-foreground"><Accessibility className="h-4 w-4" /> Handicap</div>
+                          <span className="font-medium">{(selectedStudent as any).hasHandicap ? 'Oui' : 'Non'}</span>
+                        </div>
+                      )}
+                      {((selectedStudent as any)?.handicapDetails) && (
+                        <div className="flex items-start justify-between gap-3 border-b pb-2">
+                          <div className="flex items-center gap-2 text-muted-foreground"><Info className="h-4 w-4" /> Détails handicap</div>
+                          <span className="font-medium break-words text-right">{(selectedStudent as any).handicapDetails}</span>
+                        </div>
+                      )}
+                      {((selectedStudent as any)?.adresse) && (
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2 text-muted-foreground"><Home className="h-4 w-4" /> Adresse</div>
+                          <span className="font-medium break-words text-right">{typeof (selectedStudent as any).adresse === 'string' ? (selectedStudent as any).adresse : JSON.stringify((selectedStudent as any).adresse)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Classe et Salle */}
+                <Card className="shadow-sm border-0 w-full">
+                  <CardHeader className="bg-purple-50 dark:bg-purple-900/20 rounded-t-lg">
+                    <CardTitle className="text-base text-purple-800 dark:text-purple-200 flex items-center gap-2">
+                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                      Classe et Salle
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 text-sm">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><GraduationCap className="h-4 w-4" /> Niveau</div>
+                        <span className="font-medium">{selectedStudent.level === 'nouveauSecondaire' ? 'Nouveau Secondaire' : 'Secondaire'}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Target className="h-4 w-4" /> Classe</div>
+                        <span className="font-medium">{selectedStudent.grade}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Home className="h-4 w-4" /> Salle</div>
+                        <span className="font-medium">{selectedStudent.roomName || 'Non assignée'}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Calendar className="h-4 w-4" /> Inscription</div>
+                        <span className="font-medium">{new Date(selectedStudent.enrollmentDate).toLocaleDateString('fr-FR')}</span>
+                      </div>
+                      {((selectedStudent as any)?.niveauEnseignement) && (
+                        <div className="flex items-center justify-between gap-3 border-b pb-2">
+                          <div className="flex items-center gap-2 text-muted-foreground"><GraduationCap className="h-4 w-4" /> Niveau d'enseignement</div>
+                          <span className="font-medium">{(selectedStudent as any).niveauEnseignement}</span>
+                        </div>
+                      )}
+                      {((selectedStudent as any)?.vacation) && (
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" /> Vacation</div>
+                          <span className="font-medium">{(selectedStudent as any).vacation}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Parents */}
+                <Card className="shadow-sm border-0 w-full md:col-span-2">
+                  <CardHeader className="bg-orange-50 dark:bg-orange-900/20 rounded-t-lg">
+                    <CardTitle className="text-base text-orange-800 dark:text-orange-200 flex items-center gap-2">
+                      <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                      Parents
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 text-sm">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4" /> Père</div>
+                        <div className="font-medium">{selectedStudent.parentContact.fatherName || 'Non renseigné'}</div>
+                      </div>
+                      {((selectedStudent as any)?.statutPere) && (
+                        <div className="flex items-center justify-between gap-3 border-b pb-2">
+                          <div className="flex items-center gap-2 text-muted-foreground"><Info className="h-4 w-4" /> Statut père</div>
+                          <div className="font-medium">{(selectedStudent as any).statutPere}</div>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4" /> Mère</div>
+                        <div className="font-medium">{selectedStudent.parentContact.motherName || 'Non renseigné'}</div>
+                      </div>
+                      {((selectedStudent as any)?.statutMere) && (
+                        <div className="flex items-center justify-between gap-3 border-b pb-2">
+                          <div className="flex items-center gap-2 text-muted-foreground"><Info className="h-4 w-4" /> Statut mère</div>
+                          <div className="font-medium">{(selectedStudent as any).statutMere}</div>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4" /> Responsable</div>
+                        <div className="font-medium">{selectedStudent.parentContact.responsiblePerson}</div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Info className="h-4 w-4" /> Relation</div>
+                        <div className="font-medium">{selectedStudent.parentContact.relationship}</div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Phone className="h-4 w-4" /> Téléphone</div>
+                        <div className="font-medium">
+                          {selectedStudent.parentContact.phone ? (
+                            <a href={`tel:${selectedStudent.parentContact.phone}`} className="text-blue-600 hover:underline">{selectedStudent.parentContact.phone}</a>
+                          ) : 'Non renseigné'}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-b pb-2">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Mail className="h-4 w-4" /> Email</div>
+                        <div className="font-medium truncate text-right">
+                          {selectedStudent.parentContact.email ? (
+                            <a href={`mailto:${selectedStudent.parentContact.email}`} className="text-blue-600 hover:underline">{selectedStudent.parentContact.email}</a>
+                          ) : 'Non renseigné'}
+                        </div>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Home className="h-4 w-4" /> Adresse</div>
+                        <div className="font-medium break-words text-right">{selectedStudent.parentContact.address || 'Non renseigné'}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-              
-              {/* Informations du parent */}
-              <div>
-                <h4 className="font-medium mb-2">Contact parent/tuteur</h4>
-                <div className="space-y-1 text-sm">
-                  <p><strong>Père :</strong> {selectedStudent.parentContact.fatherName || 'Non renseigné'}</p>
-                  <p><strong>Mère :</strong> {selectedStudent.parentContact.motherName || 'Non renseigné'}</p>
-                  <p><strong>Personne responsable :</strong> {selectedStudent.parentContact.responsiblePerson}</p>
-                  <p><strong>Relation :</strong> {selectedStudent.parentContact.relationship}</p>
-                  <p><strong>Téléphone :</strong> {selectedStudent.parentContact.phone}</p>
-                  <p><strong>Email :</strong> {selectedStudent.parentContact.email || 'Non renseigné'}</p>
-                  <p><strong>Adresse :</strong> {selectedStudent.parentContact.address || 'Non renseigné'}</p>
-                </div>
-              </div>
-              
-              <div className="flex justify-end">
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => { /* Logique d'export PDF à implémenter */ }}
+                >
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Exporter PDF
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
