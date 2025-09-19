@@ -136,6 +136,8 @@ interface DataTableProps<T> {
   description?: string;            // Description de la table
   actions?: React.ReactNode;       // Actions globales (boutons d'ajout, etc.)
   className?: string;              // Classes CSS personnalisées
+  // Permet au parent de réinitialiser TOUS les filtres (incl. recherche, grade, etc.)
+  onResetAllFilters?: () => void;
 }
 
 // =====================================================
@@ -161,6 +163,7 @@ export function DataTable<T>({
   description,
   actions,
   className = ""
+  , onResetAllFilters
 }: DataTableProps<T>) {
   
   // =====================================================
@@ -347,38 +350,39 @@ export function DataTable<T>({
                 
                 {/* ✨ Menu de filtres avancé et moderne */}
                 {onStudentFilter && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={loading}
-                        className="relative transition-colors duration-200 hover:bg-accent"
-                      >
-                        <Filter className="h-4 w-4 mr-2" />
-                        Filtres
-                        {/* Badge animé pour indiquer des filtres actifs */}
-                        {currentFilters && (
-                          Object.keys(currentFilters).filter(key => 
-                            key !== 'search' && currentFilters[key as keyof StudentFilters]
-                          ).length > 0
-                        ) && (
-                          <Badge 
-                            variant="destructive" 
-                            className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
-                          >
-                            {Object.keys(currentFilters).filter(key => 
+                  <div className="flex items-center gap-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={loading}
+                          className="relative transition-colors duration-200 hover:bg-accent"
+                        >
+                          <Filter className="h-4 w-4 mr-2" />
+                          Filtres
+                          {/* Badge animé pour indiquer des filtres actifs */}
+                          {currentFilters && (
+                            Object.keys(currentFilters).filter(key => 
                               key !== 'search' && currentFilters[key as keyof StudentFilters]
-                            ).length}
-                          </Badge>
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent 
-                      align="end" 
-                      className="w-72 p-2 space-y-2 bg-white dark:bg-gray-800 shadow-2xl border-0 rounded-xl"
-                      sideOffset={8}
-                    >
+                            ).length > 0
+                          ) && (
+                            <Badge 
+                              variant="destructive" 
+                              className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                            >
+                              {Object.keys(currentFilters).filter(key => 
+                                key !== 'search' && currentFilters[key as keyof StudentFilters]
+                              ).length}
+                            </Badge>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent 
+                        align="end" 
+                        className="w-72 p-2 space-y-2 bg-white dark:bg-gray-800 shadow-2xl border-0 rounded-xl"
+                        sideOffset={8}
+                      >
                       {/* Section Salles */}
                       <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 space-y-2">
                         <DropdownMenuLabel className="flex items-center gap-2 text-orange-700 dark:text-orange-300 font-medium">
@@ -520,19 +524,45 @@ export function DataTable<T>({
                       {/* Bouton de réinitialisation moderne */}
                       <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                         <DropdownMenuItem
-                          onClick={() => onStudentFilter({
-                            gender: undefined,
-                            status: undefined,
-                            roomId: undefined
-                          })}
+                          onClick={() => {
+                            if (onResetAllFilters) {
+                              onResetAllFilters();
+                            } else if (onStudentFilter) {
+                              onStudentFilter({ gender: undefined, status: undefined, roomId: undefined });
+                            }
+                            setSearchTerm('');
+                          }}
                           className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
                         >
                           <RotateCcw className="h-4 w-4 mr-2" />
                           <span className="font-medium">Effacer tous les filtres</span>
                         </DropdownMenuItem>
                       </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Petit bouton X pour effacer tous les filtres, collé au bouton Filtres */}
+                    {currentFilters && (
+                      Object.keys(currentFilters).some(key => key !== 'search' && currentFilters[key as keyof StudentFilters])
+                    ) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Effacer tous les filtres"
+                        onClick={() => {
+                          if (onResetAllFilters) {
+                            onResetAllFilters();
+                          } else if (onStudentFilter) {
+                            onStudentFilter({ gender: undefined, status: undefined, roomId: undefined });
+                          }
+                          setSearchTerm('');
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
               

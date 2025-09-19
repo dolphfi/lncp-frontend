@@ -10,6 +10,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -104,6 +106,8 @@ export const StudentsManagement: React.FC = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportRoomId, setExportRoomId] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   
   // =====================================================
@@ -150,6 +154,93 @@ export const StudentsManagement: React.FC = () => {
     // Charger les classes pour mapping grade -> classroomId
     fetchClassrooms(1, 50);
   }, [fetchStudents, fetchRooms, fetchClassrooms]);
+
+  // =====================================================
+  // EXPORT PDF PAR SALLE
+  // =====================================================
+  const loadImageForPdf = async (url: string): Promise<{ dataURL: string; width: number; height: number } | null> => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const dataURL = await new Promise<string | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+      if (!dataURL) return null;
+      // Obtenir les dimensions naturelles de l'image
+      const imgEl = new Image();
+      const meta = await new Promise<{ width: number; height: number }>((resolve) => {
+        imgEl.onload = () => resolve({ width: imgEl.naturalWidth || imgEl.width, height: imgEl.naturalHeight || imgEl.height });
+        imgEl.src = dataURL;
+      });
+      return { dataURL, width: meta.width, height: meta.height };
+    } catch {
+      return null;
+    }
+  };
+
+  const exportStudentsByRoomToPDF = async () => {
+    try {
+      if (!exportRoomId) {
+        toast.error('Veuillez sélectionner une salle.');
+        return;
+      }
+
+      const room = rooms.find(r => r.id === exportRoomId);
+      const roomLabel = room ? `${room.classLevel} - ${room.name}` : exportRoomId;
+
+      // Récupérer via endpoint store
+      const list = await getStudentsByRoom(exportRoomId);
+      const rows = (Array.isArray(list) ? list : []).map((s: any) => {
+        const matricule = s.matricule || s.studentId || s.user?.matricule || '—';
+        const firstName = s.user?.firstName || s.firstName || '';
+        const lastName = s.user?.lastName || s.lastName || '';
+        const classe = s.classroom?.name || s.grade || s.niveauEtude || '';
+        const salle = s.room?.name || s.roomName || room?.name || '';
+        return [matricule, lastName, firstName, classe, salle];
+      });
+
+      const doc = new jsPDF('p', 'pt');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const headerMeta = await loadImageForPdf('/header-2.png');
+      let topY = 40;
+      if (headerMeta) {
+        // Échelle pour occuper toute la largeur, sans marges latérales, en haut de page
+        const scale = pageWidth / headerMeta.width;
+        const scaledHeight = headerMeta.height * scale;
+        try {
+          // x=0, y=0, largeur=pageWidth, hauteur=scaledHeight (plein largeur)
+          doc.addImage(headerMeta.dataURL, 'PNG', 0, 0, pageWidth, scaledHeight);
+        } catch {}
+        // Position de départ du contenu: juste après l'image + petit espace
+        topY = scaledHeight + 12;
+      }
+      doc.setFontSize(14);
+      doc.text(`Liste des élèves - ${roomLabel}`, 40, topY);
+      doc.setFontSize(10);
+      doc.text(`Généré le ${new Date().toLocaleString('fr-FR')}`, 40, topY + 16);
+
+      autoTable(doc, {
+        startY: topY + 28,
+        head: [[ 'Matricule', 'Nom', 'Prénom', 'Classe', 'Salle' ]],
+        body: rows,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [25, 118, 210] },
+        theme: 'striped',
+      });
+
+      const safeRoomName = (roomLabel || 'salle').replace(/[^a-z0-9_-]+/gi, '_');
+      doc.save(`eleves_${safeRoomName}_${new Date().toISOString().slice(0,10)}.pdf`);
+      setShowExportDialog(false);
+      setExportRoomId('');
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Erreur export PDF:', e);
+      toast.error("Erreur lors de l'export PDF");
+    }
+  };
 
   // =====================================================
   // HELPERS D'AFFICHAGE
@@ -407,10 +498,9 @@ export const StudentsManagement: React.FC = () => {
         search: '',
         gender: undefined,
         status: undefined,
-        roomId: undefined
+        roomId: undefined,
+        grade: undefined as any
       });
-      
-      toast.success('Filtres réinitialisés');
     } catch (error) {
       console.error('Erreur lors de la réinitialisation:', error);
       toast.error('Erreur lors de la réinitialisation des filtres');
@@ -610,10 +700,7 @@ export const StudentsManagement: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const exportToPDF = () => {
-    // Simulation d'export PDF - à implémenter avec une librairie comme jsPDF
-    alert('Export PDF - Fonctionnalité à implémenter');
-  };
+  // exportToPDF géré via un dialog dédié (showExportDialog)
 
   
   // =====================================================
@@ -793,17 +880,28 @@ export const StudentsManagement: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Bouton de réinitialisation des filtres */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleResetFilters}
-            className="flex items-center gap-2"
-            title="Réinitialiser tous les filtres"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Réinitialiser Filtres
-          </Button>
+          {/* Bouton Importer */}
+          <label className="inline-flex">
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                toast.info(`Import en cours: ${file.name}`);
+                // TODO: Implémenter l'import via service (CSV/XLSX)
+                // reset input
+                e.currentTarget.value = '';
+              }}
+            />
+            <Button asChild variant="outline" size="sm">
+              <span>
+                <Upload className="h-4 w-4 mr-2" />
+                Importer
+              </span>
+            </Button>
+          </label>
           
           {/* Menu d'export */}
           <DropdownMenu>
@@ -820,7 +918,7 @@ export const StudentsManagement: React.FC = () => {
                 <FileText className="h-4 w-4 mr-2" />
                 Export CSV
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToPDF}>
+              <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
                 <FileDown className="h-4 w-4 mr-2" />
                 Export PDF
               </DropdownMenuItem>
@@ -865,6 +963,7 @@ export const StudentsManagement: React.FC = () => {
         emptyStateMessage="Aucun élève trouvé"
         title="Liste des Élèves"
         description={`${pagination.total} élèves au total`}
+        onResetAllFilters={handleResetFilters}
       />
       
       {/* =====================================================
@@ -936,6 +1035,35 @@ export const StudentsManagement: React.FC = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog d'export PDF par salle */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Exporter en PDF par salle</DialogTitle>
+            <DialogDescription>Sélectionnez une salle puis lancez l'export.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Salle</label>
+            <select
+              className="border rounded-md h-9 px-3"
+              value={exportRoomId}
+              onChange={(e) => setExportRoomId(e.target.value)}
+            >
+              <option value="">-- Choisir une salle --</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.classLevel} - {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowExportDialog(false)}>Annuler</Button>
+            <Button onClick={exportStudentsByRoomToPDF} disabled={!exportRoomId}>Exporter</Button>
+          </div>
         </DialogContent>
       </Dialog>
       
@@ -1156,13 +1284,6 @@ export const StudentsManagement: React.FC = () => {
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => { /* Logique d'export PDF à implémenter */ }}
-                >
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Exporter PDF
-                </Button>
-                <Button
-                  variant="outline"
                   onClick={() => {
                     setShowViewDialog(false);
                     setSelectedStudent(null);
@@ -1177,4 +1298,4 @@ export const StudentsManagement: React.FC = () => {
       </Dialog>
     </div>
   );
-}; 
+};
