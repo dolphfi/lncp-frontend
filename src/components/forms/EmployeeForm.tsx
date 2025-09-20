@@ -523,7 +523,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
                         setNewAssignment({
                           ...newAssignment,
                           courseId: value,
-                          courseName: course ? `${course.title} (${course.code})` : ''
+                          courseName: course ? `${course.titre} (${course.id.slice(0, 8)})`  : ''
                         });
                       }}
                     >
@@ -533,7 +533,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
                       <SelectContent>
                         {courses.map(course => (
                           <SelectItem key={course.id} value={course.id}>
-                            {course.title} ({course.code})
+                            {course.titre} ({course.id.slice(0, 8)})
                           </SelectItem>
                         ))}
                       </SelectContent>

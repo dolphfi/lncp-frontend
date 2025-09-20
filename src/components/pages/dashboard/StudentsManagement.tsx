@@ -9,9 +9,10 @@
  * - Gestion d'état avec Zustand
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -90,7 +91,7 @@ import AddStudentModal from '../../forms/AddStudentModal';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { CreateStudentFormData } from '../../../schemas/studentSchema';
 import { API_CONFIG } from '../../../config/api';
-import { AddStudentApiPayload } from '../../../services/students/studentsService';
+import { AddStudentApiPayload, studentsService } from '../../../services/students/studentsService';
 
 // =====================================================
 // COMPOSANT PRINCIPAL DE GESTION DES ÉLÈVES
@@ -107,8 +108,20 @@ export const StudentsManagement: React.FC = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const [exportRoomId, setExportRoomId] = useState<string>('');
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importResults, setImportResults] = useState<{
+    total: number;
+    success: number;
+    errors: { row: number; sheet: string; error: string }[];
+  } | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [exportRoomId, setExportRoomId] = useState<string>('');
+  
+  // Référence pour l'input file
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // =====================================================
   // RÉCUPÉRATION DE L'ÉTAT DEPUIS LE STORE ZUSTAND
@@ -122,6 +135,7 @@ export const StudentsManagement: React.FC = () => {
     pagination,
     filters,
     stats,
+    responsables,
     
     // Actions
     fetchStudents,
@@ -191,8 +205,15 @@ export const StudentsManagement: React.FC = () => {
       const room = rooms.find(r => r.id === exportRoomId);
       const roomLabel = room ? `${room.classLevel} - ${room.name}` : exportRoomId;
 
-      // Récupérer via endpoint store
+      // Récupérer via endpoint store (sans affecter la table principale)
       const list = await getStudentsByRoom(exportRoomId);
+      
+      // Vérifier qu'il y a des élèves dans cette salle
+      if (!Array.isArray(list) || list.length === 0) {
+        toast.error(`Aucun élève trouvé dans la salle ${roomLabel}`);
+        return;
+      }
+      
       const rows = (Array.isArray(list) ? list : []).map((s: any) => {
         const matricule = s.matricule || s.studentId || s.user?.matricule || '—';
         const firstName = s.user?.firstName || s.firstName || '';
@@ -582,7 +603,7 @@ export const StudentsManagement: React.FC = () => {
         vacation: (data as any).vacation === 'AM' ? 'Matin (AM)' : 'Après-midi (PM)',
         niveauEnseignement: (data as any).niveauEnseignement,
         // Niveau d'étude = grade (NSI..NSIV)
-        niveauEtude: data.grade === 'NSI' ? 'NS I' : data.grade === 'NSII' ? 'NS II' : data.grade === 'NSIII' ? 'NS III' : 'NS IV',
+        niveauEtude: data.grade === 'NSI' ? 'NSI' : data.grade === 'NSII' ? 'NSII' : data.grade === 'NSIII' ? 'NSIII' : 'NSIV',
         // Infos parents (obligatoires API)
         nomMere: (data as any).nomMere,
         prenomMere: (data as any).prenomMere,
@@ -673,31 +694,403 @@ export const StudentsManagement: React.FC = () => {
   // FONCTIONS D'EXPORTATION
   // =====================================================
   
-  const exportToCSV = () => {
-    const headers = ['Prénom', 'Nom', 'Sexe', 'Classe', 'Matricule', 'Statut', 'Email', 'Date d\'inscription'];
-    const csvContent = [
-      headers.join(','),
-      ...students.map(student => [
-        student.firstName,
-        student.lastName,
-        student.gender === 'male' ? 'Homme' : 'Femme',
-        student.grade,
-        student.studentId,
-        student.status === 'active' ? 'Actif' : student.status === 'inactive' ? 'Inactif' : 'Suspendu',
-        student.email || '',
-        new Date(student.enrollmentDate).toLocaleDateString('fr-FR')
-      ].join(','))
-    ].join('\n');
+  const exportToCSV = async () => {
+    try {
+      // Récupérer données backend complètes directement depuis le service
+      const backendResponse = await studentsService.getAllStudentsComplete();
+      const backendStudents = backendResponse.data;
+      
+      const studentsByRoom = new Map<string, any[]>();
+      
+      for (const student of backendStudents) {
+        const s = student as any;
+        const roomKey = s.room?.name || 'Sans_salle';
+        if (!studentsByRoom.has(roomKey)) {
+          studentsByRoom.set(roomKey, []);
+        }
+        studentsByRoom.get(roomKey)!.push(student);
+      }
+      
+      // En-têtes complets avec TOUS les champs d'inscription (basés sur la structure backend)
+      const headers = [
+        // Informations personnelles
+        'Matricule', 'Prénom', 'Nom', 'Sexe', 'Date de naissance', 'Lieu de naissance', 'Commune de naissance',
+        'Email', 'Téléphone',
+        
+        // Informations académiques
+        'Classe', 'Niveau d\'enseignement', 'Niveau d\'étude', 'Salle', 'Vacation', 'Statut', 'Date création compte',
+        'Dernier établissement', 'N° ordre 9ème',
+        
+        // Informations familiales - Père
+        'Nom du père', 'Prénom du père', 'Statut du père', 'Occupation du père',
+        
+        // Informations familiales - Mère
+        'Nom de la mère', 'Prénom de la mère', 'Statut de la mère', 'Occupation de la mère',
+        
+        // Responsable légal
+        'Nom complet responsable', 'Lien de parenté', 'Téléphone responsable', 'Email responsable',
+        
+        // Adresse et informations complémentaires
+        'Adresse complète', 'Handicap', 'Détails handicap'
+      ];
+      
+      // Créer un workbook Excel avec une sheet par salle
+      const workbook = XLSX.utils.book_new();
+      
+      for (const [roomName, roomStudents] of studentsByRoom.entries()) {
+        // Préparer les données pour cette salle
+        const sheetData = [headers]; // En-têtes en première ligne
+        
+        roomStudents.forEach((student, index) => {
+          // Utiliser la structure frontend transformée par le store
+          const s = student as any;
+          
+          // Debug pour le premier étudiant de chaque salle
+          if (index === 0) {
+            console.log(`DEBUG - Salle ${roomName}, Premier étudiant backend:`, {
+              matricule: s.matricule,
+              nom: s.user?.firstName,
+              sexe: s.sexe,
+              room: s.room?.name
+            });
+          }
+          
+          const row = [
+            // Informations personnelles (structure backend)
+            s.matricule || '',
+            s.user?.firstName || '',
+            s.user?.lastName || '',
+            s.sexe || '',
+            s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString('fr-FR') : '',
+            s.lieuDeNaissance || '',
+            s.communeDeNaissance || '',
+            s.user?.email || '',
+            s.user?.phone || '',
+            
+            // Informations académiques (structure backend)
+            s.classroom?.name || '',
+            s.niveauEnseignement || '',
+            s.niveauEtude || '',
+            s.room?.name || '',
+            s.vacation || '',
+            s.user?.isActive ? 'Actif' : 'Inactif',
+            s.user?.createdAt ? new Date(s.user.createdAt).toLocaleDateString('fr-FR') : '',
+            '', // lastSchool pas dans backend
+            '', // ninthGradeOrderNumber pas dans backend
+            
+            // Informations familiales - Père (structure backend)
+            s.nomPere || '',
+            s.prenomPere || '',
+            s.statutPere || '',
+            s.occupationPere || '',
+            
+            // Informations familiales - Mère (structure backend)
+            s.nomMere || '',
+            s.prenomMere || '',
+            s.statutMere || '',
+            s.occupationMere || '',
+            
+            // Responsable légal (structure backend)
+            s.personneResponsable?.user ? (s.personneResponsable.user.firstName + ' ' + s.personneResponsable.user.lastName) : '',
+            s.personneResponsable?.lienParente || '',
+            s.personneResponsable?.user?.phone || '',
+            s.personneResponsable?.user?.email || '',
+            
+            // Adresse et informations complémentaires (structure backend)
+            s.adresse && typeof s.adresse === 'object' ? 
+              [s.adresse.adresseLigne1, s.adresse.commune, s.adresse.departement, s.adresse.sectionCommunale]
+                .filter(Boolean).join(', ') || 'Adresse non renseignée'
+              : (s.adresse || ''),
+            s.handicap || '',
+            s.handicapDetails || ''
+          ];
+          sheetData.push(row);
+        });
+        
+        // Créer la worksheet
+        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+        
+        // Nom de la sheet (max 31 caractères pour Excel)
+        const sheetName = roomName.length > 31 ? roomName.substring(0, 31) : roomName;
+        
+        // Ajouter la sheet au workbook
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      }
+      
+      // Exporter le fichier Excel
+      const fileName = `eleves_par_salle_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      const totalStudents = Array.from(studentsByRoom.values()).reduce((sum, arr) => sum + arr.length, 0);
+      toast.success(`Export Excel: ${studentsByRoom.size} salles, ${totalStudents} élèves exportés`);
+    } catch (error) {
+      console.error('Erreur lors de l\'export Excel:', error);
+      toast.error('Erreur lors de l\'export Excel');
+    }
+  };
+
+  // =====================================================
+  // FONCTIONS D'IMPORTATION EXCEL
+  // =====================================================
+  
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+      setImportFile(file);
+      setImportResults(null);
+    } else {
+      toast.error('Fichier Excel requis (.xlsx ou .xls)');
+    }
+  };
+  
+  const resetImport = () => {
+    setImportFile(null);
+    setImportProgress(0);
+    setImportResults(null);
+    setIsImporting(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+  
+  const findClassroomIdByName = (className: string): string => {
+    if (!className) return classrooms[0]?.id || '';
+    const classroom = classrooms.find(c => c.name === className);
+    return classroom?.id || classrooms[0]?.id || '';
+  };
+  
+  const findRoomIdByName = (roomName: string): string => {
+    if (!roomName) return rooms[0]?.id || '';
+    const room = rooms.find(r => r.name === roomName);
+    return room?.id || rooms[0]?.id || '';
+  };
+  
+  const findResponsableByEmailOrPhone = (email?: string, phone?: string): string | undefined => {
+    console.log('DEBUG - Recherche responsable:', { email, phone, responsablesCount: responsables?.length });
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `eleves_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!email && !phone) {
+      console.log('DEBUG - Pas d\'email ni téléphone');
+      return undefined;
+    }
+    
+    if (!responsables || responsables.length === 0) {
+      console.log('DEBUG - Aucun responsable chargé');
+      return undefined;
+    }
+    
+    // Chercher dans la liste des responsables existants
+    const responsable = responsables.find(r => {
+      const matchEmail = email && r.user?.email === email;
+      const matchPhone = phone && r.user?.phone === phone;
+      console.log('DEBUG - Test responsable:', { 
+        rId: r.id, 
+        rEmail: r.user?.email, 
+        rPhone: r.user?.phone, 
+        matchEmail, 
+        matchPhone 
+      });
+      return matchEmail || matchPhone;
+    });
+    
+    console.log('DEBUG - Responsable trouvé:', responsable?.id);
+    return responsable?.id;
+  };
+  
+  const validateAndMapStudentData = (rowData: any): AddStudentApiPayload => {
+    // Champs obligatoires
+    if (!rowData['Prénom']?.trim()) throw new Error('Prénom requis');
+    if (!rowData['Nom']?.trim()) throw new Error('Nom requis');
+    if (!rowData['Sexe']?.trim()) throw new Error('Sexe requis');
+    if (!rowData['Date de naissance']?.trim()) throw new Error('Date de naissance requise');
+    
+    // Parse date
+    const dateStr = rowData['Date de naissance'];
+    let dateOfBirth: string;
+    if (dateStr.includes('/')) {
+      const [day, month, year] = dateStr.split('/');
+      dateOfBirth = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    } else {
+      dateOfBirth = dateStr;
+    }
+    
+    // Construire l'adresse
+    const adresseStr = rowData['Adresse complète']?.trim();
+    const adresse = adresseStr ? { description: adresseStr } : { description: '' };
+    
+    // Gestion du responsable - même logique que le formulaire
+    const responsableEmail = rowData['Email responsable']?.trim();
+    const responsablePhone = rowData['Téléphone responsable']?.trim();
+    
+    console.log('DEBUG - Données responsable Excel:', {
+      'Email responsable': responsableEmail,
+      'Téléphone responsable': responsablePhone,
+      'Nom complet responsable': rowData['Nom complet responsable'],
+      'Lien de parenté': rowData['Lien de parenté']
+    });
+    
+    // Chercher un responsable existant
+    const existingResponsableId = findResponsableByEmailOrPhone(responsableEmail, responsablePhone);
+    
+    let personneResponsableId: string | undefined = undefined;
+    let createPersonneResponsable: AddStudentApiPayload['createPersonneResponsable'] | undefined = undefined;
+    
+    if (existingResponsableId) {
+      // Utiliser le responsable existant
+      personneResponsableId = existingResponsableId;
+    } else {
+      // Créer un nouveau responsable
+      const responsableFirstName = rowData['Nom complet responsable']?.split(' ')[0] || rowData['Prénom de la mère'] || 'Responsable';
+      const responsableLastName = rowData['Nom complet responsable']?.split(' ')[1] || rowData['Nom de la mère'] || 'Inconnu';
+      
+      createPersonneResponsable = {
+        firstName: responsableFirstName,
+        lastName: responsableLastName,
+        email: responsableEmail || undefined,
+        phone: responsablePhone || undefined,
+        lienParente: rowData['Lien de parenté']?.trim() || 'mère',
+        nif: undefined,
+        ninu: undefined
+      };
+    }
+    
+    return {
+      firstName: rowData['Prénom'].trim(),
+      lastName: rowData['Nom'].trim(),
+      email: rowData['Email']?.trim() || undefined,
+      sexe: rowData['Sexe'].trim(),
+      dateOfBirth,
+      lieuDeNaissance: rowData['Lieu de naissance']?.trim() || '',
+      communeDeNaissance: rowData['Commune de naissance']?.trim() || '',
+      hasHandicap: rowData['Handicap']?.trim().toLowerCase() === 'oui',
+      handicapDetails: rowData['Détails handicap']?.trim() || undefined,
+      adresse,
+      vacation: rowData['Vacation']?.trim() || 'Matin (AM)',
+      niveauEnseignement: rowData['Niveau d\'enseignement']?.trim() || 'Secondaire',
+      niveauEtude: rowData['Niveau d\'étude']?.trim() || 'NS I',
+      nomMere: rowData['Nom de la mère']?.trim() || '',
+      prenomMere: rowData['Prénom de la mère']?.trim() || '',
+      statutMere: rowData['Statut de la mère']?.trim() || 'Vivant',
+      occupationMere: rowData['Occupation de la mère']?.trim() || undefined,
+      nomPere: rowData['Nom du père']?.trim() || '',
+      prenomPere: rowData['Prénom du père']?.trim() || '',
+      statutPere: rowData['Statut du père']?.trim() || 'Vivant',
+      occupationPere: rowData['Occupation du père']?.trim() || undefined,
+      
+      // Responsable: soit ID existant, soit création
+      personneResponsableId,
+      createPersonneResponsable,
+      
+      classroomId: findClassroomIdByName(rowData['Classe']?.trim() || ''),
+      roomId: findRoomIdByName(rowData['Salle']?.trim() || '')
+    };
+  };
+  
+  const importExcelData = async () => {
+    if (!importFile) {
+      toast.error('Veuillez sélectionner un fichier Excel');
+      return;
+    }
+    
+    setIsImporting(true);
+    setImportProgress(0);
+    
+    // S'assurer que les responsables sont chargés
+    if (!responsables || responsables.length === 0) {
+      try {
+        // Charger les responsables depuis le store si nécessaire
+        const { fetchResponsables } = useStudentStore.getState();
+        if (fetchResponsables) {
+          await fetchResponsables();
+        }
+      } catch (error) {
+        console.warn('Impossible de charger les responsables:', error);
+        // Continuer sans les responsables existants
+      }
+    }
+    
+    const results = {
+      total: 0,
+      success: 0,
+      errors: [] as { row: number; sheet: string; error: string }[]
+    };
+    
+    try {
+      const arrayBuffer = await importFile.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      
+      // Compter le total de lignes
+      let totalRows = 0;
+      workbook.SheetNames.forEach(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        totalRows += Math.max(0, data.length - 1);
+      });
+      
+      results.total = totalRows;
+      let processedRows = 0;
+      
+      // Traiter chaque sheet
+      for (const sheetName of workbook.SheetNames) {
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
+        
+        for (let i = 0; i < jsonData.length; i++) {
+          const rowData = jsonData[i];
+          const rowIndex = i + 2; // +2 car Excel commence à 1 et on a les headers
+          
+          try {
+            // Ignorer les lignes vides
+            if (!rowData['Prénom'] && !rowData['Nom']) {
+              processedRows++;
+              continue;
+            }
+            
+            // Valider et mapper les données
+            const payload = validateAndMapStudentData(rowData);
+            
+            // Debug: Vérifier le payload
+            console.log('DEBUG - Payload pour import:', {
+              firstName: payload.firstName,
+              lastName: payload.lastName,
+              personneResponsableId: payload.personneResponsableId,
+              createPersonneResponsable: payload.createPersonneResponsable
+            });
+            
+            // Créer l'étudiant via l'API
+            await createStudentApi(payload);
+            results.success++;
+            
+          } catch (error) {
+            results.errors.push({
+              row: rowIndex,
+              sheet: sheetName,
+              error: (error as Error).message
+            });
+          }
+          
+          processedRows++;
+          setImportProgress(Math.round((processedRows / results.total) * 100));
+          
+          // Petite pause pour éviter de surcharger l'API
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      setImportResults(results);
+      
+      if (results.success > 0) {
+        await fetchStudents(); // Rafraîchir la liste
+        toast.success(`Import terminé: ${results.success}/${results.total} élèves importés`);
+      }
+      
+      if (results.errors.length > 0) {
+        toast.warning(`${results.errors.length} erreurs d'import détectées`);
+      }
+      
+    } catch (error) {
+      console.error('Erreur lors de l\'import:', error);
+      toast.error('Erreur lors de l\'import Excel');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   // exportToPDF géré via un dialog dédié (showExportDialog)
@@ -880,34 +1273,13 @@ export const StudentsManagement: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Bouton Importer */}
-          <label className="inline-flex">
-            <input
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                toast.info(`Import en cours: ${file.name}`);
-                // TODO: Implémenter l'import via service (CSV/XLSX)
-                // reset input
-                e.currentTarget.value = '';
-              }}
-            />
-            <Button asChild variant="outline" size="sm">
-              <span>
-                <Upload className="h-4 w-4 mr-2" />
-                Importer
-              </span>
-            </Button>
-          </label>
+         
           
           {/* Menu d'export */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4 mr-2" />
                 Exporter
               </Button>
             </DropdownMenuTrigger>
@@ -916,7 +1288,7 @@ export const StudentsManagement: React.FC = () => {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={exportToCSV}>
                 <FileText className="h-4 w-4 mr-2" />
-                Export CSV
+                Export Excel
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
                 <FileDown className="h-4 w-4 mr-2" />
@@ -924,6 +1296,16 @@ export const StudentsManagement: React.FC = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          <Button 
+            variant="outline" 
+            onClick={() => setShowImportDialog(true)} 
+            disabled={loading}
+          >
+          <Download className="h-4 w-4 mr-2"/>
+
+            Importer Excel
+          </Button>
           
           <Button onClick={() => setShowAddDialog(true)} disabled={loading}>
             <Plus className="h-4 w-4 mr-2" />
@@ -1063,6 +1445,41 @@ export const StudentsManagement: React.FC = () => {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowExportDialog(false)}>Annuler</Button>
             <Button onClick={exportStudentsByRoomToPDF} disabled={!exportRoomId}>Exporter</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog d'import Excel */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Importer Excel</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Button onClick={() => fileInputRef.current?.click()}>
+              <Upload className="h-4 w-4 mr-2" />
+              Choisir fichier
+            </Button>
+            {importFile && <span>{importFile.name}</span>}
+            {isImporting && <div>Import: {importProgress}%</div>}
+            {importResults && (
+              <div>
+                <div>Total: {importResults.total}</div>
+                <div>Succès: {importResults.success}</div>
+                <div>Erreurs: {importResults.errors.length}</div>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImportDialog(false)}>Annuler</Button>
+            <Button onClick={importExcelData} disabled={!importFile}>Importer</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -12,23 +12,23 @@ import { subscribeWithSelector } from 'zustand/middleware';
 
 import { 
   Course, 
+  CourseFilters, 
+  CourseStats, 
+  AddCourseApiPayload, 
   CreateCourseDto, 
   UpdateCourseDto, 
-  CourseFilters, 
-  PaginationOptions,
-  CourseStats,
-  ApiError 
+  CourseSortOptions,
+  CourseCategory,
+  ApiError,
+  PaginationOptions
 } from '../types/course';
 
-import { 
-  mockCourses, 
-  delay, 
-  generateCourseId, 
-  searchCourses, 
-  sortCourses, 
-  paginateCourses,
-  calculateCourseStats
-} from '../data/mockCourses';
+import { courseService } from '../services/courses/courseService';
+
+// =====================================================
+// FONCTIONS UTILITAIRES TEMPORAIRES
+// =====================================================
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // =====================================================
 // INTERFACE DU STORE
@@ -36,6 +36,7 @@ import {
 interface CourseStore {
   // État
   courses: Course[];
+  allCourses: Course[]; // Toutes les données pour le filtrage local
   loading: boolean;
   error: ApiError | null;
   loadingAction: 'create' | 'update' | 'delete' | null;
@@ -53,48 +54,54 @@ interface CourseStore {
   
   // Actions principales
   fetchCourses: () => Promise<void>;
-  createCourse: (data: CreateCourseDto) => Promise<void>;
-  updateCourse: (data: UpdateCourseDto & { id: string }) => Promise<void>;
-  deleteCourse: (id: string) => Promise<void>;
+  createCourse: (courseData: AddCourseApiPayload) => Promise<void>;
+  updateCourse: (courseData: Partial<Course>) => Promise<void>;
+  deleteCourse: (courseId: string) => Promise<void>;
   
-  // Actions de filtrage et tri
+  // Actions pour la disponibilité
+  setAvailability: (availabilityData: {
+    courseId: string;
+    roomId: string;
+    trimestre: string;
+    statut: string;
+  }) => Promise<void>;
+  
+  // Actions pour les filtres et tri
   setFilters: (filters: Partial<CourseFilters>) => void;
-  setSortOptions: (sort: { field: keyof Course; order: 'asc' | 'desc' }) => void;
+  setSortOptions: (sortOptions: CourseSortOptions) => void;
   changePage: (page: number) => void;
+  applyFiltersLocally: () => void;
   
-  // Actions utilitaires
-  clearError: () => void;
-  resetFilters: () => void;
+  // Méthodes utilitaires
+  filterCourses: (courses: Course[], filters: CourseFilters) => Course[];
+  sortCourses: (courses: Course[], sortOptions: { field: keyof Course; order: 'asc' | 'desc' }) => Course[];
+  paginateCourses: (courses: Course[], page: number, limit: number) => Course[];
+  calculateStats: (courses: Course[]) => void;
+  
+  // Actions pour les statistiques
   fetchStats: () => Promise<void>;
+  resetFilters: () => void;
 }
 
 // =====================================================
 // FONCTIONS UTILITAIRES
 // =====================================================
 
-// Convertir les données du formulaire en objet Course
-const convertFormDataToCourse = (data: CreateCourseDto): Course => {
+// Convertir les données API backend vers le format frontend
+const convertApiCourseToCourse = (apiCourse: any): Course => {
   return {
-    id: generateCourseId(),
-    code: data.code,
-    title: data.title,
-    description: data.description,
-    category: data.category,
-    weight: data.weight,
-    grade: data.grade,
-    schedule: data.schedule,
-    prerequisites: data.prerequisites,
-    objectives: data.objectives,
-    materials: data.materials,
-    syllabus: data.syllabus,
-    status: data.status,
-    isActive: true, // Par défaut, un nouveau cours est actif
-    enrollmentStartDate: new Date(data.enrollmentStartDate).toISOString(),
-    enrollmentEndDate: new Date(data.enrollmentEndDate).toISOString(),
-    startDate: new Date(data.startDate).toISOString(),
-    endDate: new Date(data.endDate).toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    id: apiCourse.id,
+    code: apiCourse.code,
+    titre: apiCourse.titre,
+    description: apiCourse.description,
+    categorie: apiCourse.categorie,
+    ponderation: apiCourse.ponderation,
+    statut: apiCourse.statut,
+    classroomId: apiCourse.classroomId || apiCourse.classroom?.id,
+    classroom: apiCourse.classroom,
+    isActive: apiCourse.statut === 'Actif' || (apiCourse.isActive ?? true),
+    createdAt: apiCourse.createdAt,
+    updatedAt: apiCourse.updatedAt
   };
 };
 
@@ -108,6 +115,7 @@ export const useCourseStore = create<CourseStore>()(
       // ÉTAT INITIAL
       // =====================================================
       courses: [],
+      allCourses: [], // Toutes les données pour le filtrage local
       loading: false,
       error: null,
       loadingAction: null,
@@ -127,7 +135,7 @@ export const useCourseStore = create<CourseStore>()(
         totalPages: 0
       },
       sortOptions: {
-        field: 'code',
+        field: 'titre',
         order: 'asc'
       },
       
@@ -145,32 +153,47 @@ export const useCourseStore = create<CourseStore>()(
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1000);
+          const { pagination } = get();
           
-          const { filters, sortOptions, pagination } = get();
+          // Appel API réel - charger tous les cours par pages (limite backend: 100)
+          let allCourses: any[] = [];
+          let currentPage = 1;
+          const pageSize = 100; // Limite backend
           
-          // Appliquer les filtres
-          let filteredCourses = searchCourses(mockCourses, filters.search || '', {
-            category: filters.category || undefined,
-            grade: filters.grade || undefined,
-            status: filters.status || undefined,
-            isActive: filters.isActive
-          });
+          // Charger toutes les pages
+          while (true) {
+            const response = await courseService.getAllCourses(currentPage, pageSize);
+            allCourses = [...allCourses, ...response.data];
+            
+            // Si on a moins d'éléments que la limite, c'est la dernière page
+            if (response.data.length < pageSize) {
+              break;
+            }
+            
+            currentPage++;
+            
+            // Sécurité: éviter une boucle infinie
+            if (currentPage > 50) { // Max 5000 cours
+              console.warn('Limite de sécurité atteinte lors du chargement des cours');
+              break;
+            }
+          }
           
-          // Appliquer le tri
-          filteredCourses = sortCourses(filteredCourses, sortOptions.field, sortOptions.order);
+          console.log(`📚 Chargé ${allCourses.length} cours en ${currentPage} page(s)`);
           
-          // Appliquer la pagination
-          const paginatedResult = paginateCourses(filteredCourses, pagination.page, pagination.limit);
+          // Convertir les données API vers le format frontend
+          const convertedCourses = allCourses.map(convertApiCourseToCourse);
           
           set(state => {
-            state.courses = paginatedResult.data;
-            state.pagination = paginatedResult.pagination;
+            state.allCourses = convertedCourses; // Stocker toutes les données
             state.loading = false;
           });
           
+          // Appliquer les filtres localement
+          get().applyFiltersLocally();
+          
         } catch (error) {
+          console.error('❌ Erreur chargement cours:', error);
           set(state => {
             state.loading = false;
             state.error = {
@@ -182,21 +205,19 @@ export const useCourseStore = create<CourseStore>()(
         }
       },
       
-      createCourse: async (data: CreateCourseDto) => {
+      createCourse: async (payload: AddCourseApiPayload) => {
         set(state => {
           state.loadingAction = 'create';
           state.error = null;
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1500);
+          console.log('🎓 Création cours via API:', payload);
           
-          // Créer le nouveau cours
-          const newCourse = convertFormDataToCourse(data);
+          // Appel API réel
+          const newCourse = await courseService.createCourse(payload);
           
-          // Ajouter à la liste des cours mock
-          mockCourses.push(newCourse);
+          console.log('🎓 Cours créé avec succès:', newCourse);
           
           set(state => {
             state.loadingAction = null;
@@ -206,45 +227,35 @@ export const useCourseStore = create<CourseStore>()(
           await get().fetchCourses();
           
         } catch (error) {
+          console.error('❌ Erreur création cours:', error);
           set(state => {
             state.loadingAction = null;
             state.error = {
-              message: 'Erreur lors de la création du cours',
+              message: error instanceof Error ? error.message : 'Erreur lors de la création du cours',
               code: 'CREATE_ERROR',
-              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
+              details: []
             };
           });
           throw error;
         }
       },
       
-      updateCourse: async (data: UpdateCourseDto & { id: string }) => {
+      updateCourse: async (courseData: Partial<Course>) => {
+        if (!courseData.id) {
+          throw new Error('ID du cours requis pour la mise à jour');
+        }
+        
+        const data = courseData as Course;
         set(state => {
           state.loadingAction = 'update';
           state.error = null;
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1200);
-          
           const { id, ...updateData } = data;
           
-          // Trouver le cours à mettre à jour
-          const courseIndex = mockCourses.findIndex(course => course.id === id);
-          
-          if (courseIndex === -1) {
-            throw new Error('Cours non trouvé');
-          }
-          
-          // Mettre à jour le cours
-          const updatedCourse = {
-            ...mockCourses[courseIndex],
-            ...updateData,
-            updatedAt: new Date().toISOString()
-          };
-          
-          mockCourses[courseIndex] = updatedCourse;
+          // Appel API réel
+          await courseService.updateCourse(id, updateData as any);
           
           set(state => {
             state.loadingAction = null;
@@ -254,6 +265,7 @@ export const useCourseStore = create<CourseStore>()(
           await get().fetchCourses();
           
         } catch (error) {
+          console.error('❌ Erreur mise à jour cours:', error);
           set(state => {
             state.loadingAction = null;
             state.error = {
@@ -273,18 +285,8 @@ export const useCourseStore = create<CourseStore>()(
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(800);
-          
-          // Trouver l'index du cours à supprimer
-          const courseIndex = mockCourses.findIndex(course => course.id === id);
-          
-          if (courseIndex === -1) {
-            throw new Error('Cours non trouvé');
-          }
-          
-          // Supprimer le cours
-          mockCourses.splice(courseIndex, 1);
+          // Appel API réel
+          await courseService.deleteCourse(id);
           
           set(state => {
             state.loadingAction = null;
@@ -294,11 +296,51 @@ export const useCourseStore = create<CourseStore>()(
           await get().fetchCourses();
           
         } catch (error) {
+          console.error('❌ Erreur suppression cours:', error);
           set(state => {
             state.loadingAction = null;
             state.error = {
               message: 'Erreur lors de la suppression du cours',
               code: 'DELETE_ERROR',
+              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
+            };
+          });
+          throw error;
+        }
+      },
+      
+      // =====================================================
+      // ACTIONS DE DISPONIBILITÉ
+      // =====================================================
+      
+      setAvailability: async (availabilityData: {
+        courseId: string;
+        roomId: string;
+        trimestre: string;
+        statut: string;
+      }) => {
+        set(state => {
+          state.loadingAction = 'update';
+          state.error = null;
+        });
+        
+        try {
+          // Appel API réel
+          await courseService.setAvailability(availabilityData);
+          
+          set(state => {
+            state.loadingAction = null;
+          });
+          
+          console.log('✅ Disponibilité mise à jour avec succès');
+          
+        } catch (error) {
+          console.error('❌ Erreur mise à jour disponibilité:', error);
+          set(state => {
+            state.loadingAction = null;
+            state.error = {
+              message: 'Erreur lors de la mise à jour de la disponibilité',
+              code: 'AVAILABILITY_ERROR',
               details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
             };
           });
@@ -316,8 +358,146 @@ export const useCourseStore = create<CourseStore>()(
           state.pagination.page = 1; // Retour à la première page lors du filtrage
         });
         
-        // Recharger les données avec les nouveaux filtres
-        get().fetchCourses();
+        // Appliquer les filtres localement sans recharger depuis l'API
+        get().applyFiltersLocally();
+      },
+      
+      // Nouvelle méthode pour appliquer les filtres localement
+      applyFiltersLocally: () => {
+        const { allCourses, filters, sortOptions, pagination } = get();
+        
+        if (!allCourses || allCourses.length === 0) {
+          // Si pas de données, charger depuis l'API
+          get().fetchCourses();
+          return;
+        }
+        
+        // Appliquer les filtres sur les données déjà chargées
+        const filteredCourses = get().filterCourses(allCourses, filters);
+        const sortedCourses = get().sortCourses(filteredCourses, sortOptions);
+        const paginatedCourses = get().paginateCourses(sortedCourses, pagination.page, pagination.limit);
+        
+        set(state => {
+          state.courses = paginatedCourses;
+          state.pagination.total = filteredCourses.length;
+          state.pagination.totalPages = Math.ceil(filteredCourses.length / pagination.limit);
+        });
+        
+        // Recalculer les statistiques avec les données filtrées
+        get().calculateStats(filteredCourses);
+      },
+      
+      // =====================================================
+      // MÉTHODES UTILITAIRES DE FILTRAGE
+      // =====================================================
+      
+      filterCourses: (courses: Course[], filters: CourseFilters): Course[] => {
+        return courses.filter(course => {
+          // Recherche textuelle
+          if (filters.search) {
+            const searchTerm = filters.search.toLowerCase();
+            const searchableText = [
+              course.titre,
+              course.code,
+              course.description,
+              course.categorie,
+              course.classroom?.name
+            ].join(' ').toLowerCase();
+            
+            if (!searchableText.includes(searchTerm)) {
+              return false;
+            }
+          }
+          
+          // Filtre par catégorie
+          if (filters.category && course.categorie !== filters.category) {
+            return false;
+          }
+          
+          // Filtre par statut
+          if (filters.status && course.statut !== filters.status) {
+            return false;
+          }
+          
+          return true;
+        });
+      },
+      
+      sortCourses: (courses: Course[], sortOptions: { field: keyof Course; order: 'asc' | 'desc' }): Course[] => {
+        return [...courses].sort((a, b) => {
+          const aValue = a[sortOptions.field];
+          const bValue = b[sortOptions.field];
+          
+          if (aValue === null || aValue === undefined) return 1;
+          if (bValue === null || bValue === undefined) return -1;
+          
+          let comparison = 0;
+          if (aValue < bValue) comparison = -1;
+          if (aValue > bValue) comparison = 1;
+          
+          return sortOptions.order === 'desc' ? -comparison : comparison;
+        });
+      },
+      
+      paginateCourses: (courses: Course[], page: number, limit: number): Course[] => {
+        const startIndex = (page - 1) * limit;
+        return courses.slice(startIndex, startIndex + limit);
+      },
+      
+      calculateStats: (courses: Course[]) => {
+        // Debug: vérifier les statuts des cours
+        console.log('Calcul des stats pour', courses.length, 'cours');
+        if (courses.length > 0) {
+          console.log('Premier cours:', courses[0]);
+          console.log('Statuts uniques:', [...new Set(courses.map(c => c.statut))]);
+        }
+        
+        const stats: CourseStats = {
+          total: courses.length,
+          // Considérer les cours comme actifs par défaut s'ils n'ont pas de statut
+          active: courses.filter(c => 
+            !c.statut || 
+            c.statut === 'actif' || 
+            c.statut === 'active' || 
+            c.statut === 'Actif' ||
+            c.isActive === true
+          ).length,
+          inactive: courses.filter(c => 
+            c.statut === 'inactif' || 
+            c.statut === 'inactive' || 
+            c.statut === 'Inactif' ||
+            c.isActive === false
+          ).length,
+          pending: courses.filter(c => 
+            c.statut === 'en_attente' || 
+            c.statut === 'pending' || 
+            c.statut === 'En_attente'
+          ).length,
+          byCategory: courses.reduce((acc, course) => {
+            acc[course.categorie] = (acc[course.categorie] || 0) + 1;
+            return acc;
+          }, {} as Record<CourseCategory, number>),
+          byGrade: courses.reduce((acc, course) => {
+            const gradeName = course.classroom?.name || 'Non assigné';
+            acc[gradeName] = (acc[gradeName] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>),
+          averageWeight: courses.length > 0 ? courses.reduce((sum, course) => sum + (course.ponderation || 0), 0) / courses.length : 0,
+          totalWeight: courses.reduce((sum, course) => sum + (course.ponderation || 0), 0),
+          topCourses: courses
+            .sort((a, b) => (b.ponderation || 0) - (a.ponderation || 0))
+            .slice(0, 5)
+            .map(course => ({
+              courseId: course.id,
+              courseCode: course.code,
+              courseTitle: course.titre,
+              weight: course.ponderation || 0
+            }))
+        };
+        
+        set(state => {
+          state.stats = stats;
+        });
       },
       
       setSortOptions: (sort: { field: keyof Course; order: 'asc' | 'desc' }) => {
@@ -325,8 +505,8 @@ export const useCourseStore = create<CourseStore>()(
           state.sortOptions = sort;
         });
         
-        // Recharger les données avec le nouveau tri
-        get().fetchCourses();
+        // Appliquer le tri localement
+        get().applyFiltersLocally();
       },
       
       changePage: (page: number) => {
@@ -334,8 +514,8 @@ export const useCourseStore = create<CourseStore>()(
           state.pagination.page = page;
         });
         
-        // Recharger les données pour la nouvelle page
-        get().fetchCourses();
+        // Appliquer la pagination localement
+        get().applyFiltersLocally();
       },
       
       // =====================================================
@@ -366,24 +546,25 @@ export const useCourseStore = create<CourseStore>()(
       
       fetchStats: async () => {
         try {
-          // Simuler un délai d'API
-          await delay(800);
+          const { courses } = get();
+          const total = courses.length;
+          const active = courses.filter(c => c.isActive).length;
           
-          // Calculer les statistiques à partir des cours actuels
-          const stats = calculateCourseStats(mockCourses);
+          const stats: CourseStats = {
+            total,
+            active,
+            inactive: total - active,
+            pending: 0,
+            byCategory: {} as any,
+            byGrade: {},
+            averageWeight: 0,
+            totalWeight: 0,
+            topCourses: []
+          };
           
-          set(state => {
-            state.stats = stats;
-          });
-          
+          set(state => { state.stats = stats; });
         } catch (error) {
-          set(state => {
-            state.error = {
-              message: 'Erreur lors du chargement des statistiques',
-              code: 'STATS_ERROR',
-              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
-            };
-          });
+          console.error('Erreur stats:', error);
         }
       }
     }))

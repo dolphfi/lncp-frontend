@@ -10,63 +10,48 @@
 // TYPES POUR LES COURS
 // =====================================================
 
-// Type pour les catégories de cours
-export type CourseCategory = 'mathématiques' | 'sciences' | 'langues' | 'histoire' | 'géographie' | 'arts' | 'sport' | 'informatique';
+// Type pour les catégories de cours (basé sur l'API backend)
+export type CourseCategory = 'Mathematiques' | 'Sciences' | 'Langues' | 'Histoire' | 'Geographie' | 'Arts' | 'Sport' | 'Informatique' | 'Physique' | 'Chimie' | 'Biologie' | 'Francais' | 'Anglais' | 'Philosophie';
 
 // Type pour les statuts de cours
 export type CourseStatus = 'actif' | 'inactif' | 'en_attente';
 
-// Type principal pour un cours
+// Type principal pour un cours (basé sur l'API backend)
 export interface Course {
   id: string;                    // Identifiant unique du cours
-  code: string;                  // Code du cours (ex: "MATH101", "PHY201")
-  title: string;                 // Titre du cours
+  code: string;                  // Code du cours (ex: SPOR-101)
+  titre: string;                 // Titre du cours (backend: "titre")
   description: string;           // Description détaillée du cours
-  category: CourseCategory;      // Catégorie du cours
-  weight: number;                // Pondération/coefficient du cours (ex: 2, 3, 4)
-  grade: string;                 // Classe cible (NSI, NSII, NSIII, NSIV)
-  schedule: {                    // Planning du cours
-    day: 'lundi' | 'mardi' | 'mercredi' | 'jeudi' | 'vendredi' | 'samedi';
-    startTime: string;           // Format "HH:MM"
-    endTime: string;             // Format "HH:MM"
-  }[];
-  prerequisites: string[];       // Cours prérequis (codes des cours)
-  objectives: string[];          // Objectifs d'apprentissage
-  materials: string[];           // Matériels nécessaires
-  syllabus: string;              // Programme détaillé
-  status: CourseStatus;          // Statut du cours
-  isActive: boolean;             // Si le cours est actif
-  enrollmentStartDate: string;   // Date de début des inscriptions
-  enrollmentEndDate: string;     // Date de fin des inscriptions
-  startDate: string;             // Date de début du cours
-  endDate: string;               // Date de fin du cours
-  createdAt: string;             // Date de création
-  updatedAt: string;             // Date de dernière mise à jour
+  categorie: CourseCategory;     // Catégorie du cours (backend: "categorie")
+  ponderation: number;           // Pondération/coefficient du cours (backend: "ponderation")
+  statut?: string;               // Statut du cours
+  classroomId: string;           // ID de la classe assignée
+  classroom?: {                  // Informations de la classe (relation)
+    id: string;
+    name: string;
+    description?: string;
+  };
+  isActive?: boolean;            // Si le cours est actif
+  createdAt?: string;            // Date de création
+  updatedAt?: string;            // Date de dernière mise à jour
 }
 
-// Type pour créer un nouveau cours
+// Type pour créer un nouveau cours (basé sur l'API backend)
 export interface CreateCourseDto {
-  code: string;
-  title: string;
+  titre: string;                 // Titre du cours
+  description: string;           // Description du cours
+  categorie: CourseCategory;     // Catégorie du cours
+  ponderation: number;           // Pondération du cours
+  classroomId: string;           // ID de la classe assignée
+}
+
+// Type pour l'API payload (exactement comme l'endpoint)
+export interface AddCourseApiPayload {
+  titre: string;
   description: string;
-  category: CourseCategory;
-  weight: number;
-  grade: string;
-  schedule: {
-    day: 'lundi' | 'mardi' | 'mercredi' | 'jeudi' | 'vendredi' | 'samedi';
-    startTime: string;
-    endTime: string;
-  }[];
-  prerequisites: string[];
-  objectives: string[];
-  materials: string[];
-  syllabus: string;
-  status: CourseStatus;
-  isActive?: boolean;
-  enrollmentStartDate: string;
-  enrollmentEndDate: string;
-  startDate: string;
-  endDate: string;
+  categorie: string;             // String pour l'API
+  ponderation: number;
+  classroomId: string;
 }
 
 // Type pour mettre à jour un cours
@@ -196,4 +181,40 @@ export interface EnrollmentStats {
   droppedEnrollments: number;
   averageGrade: number;
   averageAttendance: number;
+}
+
+// =====================================================
+// TYPES POUR LA DISPONIBILITÉ DES COURS
+// =====================================================
+
+// Type pour les trimestres
+export type Trimestre = 'T1' | 'T2' | 'T3';
+
+// Type pour les statuts de disponibilité (selon l'API backend)
+export type AvailabilityStatus = 'Actif' | 'Inactif';
+
+// Type pour la disponibilité d'un cours
+export interface CourseAvailability {
+  id?: string;
+  courseId: string;
+  roomId: string;
+  trimestre: Trimestre;
+  statut: AvailabilityStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Type pour définir/mettre à jour la disponibilité
+export interface SetAvailabilityDto {
+  courseId: string;
+  roomId: string;
+  trimestre: Trimestre;
+  statut: AvailabilityStatus;
+}
+
+// Type pour la réponse de l'API de disponibilité
+export interface AvailabilityResponse {
+  success: boolean;
+  message: string;
+  data?: CourseAvailability;
 } 

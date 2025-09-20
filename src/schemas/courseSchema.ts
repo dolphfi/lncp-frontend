@@ -12,14 +12,19 @@ import { z } from 'zod';
 // CONSTANTES POUR LES OPTIONS DE SÉLECTION
 // =====================================================
 export const COURSE_CATEGORY_OPTIONS = [
-  { value: 'mathématiques', label: 'Mathématiques' },
-  { value: 'sciences', label: 'Sciences' },
-  { value: 'langues', label: 'Langues' },
-  { value: 'histoire', label: 'Histoire' },
-  { value: 'géographie', label: 'Géographie' },
-  { value: 'arts', label: 'Arts' },
-  { value: 'sport', label: 'Sport' },
-  { value: 'informatique', label: 'Informatique' }
+  { value: 'Mathematiques', label: 'Mathématiques' },
+  { value: 'Sciences', label: 'Sciences' },
+  { value: 'Physique', label: 'Physique' },
+  { value: 'Chimie', label: 'Chimie' },
+  { value: 'Biologie', label: 'Biologie' },
+  { value: 'Francais', label: 'Français' },
+  { value: 'Anglais', label: 'Anglais' },
+  { value: 'Histoire', label: 'Histoire' },
+  { value: 'Geographie', label: 'Géographie' },
+  { value: 'Philosophie', label: 'Philosophie' },
+  { value: 'Arts', label: 'Arts' },
+  { value: 'Sport', label: 'Sport' },
+  { value: 'Informatique', label: 'Informatique' }
 ] as const;
 
 export const COURSE_STATUS_OPTIONS = [
@@ -43,6 +48,34 @@ export const DAY_OPTIONS = [
   { value: 'vendredi', label: 'Vendredi' },
   { value: 'samedi', label: 'Samedi' }
 ] as const;
+
+// =====================================================
+// SCHÉMA POUR LA CRÉATION DE COURS (API ENDPOINT)
+// =====================================================
+export const createCourseApiSchema = z.object({
+  titre: z.string()
+    .min(2, 'Le titre doit contenir au moins 2 caractères')
+    .max(100, 'Le titre ne peut pas dépasser 100 caractères'),
+  
+  description: z.string()
+    .min(10, 'La description doit contenir au moins 10 caractères')
+    .max(500, 'La description ne peut pas dépasser 500 caractères'),
+  
+  categorie: z.enum([
+    'Mathematiques', 'Sciences', 'Physique', 'Chimie', 'Biologie',
+    'Francais', 'Anglais', 'Histoire', 'Geographie', 'Philosophie',
+    'Arts', 'Sport', 'Informatique'
+  ], {
+    errorMap: () => ({ message: 'Veuillez sélectionner une catégorie valide' })
+  }),
+  
+  ponderation: z.number()
+    .min(1, 'La pondération doit être au moins de 1')
+    .max(500, 'La pondération ne peut pas dépasser 500'),
+  
+  classroomId: z.string()
+    .min(1, 'Veuillez sélectionner une classe')
+});
 
 // =====================================================
 // SCHÉMA POUR LE PLANNING
@@ -270,6 +303,7 @@ export const paginationSchema = z.object({
 // TYPES EXPORTÉS
 // =====================================================
 export type CreateCourseFormData = z.infer<typeof createCourseSchema>;
+export type CreateCourseApiFormData = z.infer<typeof createCourseApiSchema>;
 export type UpdateCourseFormData = z.infer<typeof updateCourseSchema>;
 export type ScheduleFormData = z.infer<typeof scheduleSchema>;
 export type CourseFilters = z.infer<typeof courseFiltersSchema>;

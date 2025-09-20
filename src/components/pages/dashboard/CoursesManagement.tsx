@@ -7,25 +7,29 @@
  * Adapté pour une école classique
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Plus, 
   Search, 
+  Plus, 
   Filter, 
-  FileDown, 
-  FileSpreadsheet, 
-  FileText,
+  Eye, 
+  Edit, 
+  Trash2, 
+  Calendar,
+  Target,
   BookOpen,
-  CheckCircle,
+  Users,
+  Clock,
   GraduationCap,
   Weight,
+  CheckCircle,
   AlertCircle,
-  Eye,
-  Edit,
-  Trash2,
-  Target,
-  Package
+  FileSpreadsheet,
+  FileText,
+  FileDown
 } from 'lucide-react';
+
+import { useDebounce } from '../../../hooks/useDebounce';
 
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -59,9 +63,12 @@ import {
 } from '../../ui/select';
 
 import { DataTable, Column } from '../../ui/data-table';
-import { CourseForm } from '../../forms/CourseForm';
+import { CourseFormSimple } from '../../forms/CourseFormSimple';
+import { CourseAvailabilityForm } from '../../forms/CourseAvailabilityForm';
+import type { CreateCourseApiFormData } from '../../../schemas/courseSchema';
 import { useCourseStore } from '../../../stores/courseStore';
 import { Course, CreateCourseDto } from '../../../types/course';
+import { toast } from 'react-toastify';
 
 // =====================================================
 // COMPOSANT PRINCIPAL
@@ -74,7 +81,12 @@ export const CoursesManagement: React.FC = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showAvailabilityDialog, setShowAvailabilityDialog] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  
+  // État local pour la recherche avec debounce
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   
   // =====================================================
   // RÉCUPÉRATION DE L'ÉTAT DEPUIS LE STORE ZUSTAND
@@ -94,32 +106,38 @@ export const CoursesManagement: React.FC = () => {
     createCourse,
     updateCourse,
     deleteCourse,
+    setAvailability,
     setFilters,
     setSortOptions,
     changePage,
     fetchStats
   } = useCourseStore();
   
+
   // =====================================================
   // CHARGEMENT INITIAL DES DONNÉES
   // =====================================================
   useEffect(() => {
-    // Charger les cours et les statistiques au montage du composant
+    // Chargement initial des données
     fetchCourses();
-    fetchStats();
-  }, [fetchCourses, fetchStats]);
+  }, [fetchCourses]);
   
+  // Synchronisation de la recherche avec debounce
+  useEffect(() => {
+    setFilters({ search: debouncedSearchTerm });
+  }, [debouncedSearchTerm, setFilters]);
+
   // =====================================================
   // CONFIGURATION DES COLONNES DE LA TABLE
   // =====================================================
   const columns: Column<Course>[] = [
     {
-      key: 'code',
+      key: 'titre',
       label: 'Cours',
       sortable: true,
       searchable: true,
       width: '250px',
-      render: (code: string, course: Course) => {
+      render: (titre: string, course: Course) => {
         return (
           <div className="flex items-center space-x-3">
             {/* Icône du cours */}
@@ -132,10 +150,10 @@ export const CoursesManagement: React.FC = () => {
             {/* Informations du cours */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                {course.title}
+                {course.titre}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {code} • {course.category}
+                {course.code} • {course.categorie}
               </p>
             </div>
           </div>
@@ -143,7 +161,43 @@ export const CoursesManagement: React.FC = () => {
       }
     },
     {
-      key: 'weight',
+      key: 'classroom',
+      label: 'Classe',
+      sortable: true,
+      width: '180px',
+      render: (classroom: any, course: Course) => {
+        if (!classroom) {
+          return (
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <Users className="h-4 w-4 text-gray-400" />
+              </div>
+              <span className="text-sm text-gray-500">Aucune classe</span>
+            </div>
+          );
+        }
+        
+        return (
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-xs">
+              {classroom.name?.charAt(0) || 'C'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                {classroom.name}
+              </p>
+              {classroom.description && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {classroom.description}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'ponderation',
       label: 'Pondération',
       sortable: true,
       width: '120px',
@@ -167,34 +221,16 @@ export const CoursesManagement: React.FC = () => {
       }
     },
     {
-      key: 'grade',
-      label: 'Classe',
-      sortable: true,
-      width: '100px',
-      render: (grade: string) => {
-        return (
-          <Badge variant="outline" className="text-xs">
-            {grade}
-          </Badge>
-        );
-      }
-    },
-    {
-      key: 'status',
+      key: 'isActive',
       label: 'Statut',
       sortable: true,
       width: '120px',
-      render: (status: string) => {
-        const statusConfig = {
-          actif: { label: 'Actif', variant: 'default' as const },
-          inactif: { label: 'Inactif', variant: 'secondary' as const },
-          en_attente: { label: 'En attente', variant: 'outline' as const }
-        };
-        
-        const config = statusConfig[status as keyof typeof statusConfig];
-        if (!config) return <Badge variant="outline">{status}</Badge>;
-        
-        return <Badge variant={config.variant}>{config.label}</Badge>;
+      render: (isActive: boolean) => {
+        return (
+          <Badge variant={isActive ? 'default' : 'secondary'}>
+            {isActive ? 'Actif' : 'Inactif'}
+          </Badge>
+        );
       }
     },
     {
@@ -223,10 +259,11 @@ export const CoursesManagement: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleDeleteCourseClick(course)}
-              className="text-red-500 hover:text-red-700"
+              onClick={() => handleAvailabilityCourse(course)}
+              className="text-purple-500 hover:text-purple-700"
+              title="Gérer la disponibilité"
             >
-              <Trash2 className="h-4 w-4" />
+              <Calendar className="h-4 w-4" />
             </Button>
           </div>
         );
@@ -237,24 +274,90 @@ export const CoursesManagement: React.FC = () => {
   // =====================================================
   // GESTIONNAIRES D'ÉVÉNEMENTS
   // =====================================================
-  
-  const handleCreateCourse = async (data: CreateCourseDto) => {
+  // Gestionnaire pour créer un cours
+  const handleCreateCourse = async (data: CreateCourseApiFormData) => {
     try {
       await createCourse(data);
       setShowAddDialog(false);
+      toast.success('Cours créé avec succès !', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } catch (error) {
-      console.error('Erreur lors de la création du cours:', error);
+      console.error('Erreur création cours:', error);
+      toast.error('Erreur lors de la création du cours', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 
-  const handleUpdateCourse = async (data: CreateCourseDto, courseId?: string) => {
-    if (!courseId) return;
+  // Gestionnaire pour modifier un cours
+  const handleUpdateCourse = async (data: CreateCourseApiFormData) => {
+    if (!selectedCourse) return;
     
     try {
-      await updateCourse({ id: courseId, ...data });
+      await updateCourse({ ...data, id: selectedCourse.id });
       setShowEditDialog(false);
+      setSelectedCourse(null);
+      toast.success('Cours modifié avec succès !', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du cours:', error);
+      console.error('Erreur modification cours:', error);
+      toast.error('Erreur lors de la modification du cours', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    }
+  };
+
+  // Gestionnaire pour la disponibilité
+  const handleSetAvailability = async (data: {
+    courseId: string;
+    roomId: string;
+    trimestre: string;
+    statut: string;
+  }) => {
+    try {
+      await setAvailability(data);
+      setShowAvailabilityDialog(false);
+      setSelectedCourse(null);
+      toast.success('Disponibilité mise à jour avec succès !', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    } catch (error) {
+      console.error('Erreur disponibilité cours:', error);
+      toast.error('Erreur lors de la mise à jour de la disponibilité', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 
@@ -265,11 +368,28 @@ export const CoursesManagement: React.FC = () => {
       await deleteCourse(selectedCourse.id);
       setShowDeleteDialog(false);
       setSelectedCourse(null);
+      toast.success('Cours supprimé avec succès !', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } catch (error) {
       console.error('Erreur lors de la suppression du cours:', error);
+      toast.error('Erreur lors de la suppression du cours', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 
+  // Gestionnaires pour les actions du tableau
   const handleViewCourse = (course: Course) => {
     setSelectedCourse(course);
     setShowViewDialog(true);
@@ -280,13 +400,20 @@ export const CoursesManagement: React.FC = () => {
     setShowEditDialog(true);
   };
 
+  const handleAvailabilityCourse = (course: Course) => {
+    setSelectedCourse(course);
+    setShowAvailabilityDialog(true);
+  };
+
   const handleDeleteCourseClick = (course: Course) => {
     setSelectedCourse(course);
     setShowDeleteDialog(true);
   };
 
-  const handleSearch = (searchTerm: string) => {
-    setFilters({ search: searchTerm });
+
+  // Gestion de la recherche (mise à jour immédiate de l'état local)
+  const handleSearch = (searchValue: string) => {
+    setSearchTerm(searchValue);
   };
 
   const handleCourseFilter = (filterUpdates: Partial<typeof filters>) => {
@@ -317,11 +444,11 @@ export const CoursesManagement: React.FC = () => {
       headers.join(','),
       ...courses.map(course => [
         course.code,
-        course.title,
-        course.category,
-        course.weight,
-        course.grade,
-        course.status
+        course.titre,
+        course.categorie,
+        course.ponderation,
+        course.classroom?.name || 'Aucune classe',
+        course.isActive ? 'Actif' : 'Inactif'
       ].join(','))
     ].join('\n');
 
@@ -376,10 +503,10 @@ export const CoursesManagement: React.FC = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pondération Moy.</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.averageWeight.toFixed(1)}</p>
+                <p className="text-sm font-medium text-gray-600">Catégories</p>
+                <p className="text-2xl font-bold text-purple-600">{Object.keys(stats.byCategory || {}).length}</p>
               </div>
-              <Weight className="h-8 w-8 text-purple-500" />
+              <GraduationCap className="h-8 w-8 text-purple-500" />
             </div>
           </CardContent>
         </Card>
@@ -388,13 +515,14 @@ export const CoursesManagement: React.FC = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Pondération</p>
-                <p className="text-2xl font-bold text-orange-600">{stats.totalWeight}</p>
+                <p className="text-sm font-medium text-gray-600">Classes Assignées</p>
+                <p className="text-2xl font-bold text-orange-600">{Object.keys(stats.byGrade || {}).length}</p>
               </div>
-              <GraduationCap className="h-8 w-8 text-orange-500" />
+              <Users className="h-8 w-8 text-orange-500" />
             </div>
           </CardContent>
         </Card>
+
       </div>
     );
   };
@@ -414,7 +542,7 @@ export const CoursesManagement: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Rechercher par code, titre, description..."
-                  value={filters.search || ''}
+                  value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10"
                 />
@@ -428,7 +556,7 @@ export const CoursesManagement: React.FC = () => {
               <Select
                 value={filters.category || 'all'}
                 onValueChange={(value) => handleCourseFilter({ 
-                  category: value as 'mathématiques' | 'sciences' | 'langues' | 'histoire' | 'géographie' | 'arts' | 'sport' | 'informatique' | undefined 
+                  category: value === 'all' ? undefined : value as any
                 })}
               >
                 <SelectTrigger className="w-40">
@@ -436,14 +564,19 @@ export const CoursesManagement: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Toutes</SelectItem>
-                  <SelectItem value="mathématiques">Mathématiques</SelectItem>
-                  <SelectItem value="sciences">Sciences</SelectItem>
-                  <SelectItem value="langues">Langues</SelectItem>
-                  <SelectItem value="histoire">Histoire</SelectItem>
-                  <SelectItem value="géographie">Géographie</SelectItem>
-                  <SelectItem value="arts">Arts</SelectItem>
-                  <SelectItem value="sport">Sport</SelectItem>
-                  <SelectItem value="informatique">Informatique</SelectItem>
+                  <SelectItem value="Mathematiques">Mathématiques</SelectItem>
+                  <SelectItem value="Sciences">Sciences</SelectItem>
+                  <SelectItem value="Physique">Physique</SelectItem>
+                  <SelectItem value="Chimie">Chimie</SelectItem>
+                  <SelectItem value="Biologie">Biologie</SelectItem>
+                  <SelectItem value="Francais">Français</SelectItem>
+                  <SelectItem value="Anglais">Anglais</SelectItem>
+                  <SelectItem value="Histoire">Histoire</SelectItem>
+                  <SelectItem value="Geographie">Géographie</SelectItem>
+                  <SelectItem value="Philosophie">Philosophie</SelectItem>
+                  <SelectItem value="Arts">Arts</SelectItem>
+                  <SelectItem value="Sport">Sport</SelectItem>
+                  <SelectItem value="Informatique">Informatique</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -575,7 +708,7 @@ export const CoursesManagement: React.FC = () => {
               Créez un nouveau cours en remplissant les informations ci-dessous.
             </DialogDescription>
           </DialogHeader>
-          <CourseForm
+          <CourseFormSimple
             onSubmit={handleCreateCourse}
             onCancel={() => setShowAddDialog(false)}
             loading={loadingAction === 'create'}
@@ -593,42 +726,14 @@ export const CoursesManagement: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           {selectedCourse && (
-            <CourseForm
-              course={selectedCourse}
+            <CourseFormSimple
+              course={selectedCourse || undefined}
               onSubmit={handleUpdateCourse}
               onCancel={() => setShowEditDialog(false)}
               loading={loadingAction === 'update'}
               mode="edit"
             />
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialogue de suppression */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmer la suppression</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer le cours "{selectedCourse?.title}" ? 
-              Cette action est irréversible.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-            >
-              Annuler
-            </Button>
-            <Button
-              onClick={handleDeleteCourse}
-              disabled={loadingAction === 'delete'}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {loadingAction === 'delete' ? 'Suppression...' : 'Supprimer'}
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
 
@@ -656,19 +761,18 @@ export const CoursesManagement: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {selectedCourse.title}
+                      {selectedCourse.titre}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {selectedCourse.code} • {selectedCourse.category}
+                      {selectedCourse.id} • {selectedCourse.categorie}
                     </p>
                   </div>
                   <div className="flex-shrink-0">
                     <Badge 
-                      variant={selectedCourse.status === 'actif' ? 'default' : 'secondary'}
+                      variant={selectedCourse.isActive ? 'default' : 'secondary'}
                       className="text-xs"
                     >
-                      {selectedCourse.status === 'actif' ? 'Actif' : 
-                       selectedCourse.status === 'inactif' ? 'Inactif' : 'En attente'}
+                      {selectedCourse.isActive ? 'Actif' : 'Inactif'}
                     </Badge>
                   </div>
                 </div>
@@ -685,21 +789,34 @@ export const CoursesManagement: React.FC = () => {
                     </h4>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Code</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">ID</span>
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {selectedCourse.code}
+                          {selectedCourse.id.slice(0, 8)}...
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Classe</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Code</span>
                         <Badge variant="outline" className="text-xs">
-                          {selectedCourse.grade}
+                          {selectedCourse.code}
                         </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Classe</span>
+                        <div className="text-right">
+                          <Badge variant="outline" className="text-xs">
+                            {selectedCourse.classroom?.name || 'Aucune classe'}
+                          </Badge>
+                          {selectedCourse.classroom?.description && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {selectedCourse.classroom.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-500 dark:text-gray-400">Catégorie</span>
                         <Badge variant="outline" className="text-xs">
-                          {selectedCourse.category}
+                          {selectedCourse.categorie}
                         </Badge>
                       </div>
                       <div className="flex justify-between items-center">
@@ -707,41 +824,20 @@ export const CoursesManagement: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <Weight className="h-4 w-4 text-gray-400" />
                           <Badge className={`text-xs ${
-                            selectedCourse.weight === 100 ? 'bg-gray-100 text-gray-800' :
-                            selectedCourse.weight === 200 ? 'bg-blue-100 text-blue-800' :
-                            selectedCourse.weight === 300 ? 'bg-yellow-100 text-yellow-800' :
-                            selectedCourse.weight === 400 ? 'bg-orange-100 text-orange-800' :
-                            selectedCourse.weight === 500 ? 'bg-red-100 text-red-800' :
+                            selectedCourse.ponderation === 100 ? 'bg-gray-100 text-gray-800' :
+                            selectedCourse.ponderation === 200 ? 'bg-blue-100 text-blue-800' :
+                            selectedCourse.ponderation === 300 ? 'bg-yellow-100 text-yellow-800' :
+                            selectedCourse.ponderation === 400 ? 'bg-orange-100 text-orange-800' :
+                            selectedCourse.ponderation === 500 ? 'bg-red-100 text-red-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
-                            {selectedCourse.weight}
+                            {selectedCourse.ponderation}
                           </Badge>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Planning */}
-                  <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      Planning
-                    </h4>
-                    <div className="space-y-2">
-                      {selectedCourse.schedule.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {item.day}
-                            </Badge>
-                          </div>
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
-                            {item.startTime} - {item.endTime}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Colonne droite */}
@@ -749,6 +845,7 @@ export const CoursesManagement: React.FC = () => {
                   {/* Description */}
                   <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
                       <FileText className="h-4 w-4 text-purple-600" />
                       Description
                     </h4>
@@ -757,54 +854,30 @@ export const CoursesManagement: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Objectifs */}
+                  {/* Informations supplémentaires */}
                   <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                       <Target className="h-4 w-4 text-indigo-600" />
-                      Objectifs d'apprentissage
+                      Informations
                     </h4>
-                    <div className="space-y-2">
-                      {selectedCourse.objectives.map((objective, index) => (
-                        <div key={index} className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 flex-shrink-0"></div>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {objective}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Matériels */}
-                  <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                      <Package className="h-4 w-4 text-amber-600" />
-                      Matériels nécessaires
-                    </h4>
-                    <div className="space-y-2">
-                      {selectedCourse.materials.map((material, index) => (
-                        <div key={index} className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 flex-shrink-0"></div>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {material}
-                          </p>
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Créé le</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {selectedCourse.createdAt ? new Date(selectedCourse.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Modifié le</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {selectedCourse.updatedAt ? new Date(selectedCourse.updatedAt).toLocaleDateString('fr-FR') : 'N/A'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Programme détaillé */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-teal-600" />
-                  Programme détaillé
-                </h4>
-                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {selectedCourse.syllabus}
-                </p>
-              </div>
 
               {/* Actions */}
               <div className="flex justify-end gap-3 pt-4 border-t">
@@ -826,6 +899,30 @@ export const CoursesManagement: React.FC = () => {
                 </Button>
               </div>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de gestion de disponibilité */}
+      <Dialog open={showAvailabilityDialog} onOpenChange={setShowAvailabilityDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gestion de Disponibilité</DialogTitle>
+            <DialogDescription>
+              Définir la disponibilité du cours par trimestre et salle
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedCourse && (
+            <CourseAvailabilityForm
+              course={selectedCourse}
+              onSubmit={handleSetAvailability}
+              onCancel={() => {
+                setShowAvailabilityDialog(false);
+                setSelectedCourse(null);
+              }}
+              loading={loadingAction === 'update'}
+            />
           )}
         </DialogContent>
       </Dialog>
