@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -26,51 +25,20 @@ import {
   EmployeeStatus, 
   Gender, 
   CreateEmployeeDto,
-  CourseAssignment
+  CourseAssignment,
+  BackendUserRole
 } from '../../types/employee';
+import { 
+  employeeFormSchema, 
+  EmployeeFormData,
+  BACKEND_ROLE_OPTIONS,
+  SEXE_OPTIONS,
+  EMPLOYEE_TYPE_OPTIONS
+} from '../../schemas/employeeSchema';
 import { useCourseStore } from '../../stores/courseStore';
 import { Badge } from '../ui/badge';
 
-// Schéma de validation
-const employeeSchema = z.object({
-  employeeId: z.string().min(1, "L'identifiant employé est requis"),
-  type: z.enum(['professeur', 'administratif', 'technique', 'direction', 'maintenance']),
-  firstName: z.string().min(2, "Le prénom doit contenir au moins 2 caractères"),
-  lastName: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
-  email: z.string().email("Email invalide"),
-  phone: z.string().min(10, "Numéro de téléphone invalide"),
-  dateOfBirth: z.string().min(1, "Date de naissance requise"),
-  gender: z.enum(['homme', 'femme', 'autre']),
-  address: z.object({
-    street: z.string().min(1, "Rue requise"),
-    city: z.string().min(1, "Ville requise"),
-    postalCode: z.string().min(1, "Code postal requis"),
-    country: z.string().min(1, "Pays requis")
-  }),
-  hireDate: z.string().min(1, "Date d'embauche requise"),
-  status: z.enum(['actif', 'inactif', 'en_congé', 'retraité', 'démission']),
-  notes: z.string().optional(),
-  
-  // Champs spécifiques aux professeurs
-  specialty: z.enum(['mathématiques', 'sciences', 'langues', 'histoire', 'géographie', 'arts', 'sport', 'informatique']).optional(),
-  secondarySpecialties: z.array(z.enum(['mathématiques', 'sciences', 'langues', 'histoire', 'géographie', 'arts', 'sport', 'informatique'])).optional(),
-  degree: z.enum(['licence', 'master', 'doctorat', 'agrégation', 'certification', 'bac', 'bts', 'dut']).optional(),
-  institution: z.string().optional(),
-  graduationYear: z.number().min(1950).max(new Date().getFullYear()).optional(),
-  maxCourses: z.number().min(1).max(10).optional(),
-  
-  // Champs spécifiques aux administratifs
-  department: z.string().optional(),
-  position: z.string().optional(),
-  supervisor: z.string().optional(),
-  
-  // Champs spécifiques aux techniques
-  skills: z.array(z.string()).optional(),
-  certifications: z.array(z.string()).optional(),
-  equipment: z.array(z.string()).optional(),
-});
-
-type EmployeeFormData = z.infer<typeof employeeSchema>;
+// Interface pour les props du composant
 
 interface EmployeeFormProps {
   employee?: any;
@@ -81,8 +49,7 @@ interface EmployeeFormProps {
 
 export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading = false }: EmployeeFormProps) {
   const [selectedType, setSelectedType] = useState<EmployeeType>('professeur');
-  const [courseAssignments, setCourseAssignments] = useState<CourseAssignment[]>([]);
-  const [newAssignment, setNewAssignment] = useState<Partial<CourseAssignment>>({});
+  const [imagePreview, setImagePreview] = useState<string>('');
 
   // Récupérer les cours existants depuis le store
   const { fetchCourses } = useCourseStore();
@@ -101,22 +68,46 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
     watch,
     reset
   } = useForm<EmployeeFormData>({
-    resolver: zodResolver(employeeSchema),
+    resolver: zodResolver(employeeFormSchema),
     defaultValues: {
-      type: 'professeur',
-      status: 'actif',
+      employeeId: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      dateOfBirth: '',
       gender: 'homme',
+      placeOfBirth: '',
+      communeOfBirth: '',
       address: {
         street: '',
         city: '',
         postalCode: '',
         country: 'France'
       },
+      hireDate: '',
+      type: 'professeur',
+      role: 'TEACHER' as BackendUserRole,
+      status: 'actif',
+      avatar: '',
+      handicap: false,
       notes: '',
+      assignedCourseIds: [],
+      // Champs professeurs
+      specialty: undefined,
       secondarySpecialties: [],
+      degree: undefined,
+      institution: '',
+      graduationYear: undefined,
+      maxCourses: undefined,
+      // Champs administratifs
+      department: '',
+      position: '',
+      supervisor: '',
+      // Champs techniques
       skills: [],
-      certifications: [],
-      equipment: [],
+      certifications: '',
+      equipment: ''
     }
   });
 
@@ -137,14 +128,20 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
         phone: employee.phone,
         dateOfBirth: employee.dateOfBirth,
         gender: employee.gender,
+        placeOfBirth: '', // Champ backend, pas dans l'ancien type
+        communeOfBirth: '', // Champ backend, pas dans l'ancien type
         address: employee.address,
         hireDate: employee.hireDate,
         status: employee.status,
+        role: 'TEACHER' as BackendUserRole, // Par défaut
+        avatar: '',
+        handicap: false,
         notes: employee.notes,
+        assignedCourseIds: employee.professorInfo?.assignedCourses?.map((c: any) => c.courseId) || [],
         
         // Champs spécifiques aux professeurs
         specialty: employee.professorInfo?.specialty,
-        secondarySpecialties: employee.professorInfo?.secondarySpecialties,
+        secondarySpecialties: employee.professorInfo?.secondarySpecialties || [],
         degree: employee.professorInfo?.degree,
         institution: employee.professorInfo?.institution,
         graduationYear: employee.professorInfo?.graduationYear,
@@ -156,39 +153,69 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
         supervisor: employee.administrativeInfo?.supervisor,
         
         // Champs spécifiques aux techniques
-        skills: employee.technicalInfo?.skills,
-        certifications: employee.technicalInfo?.certifications,
-        equipment: employee.technicalInfo?.equipment,
+        skills: employee.technicalInfo?.skills || [],
+        certifications: employee.technicalInfo?.certifications || [],
+        equipment: employee.technicalInfo?.equipment || []
       });
       
-      if (employee.professorInfo?.assignedCourses) {
-        setCourseAssignments(employee.professorInfo.assignedCourses);
+      // Charger l'avatar existant
+      if (employee.avatar) {
+        setImagePreview(employee.avatar);
       }
     }
   }, [employee, reset]);
 
-  const addCourseAssignment = () => {
-    if (newAssignment.courseId && newAssignment.courseName) {
-      setCourseAssignments([...courseAssignments, {
-        courseId: newAssignment.courseId!,
-        courseName: newAssignment.courseName!,
-        classes: newAssignment.classes || [],
-        rooms: newAssignment.rooms || []
-      }]);
-      setNewAssignment({});
+  // =====================================================
+  // GESTION DE L'UPLOAD D'IMAGE
+  // =====================================================
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setImagePreview(result);
+        setValue('avatar', result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const removeCourseAssignment = (index: number) => {
-    setCourseAssignments(courseAssignments.filter((_, i) => i !== index));
+  const removeImage = () => {
+    setImagePreview('');
+    setValue('avatar', '');
   };
 
   const onSubmitForm = (data: EmployeeFormData) => {
-    const employeeData: CreateEmployeeDto = {
-      ...data,
-      assignedCourses: selectedType === 'professeur' ? courseAssignments : undefined,
+    console.log('📝 Données du formulaire:', data);
+    
+    // Convertir les données frontend vers le format API backend
+    const apiPayload = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      sexe: data.gender === 'homme' ? 'Homme' : data.gender === 'femme' ? 'Femme' : 'Homme',
+      dateOfBirth: new Date(data.dateOfBirth).toISOString().split('T')[0], // Format YYYY-MM-DD
+      placeOfBirth: data.placeOfBirth,
+      communeOfBirth: data.communeOfBirth,
+      hireDate: new Date(data.hireDate).toISOString().split('T')[0], // Format YYYY-MM-DD
+      adresse: {
+        adresseLigne1: data.address.street,
+        departement: data.address.country,
+        commune: data.address.city,
+        sectioncommunale: data.address.postalCode
+      },
+      role: data.role,
+      avatar: data.avatar || undefined,
+      handicap: data.handicap || false,
+      // Pour les enseignants, inclure les cours sélectionnés
+      courseIds: data.type === 'professeur' ? (data.assignedCourseIds || []) : undefined
     };
-    onSubmit(employeeData);
+    
+    console.log('🚀 Payload envoyé au store:', apiPayload);
+    
+    onSubmit(apiPayload as any);
   };
 
   return (
@@ -204,24 +231,17 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="employeeId">Identifiant employé *</Label>
-              <Input
-                id="employeeId"
-                {...register('employeeId')}
-                placeholder="EMP001"
-              />
-              {errors.employeeId && (
-                <p className="text-sm text-red-500 mt-1">{errors.employeeId.message}</p>
-              )}
-            </div>
-
-            <div>
               <Label htmlFor="type">Type d'employé *</Label>
               <Select
                 value={selectedType}
                 onValueChange={(value: EmployeeType) => {
                   setValue('type', value);
                   setSelectedType(value);
+                  // Mettre à jour le rôle backend automatiquement
+                  const defaultRole = value === 'professeur' ? 'TEACHER' : 
+                                     value === 'direction' ? 'DIRECTOR' : 
+                                     value === 'administratif' ? 'SECRETARY' : 'USER';
+                  setValue('role', defaultRole as BackendUserRole);
                 }}
               >
                 <SelectTrigger>
@@ -313,6 +333,30 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
                   <SelectItem value="autre">Autre</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="placeOfBirth">Lieu de naissance *</Label>
+              <Input
+                id="placeOfBirth"
+                {...register('placeOfBirth')}
+                placeholder="Paris"
+              />
+              {errors.placeOfBirth && (
+                <p className="text-sm text-red-500 mt-1">{errors.placeOfBirth.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="communeOfBirth">Commune de naissance *</Label>
+              <Input
+                id="communeOfBirth"
+                {...register('communeOfBirth')}
+                placeholder="Paris 15e"
+              />
+              {errors.communeOfBirth && (
+                <p className="text-sm text-red-500 mt-1">{errors.communeOfBirth.message}</p>
+              )}
             </div>
 
             <div>
@@ -503,223 +547,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
               </div>
             </div>
 
-            {/* Assignation des cours */}
-            <div className="space-y-4">
-              <h4 className="font-medium flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Assignation des cours
-              </h4>
-              
-              {/* Nouvelle assignation */}
-              <div className="border rounded-lg p-4 space-y-4">
-                <h5 className="font-medium">Ajouter une assignation</h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Cours</Label>
-                    <Select
-                      value={newAssignment.courseId || ''}
-                      onValueChange={(value: string) => {
-                        const course = courses.find(c => c.id === value);
-                        setNewAssignment({
-                          ...newAssignment,
-                          courseId: value,
-                          courseName: course ? `${course.titre} (${course.id.slice(0, 8)})`  : ''
-                        });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un cours" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {courses.map(course => (
-                          <SelectItem key={course.id} value={course.id}>
-                            {course.titre} ({course.id.slice(0, 8)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Classes</Label>
-                    <Select
-                      onValueChange={(value) => {
-                        const currentClasses = newAssignment.classes || [];
-                        if (!currentClasses.includes(value)) {
-                          setNewAssignment({
-                            ...newAssignment,
-                            classes: [...currentClasses, value]
-                          });
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Ajouter des classes" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* mockClasses.map(cls => ( */}
-                          <SelectItem key="1" value="1">
-                            6ème A
-                          </SelectItem>
-                          <SelectItem key="2" value="2">
-                            6ème B
-                          </SelectItem>
-                          <SelectItem key="3" value="3">
-                            5ème A
-                          </SelectItem>
-                          <SelectItem key="4" value="4">
-                            5ème B
-                          </SelectItem>
-                          <SelectItem key="5" value="5">
-                            4ème A
-                          </SelectItem>
-                          <SelectItem key="6" value="6">
-                            4ème B
-                          </SelectItem>
-                          <SelectItem key="7" value="7">
-                            3ème A
-                          </SelectItem>
-                          <SelectItem key="8" value="8">
-                            3ème B
-                          </SelectItem>
-                        {/* ))} */}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Salles</Label>
-                    <Select
-                      onValueChange={(value: string) => {
-                        const currentRooms = newAssignment.rooms || [];
-                        if (!currentRooms.includes(value)) {
-                          setNewAssignment({
-                            ...newAssignment,
-                            rooms: [...currentRooms, value]
-                          });
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Ajouter des salles" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* mockRooms.map(room => ( */}
-                          <SelectItem key="1" value="1">
-                            Salle 101
-                          </SelectItem>
-                          <SelectItem key="2" value="2">
-                            Salle 102
-                          </SelectItem>
-                          <SelectItem key="3" value="3">
-                            Salle 103
-                          </SelectItem>
-                          <SelectItem key="4" value="4">
-                            Salle 201
-                          </SelectItem>
-                          <SelectItem key="5" value="5">
-                            Salle 202
-                          </SelectItem>
-                          <SelectItem key="6" value="6">
-                            Salle 203
-                          </SelectItem>
-                          <SelectItem key="7" value="7">
-                            Laboratoire Sciences
-                          </SelectItem>
-                          <SelectItem key="8" value="8">
-                            Salle Informatique
-                          </SelectItem>
-                        {/* ))} */}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      onClick={addCourseAssignment}
-                      disabled={!newAssignment.courseId}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Ajouter
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Assignations existantes */}
-              {courseAssignments.length > 0 && (
-                <div className="space-y-2">
-                  <h5 className="font-medium">Assignations actuelles</h5>
-                  {courseAssignments.map((assignment, index) => (
-                    <div key={index} className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h6 className="font-semibold text-gray-900">{assignment.courseName}</h6>
-                          <p className="text-sm text-gray-600">Code: {assignment.courseId}</p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeCourseAssignment(index)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium text-gray-700">Classes assignées:</Label>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {assignment.classes.length > 0 ? (
-                              assignment.classes.map((classId, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
-                                  {classId === '1' ? '6ème A' : 
-                                   classId === '2' ? '6ème B' :
-                                   classId === '3' ? '5ème A' :
-                                   classId === '4' ? '5ème B' :
-                                   classId === '5' ? '4ème A' :
-                                   classId === '6' ? '4ème B' :
-                                   classId === '7' ? '3ème A' :
-                                   classId === '8' ? '3ème B' : classId}
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-sm text-gray-500">Aucune classe assignée</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <Label className="text-sm font-medium text-gray-700">Salles assignées:</Label>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {assignment.rooms.length > 0 ? (
-                              assignment.rooms.map((roomId, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
-                                  {roomId === '1' ? 'Salle 101' : 
-                                   roomId === '2' ? 'Salle 102' :
-                                   roomId === '3' ? 'Salle 103' :
-                                   roomId === '4' ? 'Salle 201' :
-                                   roomId === '5' ? 'Salle 202' :
-                                   roomId === '6' ? 'Salle 203' :
-                                   roomId === '7' ? 'Laboratoire Sciences' :
-                                   roomId === '8' ? 'Salle Informatique' : roomId}
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-sm text-gray-500">Aucune salle assignée</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Note: L'assignation des cours se fait via la section simple ci-dessous */}
           </CardContent>
         </Card>
       )}
@@ -821,6 +649,141 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
           </CardContent>
         </Card>
       )}
+
+      {/* Section assignation de cours pour les enseignants */}
+      {selectedType === 'professeur' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Cours assignés (optionnel)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Sélectionner des cours</Label>
+              <Select
+                onValueChange={(courseId) => {
+                  const currentCourses = watch('assignedCourseIds') || [];
+                  if (!currentCourses.includes(courseId)) {
+                    setValue('assignedCourseIds', [...currentCourses, courseId]);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir un cours" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map((course) => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.titre} ({course.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Affichage des cours sélectionnés */}
+            <div className="flex flex-wrap gap-2">
+              {(watch('assignedCourseIds') || []).map((courseId) => {
+                const course = courses.find(c => c.id === courseId);
+                return course ? (
+                  <Badge key={courseId} variant="secondary" className="flex items-center gap-1">
+                    {course.titre}
+                    <X 
+                      className="h-3 w-3 cursor-pointer" 
+                      onClick={() => {
+                        const currentCourses = watch('assignedCourseIds') || [];
+                        setValue('assignedCourseIds', currentCourses.filter(id => id !== courseId));
+                      }}
+                    />
+                  </Badge>
+                ) : null;
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Champs optionnels */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Informations complémentaires
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Photo de profil</Label>
+              <div className="flex items-center gap-3 mt-2">
+                {imagePreview ? (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Aperçu"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={removeImage}
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 bg-red-50 hover:bg-red-100 border-red-200 text-red-600"
+                      disabled={isLoading}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-lg">
+                    {watch('firstName')?.charAt(0) || ''}{watch('lastName')?.charAt(0) || ''}
+                  </div>
+                )}
+                
+                <Label htmlFor="avatar-upload" className="cursor-pointer">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 rounded-md text-sm border border-blue-200 transition-colors">
+                    <Plus className="h-4 w-4 text-blue-600" />
+                    <span className="text-blue-600 font-medium">Choisir une photo</span>
+                  </div>
+                </Label>
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                  disabled={isLoading}
+                  aria-label="Télécharger une photo de profil"
+                />
+              </div>
+              {errors.avatar && (
+                <p className="text-sm text-red-500 mt-1">{errors.avatar.message}</p>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="handicap"
+                checked={watch('handicap') || false}
+                onCheckedChange={(checked: boolean) => setValue('handicap', checked)}
+              />
+              <Label htmlFor="handicap">Situation de handicap</Label>
+            </div>
+          </div>
+          
+          <div>
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              {...register('notes')}
+              placeholder="Notes additionnelles..."
+              rows={3}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Boutons d'action */}
       <div className="flex justify-end space-x-4">

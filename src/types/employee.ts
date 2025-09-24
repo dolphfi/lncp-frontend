@@ -10,7 +10,38 @@
 // TYPES DE BASE
 // =====================================================
 
+// Types backend (basés sur UserRole enum)
+export type BackendUserRole = 
+  | 'SUPER_ADMIN' | 'ADMIN' | 'DIRECTOR' | 'CENSORED' 
+  | 'COMPTABLE' | 'SUPPLEANT' | 'TEACHER' | 'SECRETARY' 
+  | 'STUDENT' | 'PARENT' | 'USER';
+
+// Types frontend (pour l'interface utilisateur)
 export type EmployeeType = 'professeur' | 'administratif' | 'technique' | 'direction' | 'maintenance';
+
+// Mapping backend vers frontend
+export const ROLE_MAPPING: Record<BackendUserRole, EmployeeType> = {
+  'TEACHER': 'professeur',
+  'DIRECTOR': 'direction',
+  'CENSORED': 'direction',
+  'COMPTABLE': 'administratif',
+  'SUPPLEANT': 'administratif',
+  'SECRETARY': 'administratif',
+  'SUPER_ADMIN': 'administratif',
+  'ADMIN': 'administratif',
+  'STUDENT': 'administratif', // Fallback
+  'PARENT': 'administratif', // Fallback
+  'USER': 'administratif' // Fallback
+};
+
+// Mapping frontend vers backend
+export const FRONTEND_TO_BACKEND_ROLE: Record<EmployeeType, BackendUserRole[]> = {
+  'professeur': ['TEACHER'],
+  'direction': ['DIRECTOR', 'CENSORED'],
+  'administratif': ['COMPTABLE', 'SUPPLEANT', 'SECRETARY', 'ADMIN', 'SUPER_ADMIN'],
+  'technique': ['USER'], // Fallback pour les techniques
+  'maintenance': ['USER'] // Fallback pour la maintenance
+};
 
 export type ProfessorSpecialty = 
   | 'mathématiques' 
@@ -34,12 +65,36 @@ export type DayOfWeek = 'lundi' | 'mardi' | 'mercredi' | 'jeudi' | 'vendredi' | 
 // INTERFACES
 // =====================================================
 
+// Adresse frontend (interface utilisateur)
 export interface Address {
   street: string;
   city: string;
   postalCode: string;
   country: string;
 }
+
+// Adresse backend (format API)
+export interface BackendAddress {
+  adresseLigne1: string;
+  departement: string;
+  commune: string;
+  sectioncommunale: string;
+}
+
+// Fonctions de conversion adresse
+export const convertAddressToBackend = (address: Address): BackendAddress => ({
+  adresseLigne1: address.street,
+  departement: address.country, // Adaptation selon les besoins
+  commune: address.city,
+  sectioncommunale: address.postalCode
+});
+
+export const convertAddressFromBackend = (backendAddress: BackendAddress): Address => ({
+  street: backendAddress.adresseLigne1,
+  city: backendAddress.commune,
+  postalCode: backendAddress.sectioncommunale,
+  country: backendAddress.departement
+});
 
 export interface Availability {
   day: DayOfWeek;
@@ -219,7 +274,7 @@ export interface EmployeeApiError {
 // TYPES POUR LES RÉPONSES API
 // =====================================================
 
-export interface EmployeeApiResponse<T> {
+export interface EmployeeApiResponseWrapper<T> {
   data: T;
   success: boolean;
   message?: string;
@@ -301,4 +356,113 @@ export type GenderOption = SelectOption & {
 
 export type DayOption = SelectOption & {
   value: DayOfWeek;
-}; 
+};
+
+// =====================================================
+// TYPES POUR L'API BACKEND
+// =====================================================
+
+// Payload pour créer un employé (format backend)
+export interface CreateEmployeeApiPayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  sexe: string; // Backend utilise 'sexe' au lieu de 'gender'
+  avatar?: string;
+  handicap?: boolean;
+  hireDate: string;
+  dateOfBirth: string;
+  placeOfBirth: string;
+  communeOfBirth: string;
+  adresse: BackendAddress;
+  role: BackendUserRole;
+  courseIds?: string[]; // Optionnel pour les TEACHER
+}
+
+// Réponse API pour un employé
+export interface EmployeeApiResponse {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  sexe: string;
+  avatar?: string;
+  handicap?: boolean;
+  hireDate: string;
+  dateOfBirth: string;
+  placeOfBirth: string;
+  communeOfBirth: string;
+  adresse: BackendAddress;
+  role: BackendUserRole;
+  courses?: Array<{
+    id: string;
+    titre: string;
+    code: string;
+    categorie: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Fonctions de conversion employé
+export const convertEmployeeFromApi = (apiEmployee: any): Employee => {
+  console.log('🔄 Conversion employé API:', apiEmployee);
+  
+  return {
+    id: apiEmployee.id,
+    employeeId: apiEmployee.code || apiEmployee.id, // Utiliser le code ou l'ID
+    type: ROLE_MAPPING[apiEmployee.user?.role as BackendUserRole] || 'administratif',
+    firstName: apiEmployee.user?.firstName || '',
+    lastName: apiEmployee.user?.lastName || '',
+    email: apiEmployee.user?.email || '',
+    phone: apiEmployee.user?.phone || '',
+    dateOfBirth: apiEmployee.dateOfBirth || '',
+    gender: apiEmployee.sexe === 'Homme' ? 'homme' : apiEmployee.sexe === 'Femme' ? 'femme' : 'autre',
+    address: {
+      street: apiEmployee.adresse?.adresseLigne1 || '',
+      city: apiEmployee.adresse?.commune || '',
+      postalCode: apiEmployee.adresse?.sectionCommunale || '',
+      country: apiEmployee.adresse?.departement || 'France'
+    },
+    hireDate: apiEmployee.hireDate || '',
+    status: 'actif', // Par défaut
+    isActive: apiEmployee.user?.isActive || true,
+    notes: '',
+    createdAt: apiEmployee.createdAt || '',
+    updatedAt: apiEmployee.updatedAt || '',
+    
+    // Informations spécifiques selon le type
+    professorInfo: apiEmployee.user?.role === 'TEACHER' ? {
+      specialty: 'mathématiques', // Par défaut, à adapter
+      secondarySpecialties: [],
+      degree: 'licence',
+      institution: '',
+      graduationYear: new Date().getFullYear(),
+      assignedCourses: apiEmployee.courses?.map((course: any) => ({
+        courseId: course.id,
+        courseName: course.titre,
+        classes: [],
+        rooms: []
+      })) || [],
+      maxCourses: 3,
+      availability: []
+    } : undefined
+  };
+};
+
+export const convertEmployeeToApi = (employee: Employee): CreateEmployeeApiPayload => ({
+  firstName: employee.firstName,
+  lastName: employee.lastName,
+  email: employee.email,
+  phone: employee.phone,
+  sexe: employee.gender === 'homme' ? 'M' : employee.gender === 'femme' ? 'F' : 'O',
+  hireDate: employee.hireDate,
+  dateOfBirth: employee.dateOfBirth,
+  placeOfBirth: '', // À adapter selon les besoins
+  communeOfBirth: '', // À adapter selon les besoins
+  adresse: convertAddressToBackend(employee.address),
+  role: FRONTEND_TO_BACKEND_ROLE[employee.type]?.[0] || 'USER',
+  courseIds: employee.professorInfo?.assignedCourses?.map(c => c.courseId)
+}); 

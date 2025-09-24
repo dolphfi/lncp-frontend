@@ -18,7 +18,9 @@ import {
   EmployeePaginationOptions,
   EmployeeStats,
   EmployeeApiError,
-  AssignCoursesDto
+  AssignCoursesDto,
+  EmployeeType,
+  EmployeeStatus
 } from '../types/employee';
 
 import { 
@@ -31,12 +33,22 @@ import {
   calculateEmployeeStats
 } from '../data/mockEmployees';
 
+// Import des services API
+import { employeeService } from '../services/employees/employeeService';
+import { 
+  convertEmployeeFromApi, 
+  convertEmployeeToApi,
+  CreateEmployeeApiPayload,
+  EmployeeApiResponse
+} from '../types/employee';
+
 // =====================================================
 // INTERFACE DU STORE
 // =====================================================
 interface EmployeeStore {
   // État
   employees: Employee[];
+  allEmployees: Employee[]; // Toutes les données pour le filtrage local
   loading: boolean;
   error: EmployeeApiError | null;
   loadingAction: 'create' | 'update' | 'delete' | 'assign' | null;
@@ -68,6 +80,13 @@ interface EmployeeStore {
   clearError: () => void;
   resetFilters: () => void;
   fetchStats: () => Promise<void>;
+  applyFiltersLocally: () => void;
+  
+  // Méthodes utilitaires de filtrage
+  filterEmployees: (employees: Employee[], filters: EmployeeFilters) => Employee[];
+  sortEmployees: (employees: Employee[], sortOptions: { field: keyof Employee; order: 'asc' | 'desc' }) => Employee[];
+  paginateEmployees: (employees: Employee[], page: number, limit: number) => Employee[];
+  calculateStats: (employees: Employee[]) => void;
 }
 
 // =====================================================
@@ -130,6 +149,7 @@ export const useEmployeeStore = create<EmployeeStore>()(
       // ÉTAT INITIAL
       // =====================================================
       employees: [],
+      allEmployees: [], // Toutes les données pour le filtrage local
       loading: false,
       error: null,
       loadingAction: null,
@@ -169,33 +189,81 @@ export const useEmployeeStore = create<EmployeeStore>()(
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1000);
+          // Appel API réel - charger tous les employés par pages (limite backend: 100)
+          let allEmployees: EmployeeApiResponse[] = [];
+          let currentPage = 1;
+          const pageSize = 100; // Limite backend
+          while (true) {
+            console.log(`📦 Chargement page ${currentPage}...`);
+            const response = await employeeService.getAllEmployees(currentPage, pageSize);
+            
+            console.log('📊 Réponse API reçue:', response);
+            
+            // L'API retourne directement un tableau, pas un objet avec data
+            const employeesData = Array.isArray(response) ? response : (response.data || []);
+            
+            if (!employeesData || employeesData.length === 0) {
+              console.log('🚫 Aucune donnée reçue, arrêt du chargement');
+              break;
+            }
+            
+            allEmployees = [...allEmployees, ...employeesData];
+            
+            // Si on a moins d'éléments que la limite, c'est la dernière page
+            if (employeesData.length < pageSize) {
+              console.log('🏁 Dernière page atteinte');
+              break;
+            }
+            
+            currentPage++;
+            
+            // Sécurité: éviter une boucle infinie
+            if (currentPage > 50) { // Max 5000 employés
+              console.warn('Limite de sécurité atteinte lors du chargement des employés');
+              break;
+            }
+          }
           
-          const { filters, sortOptions, pagination } = get();
+          console.log(`👥 Chargé ${allEmployees.length} employés en ${currentPage} page(s)`);
           
-          // Appliquer les filtres
-          let filteredEmployees = searchEmployees(mockEmployees, filters.search || '', {
-            type: filters.type || undefined,
-            status: filters.status || undefined,
-            isActive: filters.isActive,
-            department: filters.department || undefined,
-            specialty: filters.specialty || undefined
+          // Convertir les données API vers le format frontend
+          console.log('🔄 Conversion de', allEmployees.length, 'employés');
+          const convertedEmployees = allEmployees.map((emp, index) => {
+            try {
+              return convertEmployeeFromApi(emp);
+            } catch (error) {
+              console.error(`❌ Erreur conversion employé ${index}:`, error, emp);
+              throw error;
+            }
           });
           
-          // Appliquer le tri
-          filteredEmployees = sortEmployees(filteredEmployees, sortOptions.field, sortOptions.order);
-          
-          // Appliquer la pagination
-          const paginatedResult = paginateEmployees(filteredEmployees, pagination.page, pagination.limit);
+          console.log('✅ Employés convertis avec succès:', convertedEmployees.length);
+          console.log('📊 Premier employé converti:', convertedEmployees[0]);
           
           set(state => {
-            state.employees = paginatedResult.data;
-            state.pagination = paginatedResult.pagination;
+            state.allEmployees = convertedEmployees; // Stocker toutes les données
             state.loading = false;
+            state.error = null; // Réinitialiser l'erreur
           });
           
+          console.log('🔍 Application des filtres locaux...');
+          
+          try {
+            // Appliquer les filtres localement
+            get().applyFiltersLocally();
+            console.log('✅ Filtres appliqués avec succès');
+          } catch (filterError) {
+            console.error('❌ Erreur lors de l\'application des filtres:', filterError);
+            throw filterError;
+          }
+          
         } catch (error) {
+          console.error('❌ Erreur détaillée lors du chargement des employés:', {
+            error,
+            message: error instanceof Error ? error.message : 'Erreur inconnue',
+            stack: error instanceof Error ? error.stack : null
+          });
+          
           set(state => {
             state.loading = false;
             state.error = {
@@ -214,14 +282,17 @@ export const useEmployeeStore = create<EmployeeStore>()(
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1500);
+          console.log('📝 Données reçues pour création:', data);
           
-          // Créer le nouvel employé
-          const newEmployee = convertFormDataToEmployee(data);
+          // Utiliser directement les données du formulaire (déjà au bon format)
+          const apiPayload = data as any;
           
-          // Ajouter à la liste des employés mock
-          mockEmployees.push(newEmployee);
+          console.log('🚀 Payload API à envoyer:', apiPayload);
+          
+          // Appel API pour créer l'employé
+          const createdEmployee = await employeeService.createEmployee(apiPayload);
+          
+          console.log('✅ Employé créé avec succès:', createdEmployee);
           
           set(state => {
             state.loadingAction = null;
@@ -231,6 +302,14 @@ export const useEmployeeStore = create<EmployeeStore>()(
           await get().fetchEmployees();
           
         } catch (error) {
+          console.error('❌ Erreur lors de la création de l\'employé:', error);
+          console.error('🔍 Détails de l\'erreur:', {
+            message: error instanceof Error ? error.message : 'Erreur inconnue',
+            stack: error instanceof Error ? error.stack : null,
+            response: (error as any)?.response?.data || null,
+            status: (error as any)?.response?.status || null
+          });
+          
           set(state => {
             state.loadingAction = null;
             state.error = {
@@ -407,8 +486,8 @@ export const useEmployeeStore = create<EmployeeStore>()(
           state.pagination.page = 1; // Retour à la première page
         });
         
-        // Recharger les données avec les nouveaux filtres
-        get().fetchEmployees();
+        // Appliquer les filtres localement
+        get().applyFiltersLocally();
       },
       
       setSortOptions: (sort: { field: keyof Employee; order: 'asc' | 'desc' }) => {
@@ -416,8 +495,8 @@ export const useEmployeeStore = create<EmployeeStore>()(
           state.sortOptions = sort;
         });
         
-        // Recharger les données avec le nouveau tri
-        get().fetchEmployees();
+        // Appliquer le tri localement
+        get().applyFiltersLocally();
       },
       
       changePage: (page: number) => {
@@ -425,8 +504,8 @@ export const useEmployeeStore = create<EmployeeStore>()(
           state.pagination.page = page;
         });
         
-        // Recharger les données pour la nouvelle page
-        get().fetchEmployees();
+        // Appliquer la pagination localement
+        get().applyFiltersLocally();
       },
       
       // =====================================================
@@ -477,6 +556,166 @@ export const useEmployeeStore = create<EmployeeStore>()(
             };
           });
         }
+      },
+      
+      // =====================================================
+      // MÉTHODES DE FILTRAGE LOCAL
+      // =====================================================
+      
+      applyFiltersLocally: () => {
+        console.log('🔍 Début applyFiltersLocally');
+        const state = get();
+        const { allEmployees, filters, sortOptions, pagination } = state;
+        
+        console.log('📊 Données disponibles:', {
+          allEmployeesCount: allEmployees?.length || 0,
+          filters,
+          sortOptions,
+          pagination
+        });
+        
+        if (!allEmployees || allEmployees.length === 0) {
+          console.log('⚠️ Pas de données, rechargement depuis l\'API');
+          // Si pas de données, charger depuis l'API
+          get().fetchEmployees();
+          return;
+        }
+        
+        try {
+          console.log('🔍 Application des filtres...');
+          // Appliquer les filtres sur les données déjà chargées
+          const filteredEmployees = get().filterEmployees(allEmployees, filters);
+          console.log('✅ Filtrage terminé:', filteredEmployees.length, 'employés');
+          
+          console.log('🔍 Application du tri...');
+          const sortedEmployees = get().sortEmployees(filteredEmployees, sortOptions);
+          console.log('✅ Tri terminé');
+          
+          console.log('🔍 Application de la pagination...');
+          const paginatedEmployees = get().paginateEmployees(sortedEmployees, pagination.page, pagination.limit);
+          console.log('✅ Pagination terminée:', paginatedEmployees.length, 'employés sur la page');
+          
+          set(state => {
+            state.employees = paginatedEmployees;
+            state.pagination.total = filteredEmployees.length;
+            state.pagination.totalPages = Math.ceil(filteredEmployees.length / pagination.limit);
+          });
+          
+          console.log('🔍 Calcul des statistiques...');
+          // Calculer les statistiques sur TOUTES les données, pas seulement les filtrées
+          get().calculateStats(allEmployees);
+          console.log('✅ Statistiques calculées sur', allEmployees.length, 'employés au total');
+          
+          console.log('✅ applyFiltersLocally terminé avec succès');
+        } catch (error) {
+          console.error('❌ Erreur dans applyFiltersLocally:', error);
+          throw error;
+        }
+      },
+      
+      filterEmployees: (employees: Employee[], filters: EmployeeFilters): Employee[] => {
+        return employees.filter(employee => {
+          // Recherche textuelle
+          if (filters.search) {
+            const searchTerm = filters.search.toLowerCase();
+            const searchableText = [
+              employee.firstName,
+              employee.lastName,
+              employee.email,
+              employee.employeeId,
+              employee.phone
+            ].join(' ').toLowerCase();
+            
+            if (!searchableText.includes(searchTerm)) {
+              return false;
+            }
+          }
+          
+          // Filtre par type
+          if (filters.type && employee.type !== filters.type) {
+            return false;
+          }
+          
+          // Filtre par statut
+          if (filters.status && employee.status !== filters.status) {
+            return false;
+          }
+          
+          // Filtre par statut actif
+          if (filters.isActive !== undefined && employee.isActive !== filters.isActive) {
+            return false;
+          }
+          
+          return true;
+        });
+      },
+      
+      sortEmployees: (employees: Employee[], sortOptions: { field: keyof Employee; order: 'asc' | 'desc' }): Employee[] => {
+        return [...employees].sort((a, b) => {
+          const aValue = a[sortOptions.field];
+          const bValue = b[sortOptions.field];
+          
+          if (aValue === null || aValue === undefined) return 1;
+          if (bValue === null || bValue === undefined) return -1;
+          
+          let comparison = 0;
+          if (aValue < bValue) comparison = -1;
+          if (aValue > bValue) comparison = 1;
+          
+          return sortOptions.order === 'desc' ? -comparison : comparison;
+        });
+      },
+      
+      paginateEmployees: (employees: Employee[], page: number, limit: number): Employee[] => {
+        const startIndex = (page - 1) * limit;
+        return employees.slice(startIndex, startIndex + limit);
+      },
+      
+      calculateStats: (employees: Employee[]) => {
+        console.log('📊 Calcul des statistiques pour', employees.length, 'employés');
+        console.log('📊 Employés reçus:', employees.map(e => ({ id: e.id, firstName: e.firstName, lastName: e.lastName, isActive: e.isActive, status: e.status })));
+        
+        const stats: EmployeeStats = {
+          total: employees.length,
+          active: employees.filter(e => e.isActive).length,
+          inactive: employees.filter(e => !e.isActive).length,
+          onLeave: employees.filter(e => e.status === 'en_congé').length,
+          retired: employees.filter(e => e.status === 'retraité').length,
+          byType: employees.reduce((acc, employee) => {
+            acc[employee.type] = (acc[employee.type] || 0) + 1;
+            return acc;
+          }, {} as Record<EmployeeType, number>),
+          byStatus: employees.reduce((acc, employee) => {
+            acc[employee.status] = (acc[employee.status] || 0) + 1;
+            return acc;
+          }, {} as Record<EmployeeStatus, number>),
+          byDepartment: employees.reduce((acc, employee) => {
+            const dept = employee.administrativeInfo?.department || 'Non assigné';
+            acc[dept] = (acc[dept] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>),
+          averageExperience: employees.length > 0 
+            ? employees.reduce((sum, employee) => {
+                const years = new Date().getFullYear() - new Date(employee.hireDate).getFullYear();
+                return sum + years;
+              }, 0) / employees.length 
+            : 0,
+          topProfessors: employees
+            .filter(e => e.type === 'professeur' && e.professorInfo)
+            .sort((a, b) => (b.professorInfo?.assignedCourses.length || 0) - (a.professorInfo?.assignedCourses.length || 0))
+            .slice(0, 5)
+            .map(employee => ({
+              employeeId: employee.employeeId,
+              employeeName: `${employee.firstName} ${employee.lastName}`,
+              courseCount: employee.professorInfo?.assignedCourses.length || 0
+            }))
+        };
+        
+        console.log('✅ Statistiques finales calculées:', stats);
+        
+        set(state => {
+          state.stats = stats;
+        });
       }
     }))
   )

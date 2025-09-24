@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '../../../hooks/useDebounce';
 import { 
   Plus, 
   Search, 
@@ -70,6 +71,7 @@ import {
 } from '../../../stores/employeeStore';
 
 import { Employee, CreateEmployeeDto } from '../../../types/employee';
+import { toast } from 'react-toastify';
 
 // Options pour les filtres
 const EMPLOYEE_TYPE_OPTIONS = [
@@ -100,7 +102,10 @@ const PROFESSOR_SPECIALTY_OPTIONS = [
 ];
 
 export const EmployeesManagement: React.FC = () => {
+  // État local pour la recherche avec debounce
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -132,19 +137,33 @@ export const EmployeesManagement: React.FC = () => {
     fetchStats();
   }, [fetchEmployees, fetchStats]);
 
+  // Synchronisation de la recherche avec debounce
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setFilters({ search: searchTerm });
-    }, 500);
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, setFilters]);
+    setFilters({ search: debouncedSearchTerm });
+  }, [debouncedSearchTerm, setFilters]);
 
   const handleDeleteEmployee = async (employeeId: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cet employé ?')) {
       try {
         await deleteEmployee(employeeId);
+        toast.success('Employé supprimé avec succès !', {
+          position: 'top-right',
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       } catch (error) {
         console.error('Erreur lors de la suppression:', error);
+        toast.error('Erreur lors de la suppression de l\'employé', {
+          position: 'top-right',
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       }
     }
   };
@@ -167,8 +186,24 @@ export const EmployeesManagement: React.FC = () => {
     try {
       await createEmployee(data);
       setIsAddDialogOpen(false);
+      toast.success('Employé créé avec succès !', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } catch (error) {
       console.error('Erreur lors de l\'ajout:', error);
+      toast.error('Erreur lors de la création de l\'employé', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 
@@ -179,8 +214,24 @@ export const EmployeesManagement: React.FC = () => {
       await updateEmployee({ ...data, id: editingEmployee.id });
       setIsEditDialogOpen(false);
       setEditingEmployee(null);
+      toast.success('Employé modifié avec succès !', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } catch (error) {
       console.error('Erreur lors de la modification:', error);
+      toast.error('Erreur lors de la modification de l\'employé', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 
