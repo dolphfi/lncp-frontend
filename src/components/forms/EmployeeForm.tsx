@@ -186,6 +186,11 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
     setValue('avatar', '');
   };
 
+  // Log validation errors to diagnose why submit might not trigger
+  const onSubmitError = (errors: any) => {
+    console.error('❌ Erreurs de validation formulaire employé:', errors);
+  };
+
   const onSubmitForm = (data: EmployeeFormData) => {
     console.log('📝 Données du formulaire:', data);
     
@@ -196,15 +201,15 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
       email: data.email,
       phone: data.phone,
       sexe: data.gender === 'homme' ? 'Homme' : data.gender === 'femme' ? 'Femme' : 'Homme',
-      dateOfBirth: new Date(data.dateOfBirth).toISOString().split('T')[0], // Format YYYY-MM-DD
+      dateOfBirth: data.dateOfBirth, // input type="date" fournit déjà YYYY-MM-DD
       placeOfBirth: data.placeOfBirth,
       communeOfBirth: data.communeOfBirth,
-      hireDate: new Date(data.hireDate).toISOString().split('T')[0], // Format YYYY-MM-DD
+      hireDate: data.hireDate, // input type="date" fournit déjà YYYY-MM-DD
       adresse: {
         adresseLigne1: data.address.street,
         departement: data.address.country,
         commune: data.address.city,
-        sectioncommunale: data.address.postalCode
+        sectionCommunale: data.address.postalCode
       },
       role: data.role,
       avatar: data.avatar || undefined,
@@ -219,7 +224,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmitForm, onSubmitError)} className="space-y-6">
       {/* Informations de base */}
       <Card>
         <CardHeader>
@@ -527,7 +532,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
                 <Input
                   id="graduationYear"
                   type="number"
-                  {...register('graduationYear', { valueAsNumber: true })}
+                  {...register('graduationYear', { setValueAs: (v) => (v === '' || v === null || v === undefined) ? undefined : Number(v) })}
                   placeholder="2020"
                   min="1950"
                   max={new Date().getFullYear()}
@@ -539,7 +544,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
                 <Input
                   id="maxCourses"
                   type="number"
-                  {...register('maxCourses', { valueAsNumber: true })}
+                  {...register('maxCourses', { setValueAs: (v) => (v === '' || v === null || v === undefined) ? undefined : Number(v) })}
                   placeholder="5"
                   min="1"
                   max="10"

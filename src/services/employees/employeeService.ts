@@ -18,7 +18,7 @@ export interface BackendAddress {
   adresseLigne1: string;
   departement: string;
   commune: string;
-  sectioncommunale: string;
+  sectionCommunale: string;
 }
 
 export interface CreateEmployeeApiPayload {
@@ -120,7 +120,7 @@ export const employeeService = {
       formData.append('adresse.adresseLigne1', payload.adresse.adresseLigne1);
       formData.append('adresse.departement', payload.adresse.departement);
       formData.append('adresse.commune', payload.adresse.commune);
-      formData.append('adresse.sectioncommunale', payload.adresse.sectioncommunale);
+      formData.append('adresse.sectionCommunale', payload.adresse.sectionCommunale);
       
       // Ajouter les champs optionnels
       if (payload.avatar) {
@@ -185,11 +185,18 @@ export const employeeService = {
       });
       
       console.log('📊 Réponse brute getAllEmployees:', response.data);
+      console.log('📊 Type de réponse:', typeof response.data);
+      console.log('📊 Est-ce un tableau ?', Array.isArray(response.data));
       
       // L'API retourne directement un tableau
       return response.data;
     } catch (error) {
       console.error('❌ Erreur getAllEmployees:', error);
+      console.error('❌ Détails erreur:', {
+        message: error instanceof Error ? error.message : 'Erreur inconnue',
+        status: (error as any)?.response?.status,
+        data: (error as any)?.response?.data
+      });
       throw error;
     }
   },

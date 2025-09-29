@@ -215,7 +215,6 @@ export interface EmployeeFilters {
   status?: EmployeeStatus;
   isActive?: boolean;
   department?: string;
-  specialty?: ProfessorSpecialty;
   hireYear?: number;
 }
 
@@ -410,14 +409,19 @@ export interface EmployeeApiResponse {
 export const convertEmployeeFromApi = (apiEmployee: any): Employee => {
   console.log('🔄 Conversion employé API:', apiEmployee);
   
-  return {
-    id: apiEmployee.id,
-    employeeId: apiEmployee.code || apiEmployee.id, // Utiliser le code ou l'ID
+  // Vérification basique des données
+  if (!apiEmployee) {
+    throw new Error('Données employé manquantes');
+  }
+  
+  const employee: Employee = {
+    id: apiEmployee.id || '',
+    employeeId: apiEmployee.code || apiEmployee.id || '',
     type: ROLE_MAPPING[apiEmployee.user?.role as BackendUserRole] || 'administratif',
-    firstName: apiEmployee.user?.firstName || '',
-    lastName: apiEmployee.user?.lastName || '',
-    email: apiEmployee.user?.email || '',
-    phone: apiEmployee.user?.phone || '',
+    firstName: apiEmployee.user?.firstName || apiEmployee.firstName || '',
+    lastName: apiEmployee.user?.lastName || apiEmployee.lastName || '',
+    email: apiEmployee.user?.email || apiEmployee.email || '',
+    phone: apiEmployee.user?.phone || apiEmployee.phone || '',
     dateOfBirth: apiEmployee.dateOfBirth || '',
     gender: apiEmployee.sexe === 'Homme' ? 'homme' : apiEmployee.sexe === 'Femme' ? 'femme' : 'autre',
     address: {
@@ -428,7 +432,7 @@ export const convertEmployeeFromApi = (apiEmployee: any): Employee => {
     },
     hireDate: apiEmployee.hireDate || '',
     status: 'actif', // Par défaut
-    isActive: apiEmployee.user?.isActive || true,
+    isActive: apiEmployee.user?.isActive !== false, // Par défaut true sauf si explicitement false
     notes: '',
     createdAt: apiEmployee.createdAt || '',
     updatedAt: apiEmployee.updatedAt || '',
@@ -441,8 +445,8 @@ export const convertEmployeeFromApi = (apiEmployee: any): Employee => {
       institution: '',
       graduationYear: new Date().getFullYear(),
       assignedCourses: apiEmployee.courses?.map((course: any) => ({
-        courseId: course.id,
-        courseName: course.titre,
+        courseId: course.id || '',
+        courseName: course.titre || '',
         classes: [],
         rooms: []
       })) || [],
@@ -450,6 +454,9 @@ export const convertEmployeeFromApi = (apiEmployee: any): Employee => {
       availability: []
     } : undefined
   };
+  
+  console.log('✅ Employé converti:', employee);
+  return employee;
 };
 
 export const convertEmployeeToApi = (employee: Employee): CreateEmployeeApiPayload => ({

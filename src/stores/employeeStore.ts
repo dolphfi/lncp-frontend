@@ -65,7 +65,7 @@ interface EmployeeStore {
   stats: EmployeeStats | null;
   
   // Actions principales
-  fetchEmployees: () => Promise<void>;
+  fetchEmployees: (page?: number, limit?: number) => Promise<void>;
   createEmployee: (data: CreateEmployeeDto) => Promise<void>;
   updateEmployee: (data: UpdateEmployeeDto & { id: string }) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
@@ -182,53 +182,47 @@ export const useEmployeeStore = create<EmployeeStore>()(
       // ACTIONS PRINCIPALES
       // =====================================================
       
-      fetchEmployees: async () => {
+      fetchEmployees: async (page?: number, limit?: number) => {
         set(state => {
           state.loading = true;
           state.error = null;
         });
         
         try {
-          // Appel API réel - charger tous les employés par pages (limite backend: 100)
-          let allEmployees: EmployeeApiResponse[] = [];
-          let currentPage = 1;
-          const pageSize = 100; // Limite backend
-          while (true) {
-            console.log(`📦 Chargement page ${currentPage}...`);
-            const response = await employeeService.getAllEmployees(currentPage, pageSize);
-            
-            console.log('📊 Réponse API reçue:', response);
-            
-            // L'API retourne directement un tableau, pas un objet avec data
-            const employeesData = Array.isArray(response) ? response : (response.data || []);
-            
-            if (!employeesData || employeesData.length === 0) {
-              console.log('🚫 Aucune donnée reçue, arrêt du chargement');
-              break;
-            }
-            
-            allEmployees = [...allEmployees, ...employeesData];
-            
-            // Si on a moins d'éléments que la limite, c'est la dernière page
-            if (employeesData.length < pageSize) {
-              console.log('🏁 Dernière page atteinte');
-              break;
-            }
-            
-            currentPage++;
-            
-            // Sécurité: éviter une boucle infinie
-            if (currentPage > 50) { // Max 5000 employés
-              console.warn('Limite de sécurité atteinte lors du chargement des employés');
-              break;
-            }
+          // Récupérer une seule page du backend (page=1, limit=100 par défaut)
+          const fetchPage = page || 1;
+          const fetchLimit = limit || 100;
+          
+          console.log(`📦 Chargement page ${fetchPage} avec limite ${fetchLimit}...`);
+          const response = await employeeService.getAllEmployees(fetchPage, fetchLimit);
+          
+          console.log('📊 Réponse API reçue:', response);
+          
+          // L'API retourne directement un tableau, pas un objet avec data
+          const employeesData: EmployeeApiResponse[] = Array.isArray(response) ? response : (response.data || []);
+          
+          if (!employeesData || employeesData.length === 0) {
+            console.log('🚫 Aucune donnée reçue');
+            set(state => {
+              state.allEmployees = [];
+              state.employees = [];
+              state.pagination = {
+                page: 1,
+                limit: 10,
+                total: 0,
+                totalPages: 0
+              };
+              state.loading = false;
+              state.error = null;
+            });
+            return;
           }
           
-          console.log(`👥 Chargé ${allEmployees.length} employés en ${currentPage} page(s)`);
+          console.log(`👥 Reçu ${employeesData.length} employés`);
           
           // Convertir les données API vers le format frontend
-          console.log('🔄 Conversion de', allEmployees.length, 'employés');
-          const convertedEmployees = allEmployees.map((emp, index) => {
+          console.log('🔄 Conversion des employés');
+          const convertedEmployees = employeesData.map((emp: EmployeeApiResponse, index: number) => {
             try {
               return convertEmployeeFromApi(emp);
             } catch (error) {
@@ -241,21 +235,30 @@ export const useEmployeeStore = create<EmployeeStore>()(
           console.log('📊 Premier employé converti:', convertedEmployees[0]);
           
           set(state => {
-            state.allEmployees = convertedEmployees; // Stocker toutes les données
+            state.allEmployees = convertedEmployees; // Stocker toutes les données de la page
+
+            // Pagination côté frontend : afficher seulement les employés de la page courante
+            const limit = 10;
+            const startIndex = 0; // Page 1 = index 0
+            const endIndex = limit;
+            const paginatedEmployees = convertedEmployees.slice(startIndex, endIndex);
+
+            state.employees = paginatedEmployees; // Afficher seulement les employés de la page courante
+
+            // Simuler les informations de pagination basées sur le nombre d'éléments
+            const totalEmployees = convertedEmployees.length;
+            const totalPages = Math.ceil(totalEmployees / limit);
+
+            state.pagination = {
+              page: 1,
+              limit: limit,
+              total: totalEmployees,
+              totalPages: totalPages
+            };
+
             state.loading = false;
-            state.error = null; // Réinitialiser l'erreur
+            state.error = null;
           });
-          
-          console.log('🔍 Application des filtres locaux...');
-          
-          try {
-            // Appliquer les filtres localement
-            get().applyFiltersLocally();
-            console.log('✅ Filtres appliqués avec succès');
-          } catch (filterError) {
-            console.error('❌ Erreur lors de l\'application des filtres:', filterError);
-            throw filterError;
-          }
           
         } catch (error) {
           console.error('❌ Erreur détaillée lors du chargement des employés:', {
@@ -504,7 +507,7 @@ export const useEmployeeStore = create<EmployeeStore>()(
           state.pagination.page = page;
         });
         
-        // Appliquer la pagination localement
+        // Appliquer la pagination localement (pas de fetch backend)
         get().applyFiltersLocally();
       },
       
@@ -526,14 +529,13 @@ export const useEmployeeStore = create<EmployeeStore>()(
             status: undefined,
             isActive: undefined,
             department: undefined,
-            specialty: undefined,
             hireYear: undefined
           };
           state.pagination.page = 1;
         });
         
-        // Recharger les données
-        get().fetchEmployees();
+        // Appliquer les filtres réinitialisés localement
+        get().applyFiltersLocally();
       },
       
       fetchStats: async () => {
@@ -574,13 +576,7 @@ export const useEmployeeStore = create<EmployeeStore>()(
           pagination
         });
         
-        if (!allEmployees || allEmployees.length === 0) {
-          console.log('⚠️ Pas de données, rechargement depuis l\'API');
-          // Si pas de données, charger depuis l'API
-          get().fetchEmployees();
-          return;
-        }
-        
+        // Toujours appliquer les filtres sur les données disponibles
         try {
           console.log('🔍 Application des filtres...');
           // Appliquer les filtres sur les données déjà chargées
@@ -598,7 +594,7 @@ export const useEmployeeStore = create<EmployeeStore>()(
           set(state => {
             state.employees = paginatedEmployees;
             state.pagination.total = filteredEmployees.length;
-            state.pagination.totalPages = Math.ceil(filteredEmployees.length / pagination.limit);
+            state.pagination.totalPages = Math.ceil(filteredEmployees.length / 10); // Utiliser la limite de 10
           });
           
           console.log('🔍 Calcul des statistiques...');
@@ -636,17 +632,15 @@ export const useEmployeeStore = create<EmployeeStore>()(
             return false;
           }
           
-          // Filtre par statut
-          if (filters.status && employee.status !== filters.status) {
-            return false;
-          }
-          
           // Filtre par statut actif
           if (filters.isActive !== undefined && employee.isActive !== filters.isActive) {
             return false;
           }
           
-          return true;
+          // Filtre par statut
+          if (filters.status && employee.status !== filters.status) {
+            return false;
+          }
         });
       },
       

@@ -8,11 +8,10 @@ import SiteLayout from '../layouts/SiteLayout';
 import DashboardLayout from '../layouts/DashboardLayout';
 import Dashboard from '../pages/dashboard/Dashboard';
 import {StudentsManagement} from '../pages/dashboard/StudentsManagement';
-import {CoursesManagement} from '../pages/dashboard/CoursesManagement';
 import {EmployeesManagement} from '../pages/dashboard/EmployeesManagement';
 import AdminPanel from '../pages/dashboard/AdminPanel';
-// Academic System Components
-import AcademicDashboard from '../pages/dashboard/AcademicDashboard';
+import {CoursesManagement} from '../pages/dashboard/CoursesManagement';
+import StudentProfilePage from '../pages/dashboard/StudentProfile';
 import Profile from '../pages/dashboard/Profile';
 import NoteEntry from '../pages/notes/NoteEntry';
 import NotesList from '../pages/notes/NotesList';
@@ -21,9 +20,8 @@ import CollectiveBulletin from '../pages/bulletins/CollectiveBulletin';
 import TopLaureates from '../pages/statistics/TopLaureates';
 import ApiTest from '../utils/ApiTest';
 import EnvDebug from '../utils/EnvDebug';
-
-
 import PrivateRoute from '../utils/PrivateRoute';
+import AcademicDashboard from '../pages/dashboard/AcademicDashboard';
 import RoleRoute from '../utils/RoleRoute';
 
 
@@ -48,12 +46,8 @@ function AppRoutes() {
         <Route path="/results"
             element={<Results/>}/>
 
-        <Route path='/forgot_password'
-            element={<ForgotPassword/>}/>
-        <Route path='/reset-password'
-            element={<ResetPassword/>}/>
-        <Route path='/auth/reset-password'
-            element={<ResetPassword/>}/>
+        <Route path='/student-profile'
+            element={<StudentProfilePage/>}/>
       {/* Routes privées */}
         <Route element={
             <PrivateRoute><DashboardLayout/></PrivateRoute>
@@ -63,14 +57,14 @@ function AppRoutes() {
             <Route path="/dashboard"
                 element={<Dashboard/>}/>
             <Route path="/students"
-                element={<StudentsManagement/>}/>
+                element={<RoleRoute requiredFeature="students"><StudentsManagement/></RoleRoute>}/>
             <Route path="/courses"
-                element={<CoursesManagement/>}/>
+                element={<RoleRoute requiredFeature="courses"><CoursesManagement/></RoleRoute>}/>
             <Route path="/employee"
-                element={<EmployeesManagement/>}/>
+                element={<RoleRoute requiredFeature="employees"><EmployeesManagement/></RoleRoute>}/>
             <Route path="/profile" element={<Profile/>} />
             <Route path="/admin_panel"
-                element={<RoleRoute allowedRoles={["SUPER_ADMIN"]}><AdminPanel/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="admin"><AdminPanel/></RoleRoute>}/>
         </Route>
 
         {/* Routes du système académique */}
@@ -82,31 +76,31 @@ function AppRoutes() {
                 element={<AcademicDashboard/>}/> {/* Gestion des notes */}
             <Route path="notes">
                 <Route index
-                    element={<NotesList/>}/>
+                    element={<RoleRoute requiredFeature="notes"><NotesList/></RoleRoute>}/>
                 <Route path="entry"
-                    element={<NoteEntry/>}/>
+                    element={<RoleRoute requiredFeature="notes"><NoteEntry/></RoleRoute>}/>
                 <Route path="list"
-                    element={<NotesList/>}/>
+                    element={<RoleRoute requiredFeature="notes"><NotesList/></RoleRoute>}/>
             </Route>
 
             {/* Bulletins */}
             <Route path="bulletins">
                 <Route index
-                    element={<IndividualBulletin/>}/>
+                    element={<RoleRoute requiredFeature="academic"><IndividualBulletin/></RoleRoute>}/>
                 <Route path="individual"
-                    element={<IndividualBulletin/>}/>
+                    element={<RoleRoute requiredFeature="academic"><IndividualBulletin/></RoleRoute>}/>
                 <Route path="collective"
-                    element={<CollectiveBulletin/>}/>
+                    element={<RoleRoute requiredFeature="academic"><CollectiveBulletin/></RoleRoute>}/>
             </Route>
 
             {/* Statistiques */}
             <Route path="statistics">
                 <Route index
-                    element={<TopLaureates/>}/>
+                    element={<RoleRoute requiredFeature="academic"><TopLaureates/></RoleRoute>}/>
                 <Route path="laureates"
-                    element={<TopLaureates/>}/>
+                    element={<RoleRoute requiredFeature="academic"><TopLaureates/></RoleRoute>}/>
                 <Route path="classes"
-                    element={<AcademicDashboard/>}/>
+                    element={<RoleRoute requiredFeature="academic"><AcademicDashboard/></RoleRoute>}/>
             </Route>
         </Route>
 

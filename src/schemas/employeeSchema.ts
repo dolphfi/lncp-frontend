@@ -114,7 +114,7 @@ export const frontendAddressSchema = z.object({
 // Schéma pour le formulaire employé (interface utilisateur)
 export const employeeFormSchema = z.object({
   // Informations personnelles
-  employeeId: z.string().min(1, 'Identifiant employé requis').optional(),
+  employeeId: z.string().optional().or(z.literal('')),
   firstName: z.string().min(2, 'Prénom requis (min. 2 caractères)'),
   lastName: z.string().min(2, 'Nom requis (min. 2 caractères)'),
   email: z.string().email('Email invalide'),

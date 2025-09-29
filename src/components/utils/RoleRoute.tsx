@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStoreSimple';
 import { Loader2 } from 'lucide-react';
 import authService from '../../services/authService';
+import { hasPermission, canAccessFeature } from '../../lib/permissions';
 
 // Liste des rôles disponibles côté front (alignée avec le backend)
 export type UserRole =
@@ -15,16 +16,17 @@ export type UserRole =
   | 'TEACHER'
   | 'SECRETARY'
   | 'STUDENT'
-  | 'RESPONSABLE'
   | 'PARENT'
   | 'USER';
 
 interface RoleRouteProps {
   children: React.ReactNode;
-  allowedRoles: UserRole[]; // les rôles autorisés
+  allowedRoles?: UserRole[]; // les rôles autorisés (ancien système)
+  requiredPermission?: string; // nouvelle approche basée sur les permissions
+  requiredFeature?: 'users' | 'students' | 'courses' | 'employees' | 'academic' | 'notes' | 'admin' | 'system'; // accès à une fonctionnalité
 }
 
-function RoleRoute({ children, allowedRoles }: RoleRouteProps): React.ReactElement {
+function RoleRoute({ children, allowedRoles, requiredPermission, requiredFeature }: RoleRouteProps): React.ReactElement {
   const navigate = useNavigate();
   const { isAuthenticated, checkAuth, isLoading, user } = useAuthStore();
 
@@ -59,17 +61,38 @@ function RoleRoute({ children, allowedRoles }: RoleRouteProps): React.ReactEleme
 
   const role = user?.role as UserRole | undefined;
 
-  // SUPER_ADMIN a accès à tout
-  if (role === 'SUPER_ADMIN') {
-    return <>{children}</>;
+  // Vérification basée sur les rôles (ancien système - pour compatibilité)
+  if (allowedRoles && allowedRoles.length > 0) {
+    // SUPER_ADMIN a accès à tout
+    if (role === 'SUPER_ADMIN') {
+      return <>{children}</>;
+    }
+
+    // Sinon, vérifier si le rôle de l'utilisateur est autorisé
+    if (role && allowedRoles.includes(role)) {
+      return <>{children}</>;
+    }
   }
 
-  // Sinon, vérifier si le rôle de l'utilisateur est autorisé
-  if (role && allowedRoles.includes(role)) {
-    return <>{children}</>;
+  // Vérification basée sur les permissions (nouveau système)
+  if (requiredPermission) {
+    if (hasPermission(role, requiredPermission as any)) {
+      return <>{children}</>;
+    }
   }
 
-  // Accès refusé -> rediriger vers le tableau de bord
+  // Vérification basée sur les fonctionnalités (nouveau système)
+  if (requiredFeature) {
+    if (role === 'SUPER_ADMIN') {
+      return <>{children}</>;
+    }
+
+    if (canAccessFeature(role, requiredFeature)) {
+      return <>{children}</>;
+    }
+  }
+
+  // Si aucune condition n'est remplie, accès refusé
   return <Navigate to="/dashboard" replace />;
 }
 

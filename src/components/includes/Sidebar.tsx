@@ -46,6 +46,7 @@ import { useAuthStore } from "../../stores/authStoreSimple"
 import authService from "../../services/authService"
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
+import { useCanAccessNotes, useCanManageCourses, useCanManageEmployees, useCanManageNotes, useCanManageStudents } from "hooks/usePermissions"
 
 interface SidebarLinkProps {
   to: string
@@ -156,7 +157,23 @@ const AppSidebar = () => {
   const [displayRole, setDisplayRole] = React.useState<string>("")
   const [displayAvatar, setDisplayAvatar] = React.useState<string | undefined>(undefined)
 
+  // Hooks de permissions
+  const canManageStudents = useCanManageStudents()
+  const canManageCourses = useCanManageCourses()
+  const canManageNotes = useCanManageNotes()
+  const canAccessNotes = useCanAccessNotes()
+  const canManageEmployees = useCanManageEmployees()
+
+  // Vérifier si l'utilisateur est un étudiant ou un parent
+  const isStudentOrParent = user?.role === 'STUDENT' || user?.role === 'PARENT'
+
   React.useEffect(() => {
+    // Redirection automatique pour les étudiants et parents
+    if (isStudentOrParent) {
+      navigate('/student-profile', { replace: true })
+      return
+    }
+
     // Fallback depuis le store
     if (user) {
       const name = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email
@@ -171,13 +188,28 @@ const AppSidebar = () => {
     authService.getMe().then((me) => {
       if (cancelled) return
       const name = [me.firstName, me.lastName].filter(Boolean).join(" ") || me.email
-      setDisplayName(name)
       setDisplayRole(me.role)
       if (me.avatarUrl) setDisplayAvatar(me.avatarUrl)
-    }).catch(() => {/* ignore */})
+    }).catch((error) => console.error('Error fetching user profile:', error))
     return () => { cancelled = true }
-  }, [user])
+  }, [user, isStudentOrParent, navigate])
 
+  // Écoute les mises à jour du profil pour rafraîchir instantanément l'UI
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail.firstName || detail.lastName) {
+        const name = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || displayName
+        setDisplayName(name)
+      }
+      const name = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || displayName
+      setDisplayName(name)
+      if (detail.role) setDisplayRole(detail.role)
+      if (detail.avatarUrl) setDisplayAvatar(detail.avatarUrl)
+    }
+    document.addEventListener('profile:updated', handler as EventListener)
+    return () => document.removeEventListener('profile:updated', handler as EventListener)
+  }, [displayName])
   // Écoute les mises à jour du profil pour rafraîchir instantanément l'UI
   React.useEffect(() => {
     const handler = (e: Event) => {
@@ -190,127 +222,146 @@ const AppSidebar = () => {
     document.addEventListener('profile:updated', handler as EventListener)
     return () => document.removeEventListener('profile:updated', handler as EventListener)
   }, [displayName])
+
   const [openAccordion, setOpenAccordion] = React.useState<string | undefined>(undefined)
 
-  const navGroups = [
-    {
+  // Construire les groupes de navigation avec les permissions
+  const navGroups = React.useMemo(() => {
+    const groups = []
+
+    // Général - accessible à tous les utilisateurs authentifiés
+    groups.push({
       title: "Général",
       items: [
         { to: "/dashboard", label: "Tableau de bord", icon: Gauge },
-        { to: "/analytics", label: "Analyses", icon: BarChart },
-        { to: "/reports", label: "Rapports", icon: FileText },
       ],
-    },
-    {
-      title: "Gestion Élèves",
-      items: [
-        {
-          to: "/students",
-          label: "Élèves",
-          icon: GraduationCap,
-          subItems: [
-            { to: "/students", label: "Liste" },
-            { to: "/archives", label: "Archives" },
-            { to: "/badges", label: "Badges" },
-          ],
-        },
-        {
-          to: "/registrations",
-          label: "Inscription",
-          icon: UserPlus,
-          subItems: [
-            { to: "/registrations", label: "Liste" },
-            { to: "/concours", label: "Concours" },
-            { to: "/re_registration", label: "Réinscription" },
-          ],
-        },
-      ],
-    },
-    {
-      title: "Gestion Cours et Notes",
-      items: [
-        {
-          to: "/courses",
-          label: "Cours",
-          icon: BookOpen,
-          subItems: [
-            { to: "/courses", label: "Liste des cours" },
-            { to: "/schedules", label: "Horaires" },
-            { to: "/enrollments", label: "Inscriptions" },
-          ],
-        },
-        {
-          to: "/academic/notes",
-          label: "Gestion Notes",
-          icon: ListPlus,
-          subItems: [
-            { to: "/academic/notes/entry", label: "Saisie de notes" },
-            { to: "/academic/notes/list", label: "Consultation des notes" },
-            { to: "/academic/bulletins/individual", label: "Bulletin Individuel" },
-            { to: "/academic/bulletins/collective", label: "Bulletin Collectif" },
-          ],
-        },
-        {
-          to: "/academic/statistics",
-          label: "Statistiques",
-          icon: BarChart,
-          subItems: [
-            { to: "/academic/statistics/laureates", label: "Palmarès" },
-            { to: "/academic/statistics/classes", label: "Analyse par Classe" },
-          ],
-        },
-      ],
-    },
+    })
 
-    {
-      title: "Gestion Ressources",
-      items: [
-        {
-          to: "/ressource",
-          label: "Ressources Humaines",
-          icon: UserRoundCog,
-          subItems: [
-            { to: "/employee", label: "Employés" },
-            // { to: "/users/new", label: "Nouveau" },
-            // { to: "/users/new", label: "Nouveau" },
-            // { to: "/users/new", label: "Nouveau" },
-          ],
-        },
-        {
-          to: "/ressources",
-          label: "Ressources Matériel",
-          icon: Fence,
-          subItems: [
-            { to: "/roles", label: "Liste" },
-            // { to: "/roles/new", label: "Nouveau" },
-          ],
-        },
-        {
-          to: "/ress",
-          label: "Ressources Financière",
-          icon: Wallet,
-          subItems: [
-            { to: "/payments", label: "Paiments Élèves" },
-            // { to: "/roles/new", label: "Nouveau" },
-          ],
-        },
-      ],
-    },
-    {
-      title: "Autre",
-      items: [
-        {
-          to: "/settings",
-          label: "Paramètres",
-          icon: Settings,
-          subItems: [
-            { to: "/admin_panel", label: "Panel Admin" },
-            { to: "/users", label: "Utilisateurs" },
-          ],
-        },
-      ],
-    },
-  ]
+    // Gestion Élèves - seulement si on peut gérer les étudiants
+    if (canManageStudents) {
+      groups.push({
+        title: "Gestion Élèves",
+        items: [
+          {
+            to: "/students",
+            label: "Élèves",
+            icon: GraduationCap,
+            subItems: [
+              { to: "/students", label: "Liste" },
+              { to: "/archives", label: "Archives" },
+              { to: "/badges", label: "Badges" },
+            ],
+          },
+          {
+            to: "/registrations",
+            label: "Inscription",
+            icon: UserPlus,
+            subItems: [
+              { to: "/registrations", label: "Liste" },
+              { to: "/concours", label: "Concours" },
+              { to: "/re_registration", label: "Réinscription" },
+            ],
+          },
+        ],
+      })
+    }
+
+    // Gestion Cours et Notes
+    if (canManageCourses || canManageNotes || canAccessNotes) {
+      groups.push({
+        title: "Gestion Cours et Notes",
+        items: [
+          // Cours - seulement si on peut gérer les cours
+          ...(canManageCourses ? [{
+            to: "/courses",
+            label: "Cours",
+            icon: BookOpen,
+            subItems: [
+              { to: "/courses", label: "Liste des cours" },
+              { to: "/schedules", label: "Horaires" },
+              { to: "/enrollments", label: "Inscriptions" },
+            ],
+          }] : []),
+          // Gestion Notes - seulement si on peut gérer ou accéder aux notes
+          ...(canManageNotes || canAccessNotes ? [{
+            to: "/academic/notes",
+            label: "Gestion Notes",
+            icon: ListPlus,
+            subItems: [
+              ...(canManageNotes ? [{ to: "/academic/notes/entry", label: "Saisie de notes" }] : []),
+              { to: "/academic/notes/list", label: "Consultation des notes" },
+              // Bulletins - seulement pour les administrateurs et secrétaires, pas pour les professeurs ni directeurs
+              ...(user?.role !== 'TEACHER' && user?.role !== 'SUPPLEANT' && user?.role !== 'DIRECTOR' && user?.role !== 'CENSORED' ? [
+                { to: "/academic/bulletins/individual", label: "Bulletin Individuel" },
+                { to: "/academic/bulletins/collective", label: "Bulletin Collectif" },
+              ] : []),
+            ],
+          }] : []),
+        ],
+      })
+    }
+
+    // Gestion Ressources
+    if (canManageEmployees) {
+      groups.push({
+        title: "Gestion Ressources",
+        items: [
+          {
+            to: "/ressource",
+            label: "Ressources Humaines",
+            icon: UserRoundCog,
+            subItems: [
+              { to: "/employee", label: "Employés" },
+            ],
+          },
+          // Masquer les ressources matérielles et financières pour le secrétaire et les directeurs
+          ...(user?.role !== 'SECRETARY' && user?.role !== 'DIRECTOR' && user?.role !== 'CENSORED' ? [
+            {
+              to: "/ressources",
+              label: "Ressources Matériel",
+              icon: Fence,
+              subItems: [
+                { to: "/roles", label: "Liste" },
+              ],
+            },
+            {
+              to: "/ress",
+              label: "Ressources Financière",
+              icon: Wallet,
+              subItems: [
+                { to: "/payments", label: "Paiments Élèves" },
+              ],
+            },
+          ] : []),
+        ],
+      })
+    }
+
+    // Autre - paramètres (seulement pour les administrateurs)
+    if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') {
+      groups.push({
+        title: "Autre",
+        items: [
+          {
+            to: "/settings",
+            label: "Paramètres",
+            icon: Settings,
+            subItems: [
+              { to: "/admin_panel", label: "Panel Admin" },
+              { to: "/users", label: "Utilisateurs" },
+            ],
+          },
+        ],
+      })
+    }
+
+    return groups
+  }, [canManageStudents, canManageCourses, canManageNotes, canAccessNotes, canManageEmployees, user?.role])
+
+  // Ne pas afficher la sidebar pour les étudiants et parents (ils sont redirigés)
+  if (isStudentOrParent) {
+    return null
+  }
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
@@ -371,11 +422,11 @@ const AppSidebar = () => {
               <EllipsisVertical className="h-5 w-5 flex-shrink-0" />
             )}
           </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            side={isMobile ? "bottom" : "right"} 
-            align={isMobile ? "start" : "end"} 
-            className="w-64" 
-            sideOffset={8} 
+          <DropdownMenuContent
+            side={isMobile ? "bottom" : "right"}
+            align={isMobile ? "start" : "end"}
+            className="w-64"
+            sideOffset={8}
             alignOffset={isMobile ? 0 : 40}
           >
             <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>

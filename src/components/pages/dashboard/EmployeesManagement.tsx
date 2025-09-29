@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Edit,
+  Trash2,
   Eye,
   User,
   Mail,
@@ -30,41 +30,41 @@ import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Badge } from '../../ui/badge';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '../../ui/table';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
 } from '../../ui/dialog';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from '../../ui/dropdown-menu';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '../../ui/select';
 
 import EmployeeForm from '../../forms/EmployeeForm';
 
-import { 
-  useEmployeeStore, 
-  useEmployees, 
-  useEmployeeLoading, 
-  useEmployeeError, 
+import {
+  useEmployeeStore,
+  useEmployees,
+  useEmployeeLoading,
+  useEmployeeError,
   useEmployeeStats,
   useEmployeeFilters,
   useEmployeePagination
@@ -105,7 +105,7 @@ export const EmployeesManagement: React.FC = () => {
   // État local pour la recherche avec debounce
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  
+
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -131,16 +131,27 @@ export const EmployeesManagement: React.FC = () => {
   const stats = useEmployeeStats();
   const filters = useEmployeeFilters();
   const pagination = useEmployeePagination();
+  const loadingAction = useEmployeeStore(state => state.loadingAction);
 
   useEffect(() => {
+    console.log('🔄 Chargement des employés...');
     fetchEmployees();
     fetchStats();
   }, [fetchEmployees, fetchStats]);
 
   // Synchronisation de la recherche avec debounce
   useEffect(() => {
+    console.log('🔍 Recherche mise à jour:', debouncedSearchTerm);
     setFilters({ search: debouncedSearchTerm });
   }, [debouncedSearchTerm, setFilters]);
+
+  // Log des informations de pagination
+  useEffect(() => {
+    console.log('📊 Informations de pagination:', pagination);
+    console.log('📊 Nombre d\'employés affichés:', employees.length);
+    console.log('📊 Total employés:', pagination.total);
+    console.log('📊 Total pages:', pagination.totalPages);
+  }, [pagination, employees]);
 
   const handleDeleteEmployee = async (employeeId: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cet employé ?')) {
@@ -209,7 +220,7 @@ export const EmployeesManagement: React.FC = () => {
 
   const handleSubmitEdit = async (data: CreateEmployeeDto) => {
     if (!editingEmployee) return;
-    
+
     try {
       await updateEmployee({ ...data, id: editingEmployee.id });
       setIsEditDialogOpen(false);
@@ -267,20 +278,6 @@ export const EmployeesManagement: React.FC = () => {
     return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
-  const getSpecialtyColor = (specialty: string) => {
-    const colors = {
-      mathématiques: 'bg-blue-100 text-blue-800 border-blue-200',
-      sciences: 'bg-green-100 text-green-800 border-green-200',
-      langues: 'bg-purple-100 text-purple-800 border-purple-200',
-      histoire: 'bg-orange-100 text-orange-800 border-orange-200',
-      géographie: 'bg-teal-100 text-teal-800 border-teal-200',
-      arts: 'bg-pink-100 text-pink-800 border-pink-200',
-      sport: 'bg-red-100 text-red-800 border-red-200',
-      informatique: 'bg-indigo-100 text-indigo-800 border-indigo-200'
-    };
-    return colors[specialty as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR');
   };
@@ -295,8 +292,8 @@ export const EmployeesManagement: React.FC = () => {
             Gérez les employés de l'établissement (professeurs, administratifs, techniques, etc.)
           </p>
         </div>
-        
-        <Button 
+
+        <Button
           className="bg-blue-600 hover:bg-blue-700"
           onClick={handleAddEmployee}
         >
@@ -400,20 +397,6 @@ export const EmployeesManagement: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select value={filters.specialty || 'all'} onValueChange={(value) => handleFilterChange('specialty', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Spécialité" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes les spécialités</SelectItem>
-                {PROFESSOR_SPECIALTY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Button
               variant="outline"
               onClick={resetFilters}
@@ -432,7 +415,7 @@ export const EmployeesManagement: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50 dark:bg-gray-800">
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSortChange('lastName')}
                 >
@@ -483,7 +466,7 @@ export const EmployeesManagement: React.FC = () => {
                         </div>
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1 text-sm">
@@ -496,24 +479,19 @@ export const EmployeesManagement: React.FC = () => {
                         </div>
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <Badge className={getTypeColor(employee.type)}>
                         {employee.type}
                       </Badge>
-                      {employee.type === 'professeur' && employee.professorInfo && (
-                        <Badge className={`mt-1 ${getSpecialtyColor(employee.professorInfo.specialty)}`}>
-                          {employee.professorInfo.specialty}
-                        </Badge>
-                      )}
                     </TableCell>
-                    
+
                     <TableCell>
                       <Badge className={getStatusColor(employee.status)}>
                         {employee.status}
                       </Badge>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="flex items-start gap-2">
                         {employee.type === 'professeur' && employee.professorInfo && (
@@ -560,7 +538,7 @@ export const EmployeesManagement: React.FC = () => {
                         )}
                       </div>
                     </TableCell>
-                    
+
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -577,7 +555,7 @@ export const EmployeesManagement: React.FC = () => {
                             <Edit className="h-4 w-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => handleDeleteEmployee(employee.id)}
                             className="text-red-600"
                           >
@@ -603,7 +581,7 @@ export const EmployeesManagement: React.FC = () => {
             {Math.min(pagination.page * pagination.limit, pagination.total)} sur{' '}
             {pagination.total} employés
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -613,7 +591,7 @@ export const EmployeesManagement: React.FC = () => {
             >
               Précédent
             </Button>
-            
+
             <div className="flex items-center gap-1">
               {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
                 <Button
@@ -626,7 +604,7 @@ export const EmployeesManagement: React.FC = () => {
                 </Button>
               ))}
             </div>
-            
+
             <Button
               variant="outline"
               size="sm"
@@ -649,19 +627,19 @@ export const EmployeesManagement: React.FC = () => {
                 Détails de l'Employé
               </DialogTitle>
             </DialogHeader>
-            
+
             <div className="space-y-6">
               <div className="flex items-start gap-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg">
                 <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center">
                   <User className="h-10 w-10 text-blue-600" />
                 </div>
-                
+
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                     {selectedEmployee.firstName} {selectedEmployee.lastName}
                   </h2>
                   <p className="text-gray-600 dark:text-gray-300 mb-3">{selectedEmployee.employeeId}</p>
-                  
+
                   <div className="flex flex-wrap gap-3">
                     <Badge className={getTypeColor(selectedEmployee.type)}>
                       {selectedEmployee.type}
@@ -669,11 +647,6 @@ export const EmployeesManagement: React.FC = () => {
                     <Badge className={getStatusColor(selectedEmployee.status)}>
                       {selectedEmployee.status}
                     </Badge>
-                    {selectedEmployee.type === 'professeur' && selectedEmployee.professorInfo && (
-                      <Badge className={getSpecialtyColor(selectedEmployee.professorInfo.specialty)}>
-                        {selectedEmployee.professorInfo.specialty}
-                      </Badge>
-                    )}
                   </div>
                 </div>
               </div>
@@ -747,7 +720,7 @@ export const EmployeesManagement: React.FC = () => {
                           {selectedEmployee.professorInfo.assignedCourses.length} cours assignés / {selectedEmployee.professorInfo.maxCourses} max
                         </span>
                       </div>
-                      
+
                       {/* Détails des assignations de cours */}
                       {selectedEmployee.professorInfo.assignedCourses.length > 0 && (
                         <div className="mt-4">
@@ -769,7 +742,7 @@ export const EmployeesManagement: React.FC = () => {
                                     </Badge>
                                   </div>
                                 </div>
-                                
+
                                 <div className="grid grid-cols-1 gap-4">
                                   <div>
                                     <Label className="text-sm font-semibold text-blue-800 flex items-center gap-1">
@@ -780,14 +753,14 @@ export const EmployeesManagement: React.FC = () => {
                                       {assignment.rooms.length > 0 ? (
                                         assignment.rooms.map((roomId, idx) => (
                                           <Badge key={idx} variant="outline" className="bg-white border-blue-300 text-blue-700">
-                                            {roomId === '1' ? 'Salle 101' : 
-                                             roomId === '2' ? 'Salle 102' :
-                                             roomId === '3' ? 'Salle 103' :
-                                             roomId === '4' ? 'Salle 201' :
-                                             roomId === '5' ? 'Salle 202' :
-                                             roomId === '6' ? 'Salle 203' :
-                                             roomId === '7' ? 'Laboratoire Sciences' :
-                                             roomId === '8' ? 'Salle Informatique' : roomId}
+                                            {roomId === '1' ? 'Salle 101' :
+                                              roomId === '2' ? 'Salle 102' :
+                                                roomId === '3' ? 'Salle 103' :
+                                                  roomId === '4' ? 'Salle 201' :
+                                                    roomId === '5' ? 'Salle 202' :
+                                                      roomId === '6' ? 'Salle 203' :
+                                                        roomId === '7' ? 'Laboratoire Sciences' :
+                                                          roomId === '8' ? 'Salle Informatique' : roomId}
                                           </Badge>
                                         ))
                                       ) : (
@@ -888,7 +861,7 @@ export const EmployeesManagement: React.FC = () => {
           <EmployeeForm
             onSubmit={handleSubmitAdd}
             onCancel={() => setIsAddDialogOpen(false)}
-            isLoading={useEmployeeStore.getState().loadingAction === 'create'}
+            isLoading={loadingAction === 'create'}
           />
         </DialogContent>
       </Dialog>
@@ -910,7 +883,7 @@ export const EmployeesManagement: React.FC = () => {
                 setIsEditDialogOpen(false);
                 setEditingEmployee(null);
               }}
-              isLoading={useEmployeeStore.getState().loadingAction === 'update'}
+              isLoading={loadingAction === 'update'}
             />
           )}
         </DialogContent>
