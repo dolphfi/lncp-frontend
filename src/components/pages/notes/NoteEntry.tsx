@@ -1,13 +1,12 @@
-/* eslint-disable */
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Plus, Search, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 
-import { useAcademicStore } from '../../../stores/academicStore';
-import { noteCreateSchema, NoteCreateFormData } from '../../../schemas/academicSchemas';
-import { Student, Course } from '../../../types/academic';
+import { useNoteStore } from '../../../stores/noteStore';
+import { noteCreateSchema, NoteCreateFormData } from '../../../schemas/noteSchema';
+import authService from '../../../services/authService';
 import SearchableSelect, { Option } from '../../ui/searchable-select';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -18,19 +17,25 @@ import { Alert, AlertDescription } from '../../ui/alert';
 const NoteEntry: React.FC = () => {
   const {
     createNote,
-    searchStudents,
-    searchCourses,
-    getStudentByMatricule,
-    getCourseByCode,
+    getMyStudents,
+    getTeacherCourses,
+    getAllCoursesWithClassFilter,
+    getAllClassrooms,
     loading
-  } = useAcademicStore();
+  } = useNoteStore();
 
+  const [allStudents, setAllStudents] = useState<any[]>([]); // Tous les élèves chargés
   const [studentOptions, setStudentOptions] = useState<Option[]>([]);
   const [courseOptions, setCourseOptions] = useState<Option[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [searchingStudent, setSearchingStudent] = useState(false);
-  const [searchingCourse, setSearchingCourse] = useState(false);
+  const [classroomOptions, setClassroomOptions] = useState<Option[]>([]);
+  const [loadedCourses, setLoadedCourses] = useState<any[]>([]); // Stocker les cours avec toutes leurs infos
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+  const [selectedClassroom, setSelectedClassroom] = useState<string | undefined>(undefined);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [loadingClassrooms, setLoadingClassrooms] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
 
   const {
     control,
@@ -45,121 +50,267 @@ const NoteEntry: React.FC = () => {
     resolver: yupResolver(noteCreateSchema),
     mode: 'onChange',
     defaultValues: {
-      student_id: 0,
-      course_id: 0,
+      studentId: '',
+      courseId: '',
       trimestre: 'T1' as const,
-      note: 0
+      note: undefined as any
     }
   });
 
   const watchedNote = watch('note');
-  const watchedStudentId = watch('student_id');
-  const watchedCourseId = watch('course_id');
 
-  // Validation en temps réel de la note par rapport à la pondération
+  // Validation en temps réel de la note
   useEffect(() => {
-    if (selectedCourse && watchedNote && watchedNote > selectedCourse.ponderation) {
+    // Si pas de note saisie, ne rien faire (la validation Yup "required" s'en charge)
+    if (watchedNote === undefined || watchedNote === null) {
+      return;
+    }
+
+    const noteValue = typeof watchedNote === 'string' ? parseFloat(watchedNote) : watchedNote;
+
+    // Vérifier si c'est un nombre valide
+    if (isNaN(noteValue)) {
+      setError('note', {
+        type: 'manual',
+        message: 'La note doit être un nombre valide'
+      });
+      return;
+    }
+
+    // Vérifier si la note est négative
+    if (noteValue < 0) {
+      setError('note', {
+        type: 'manual',
+        message: 'La note ne peut pas être négative'
+      });
+      return;
+    }
+
+    // Vérifier le nombre de décimales
+    const decimalPlaces = (noteValue.toString().split('.')[1] || '').length;
+    if (decimalPlaces > 2) {
+      setError('note', {
+        type: 'manual',
+        message: 'La note ne peut avoir plus de 2 décimales'
+      });
+      return;
+    }
+
+    // Vérifier si la note dépasse la pondération du cours
+    if (selectedCourse && noteValue > selectedCourse.ponderation) {
       setError('note', {
         type: 'manual',
         message: `La note ne peut pas dépasser ${selectedCourse.ponderation} (pondération du cours)`
       });
-    } else if (errors.note?.type === 'manual') {
+      return;
+    }
+
+    // Si toutes les validations passent, effacer les erreurs manuelles
+    if (errors.note?.type === 'manual') {
       clearErrors('note');
     }
   }, [watchedNote, selectedCourse, setError, clearErrors, errors.note]);
 
-  // Recherche d'étudiants
-  const handleStudentSearch = async (query: string) => {
-    if (query.length < 2) {
-      setStudentOptions([]);
-      return;
-    }
+  // Charger les élèves au montage du composant
+  useEffect(() => {
+    const loadStudents = async () => {
+      setLoadingStudents(true);
+      try {
+        const students = await getMyStudents();
+        setAllStudents(students); // Stocker tous les élèves
+        
+        // Créer les options (filtrées ou non selon selectedClassroom)
+        const filteredStudents = selectedClassroom
+          ? students.filter((s: any) => s.classroom?.id === selectedClassroom)
+          : students;
+        
+        const options: Option[] = filteredStudents.map((student: any) => ({
+          value: student.id,
+          label: `${student.matricule} - ${student.firstName} ${student.lastName}`,
+          description: `${student.classroom?.name || 'N/A'} • ${student.room?.name || 'N/A'}`
+        }));
+        setStudentOptions(options);
+      } catch (error) {
+        console.error('Erreur lors du chargement des élèves:', error);
+        toast.error('Erreur lors du chargement des élèves');
+      } finally {
+        setLoadingStudents(false);
+      }
+    };
 
-    setSearchingStudent(true);
-    try {
-      const students = await searchStudents(query);
-      const options: Option[] = students.map(student => ({
-        value: student.id,
-        label: `${student.matricule} - ${student.prenom} ${student.nom}`,
-        description: `${student.classe} • ${student.niveau}`
-      }));
-      setStudentOptions(options);
-    } catch (error) {
-      console.error('Erreur lors de la recherche d\'étudiants:', error);
-    } finally {
-      setSearchingStudent(false);
-    }
-  };
+    loadStudents();
+  }, [getMyStudents]);
 
-  // Recherche de cours
-  const handleCourseSearch = async (query: string) => {
-    if (query.length < 2) {
-      setCourseOptions([]);
-      return;
+  // Récupérer le rôle de l'utilisateur depuis authService
+  useEffect(() => {
+    const user = authService.getUser();
+    if (user && user.role) {
+      setUserRole(user.role);
     }
+  }, []);
 
-    setSearchingCourse(true);
-    try {
-      const niveau = selectedStudent?.niveau;
-      const courses = await searchCourses(query, niveau);
-      const options: Option[] = courses.map(course => ({
-        value: course.id,
-        label: `${course.code} - ${course.nom}`,
-        description: `Pondération: ${course.ponderation} • ${course.niveau}`
-      }));
-      setCourseOptions(options);
-    } catch (error) {
-      console.error('Erreur lors de la recherche de cours:', error);
-    } finally {
-      setSearchingCourse(false);
-    }
-  };
+  // Charger les classes pour le filtre (uniquement pour les non-TEACHER)
+  useEffect(() => {
+    const loadClassrooms = async () => {
+      if (userRole && userRole !== 'TEACHER') {
+        setLoadingClassrooms(true);
+        try {
+          const classrooms = await getAllClassrooms();
+          const options: Option[] = classrooms.map((classroom: any) => ({
+            value: classroom.id,
+            label: classroom.name,
+            description: classroom.description || `Classe ${classroom.name}`
+          }));
+          setClassroomOptions(options);
+        } catch (error) {
+          console.error('Erreur lors du chargement des classes:', error);
+        } finally {
+          setLoadingClassrooms(false);
+        }
+      }
+    };
 
-  // Sélection d'étudiant
+    loadClassrooms();
+  }, [userRole, getAllClassrooms]);
+
+  // Sélection d'élève
   const handleStudentSelect = async (studentId: string | number | undefined) => {
     if (!studentId) {
       setSelectedStudent(null);
-      setValue('student_id', 0);
+      setValue('studentId', '');
       return;
     }
 
     try {
-      const student = studentOptions.find(opt => opt.value === studentId);
-      if (student) {
-        // Récupérer les détails complets de l'étudiant
-        const studentData = await getStudentByMatricule(student.label.split(' - ')[0]);
-        if (studentData) {
-          setSelectedStudent(studentData);
-          setValue('student_id', studentData.id);
-          
-          // Réinitialiser la sélection de cours car le niveau a changé
-          setSelectedCourse(null);
-          setValue('course_id', 0);
-          setCourseOptions([]);
+      // Récupérer l'élève depuis allStudents (qui contient tous les détails)
+      const fullStudent = allStudents.find((s: any) => s.id === studentId);
+      
+      if (fullStudent) {
+        setSelectedStudent(fullStudent);
+        setValue('studentId', fullStudent.id);
+
+        // Charger les cours seulement si nécessaire
+        // - Pour TEACHER : toujours charger depuis dashboard
+        // - Pour autres : seulement si les cours ne sont pas déjà chargés via le filtre de classe
+        const needsLoadCourses = 
+          userRole === 'TEACHER' || 
+          (!selectedClassroom && loadedCourses.length === 0);
+        
+        if (needsLoadCourses) {
+          await loadCoursesForStudent(fullStudent);
         }
       }
     } catch (error) {
-      console.error('Erreur lors de la sélection de l\'étudiant:', error);
+      console.error('Erreur lors de la sélection de l\'élève:', error);
     }
   };
+
+  // Charger les cours selon le rôle de l'utilisateur
+  const loadCoursesForStudent = async (student: any) => {
+    setLoadingCourses(true);
+    try {
+      let courses: any[] = [];
+
+      if (userRole === 'TEACHER') {
+        // Pour les TEACHER : utiliser /dashboard pour leurs cours uniquement
+        courses = await getTeacherCourses();
+      } else {
+        // Pour les autres rôles : utiliser /courses/all-courses avec filtre par classe
+        const classroomId = selectedClassroom || student.classroom?.id;
+        if (classroomId) {
+          courses = await getAllCoursesWithClassFilter(classroomId);
+        } else {
+          courses = await getAllCoursesWithClassFilter();
+        }
+      }
+
+      // Stocker les cours avec toutes leurs informations
+      setLoadedCourses(courses);
+
+      const options: Option[] = courses.map((course: any) => ({
+        value: course.id,
+        label: `${course.code || ''} - ${course.titre}`,
+        description: course.categorie || course.code || 'N/A'
+      }));
+      setCourseOptions(options);
+    } catch (error) {
+      console.error('Erreur lors du chargement des cours:', error);
+      toast.error('Erreur lors du chargement des cours');
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
+
+  // Filtrer les élèves et charger les cours quand la classe sélectionnée change
+  useEffect(() => {
+    if (userRole !== 'TEACHER' && selectedClassroom) {
+      // Filtrer les élèves par classe
+      const filteredStudents = allStudents.filter(
+        (s: any) => s.classroom?.id === selectedClassroom
+      );
+      
+      const options: Option[] = filteredStudents.map((student: any) => ({
+        value: student.id,
+        label: `${student.matricule} - ${student.firstName} ${student.lastName}`,
+        description: `${student.classroom?.name || 'N/A'} • ${student.room?.name || 'N/A'}`
+      }));
+      setStudentOptions(options);
+      
+      // Charger les cours filtrés par cette classe
+      const loadFilteredCourses = async () => {
+        setLoadingCourses(true);
+        try {
+          const courses = await getAllCoursesWithClassFilter(selectedClassroom);
+          setLoadedCourses(courses);
+          
+          const courseOpts: Option[] = courses.map((course: any) => ({
+            value: course.id,
+            label: `${course.code || ''} - ${course.titre}`,
+            description: course.categorie || course.code || 'N/A'
+          }));
+          setCourseOptions(courseOpts);
+        } catch (error) {
+          console.error('Erreur lors du chargement des cours:', error);
+          toast.error('Erreur lors du chargement des cours');
+        } finally {
+          setLoadingCourses(false);
+        }
+      };
+      
+      loadFilteredCourses();
+    } else if (userRole !== 'TEACHER' && !selectedClassroom) {
+      // Réafficher tous les élèves si le filtre est effacé
+      const options: Option[] = allStudents.map((student: any) => ({
+        value: student.id,
+        label: `${student.matricule} - ${student.firstName} ${student.lastName}`,
+        description: `${student.classroom?.name || 'N/A'} • ${student.room?.name || 'N/A'}`
+      }));
+      setStudentOptions(options);
+      
+      // Réinitialiser les cours
+      setCourseOptions([]);
+      setLoadedCourses([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClassroom, allStudents, userRole]);
 
   // Sélection de cours
   const handleCourseSelect = async (courseId: string | number | undefined) => {
     if (!courseId) {
       setSelectedCourse(null);
-      setValue('course_id', 0);
+      setValue('courseId', '');
       return;
     }
 
     try {
-      const course = courseOptions.find(opt => opt.value === courseId);
-      if (course) {
-        // Récupérer les détails complets du cours
-        const courseData = await getCourseByCode(course.label.split(' - ')[0]);
-        if (courseData) {
-          setSelectedCourse(courseData);
-          setValue('course_id', courseData.id);
-        }
+      // Chercher dans les cours déjà chargés (qui ont toutes les infos avec pondération)
+      const fullCourse = loadedCourses.find((c: any) => c.id === courseId);
+
+      if (fullCourse) {
+        setSelectedCourse(fullCourse);
+        setValue('courseId', fullCourse.id);
+      } else {
+        toast.error('Erreur lors de la sélection du cours');
       }
     } catch (error) {
       console.error('Erreur lors de la sélection du cours:', error);
@@ -171,35 +322,17 @@ const NoteEntry: React.FC = () => {
     try {
       const success = await createNote(data);
       if (success) {
+        // Réinitialiser le formulaire et les états
         reset();
         setSelectedStudent(null);
         setSelectedCourse(null);
-        setStudentOptions([]);
         setCourseOptions([]);
-        toast.success('Note créée avec succès !');
+        setLoadedCourses([]);
+        // Le toast de succès est géré par le store
       }
     } catch (error) {
       console.error('Erreur lors de la création de la note:', error);
-    }
-  };
-
-  // Recherche rapide par matricule
-  const handleMatriculeSearch = async (matricule: string) => {
-    if (matricule.length < 3) return;
-
-    try {
-      const student = await getStudentByMatricule(matricule);
-      if (student) {
-        setSelectedStudent(student);
-        setValue('student_id', student.id);
-        setStudentOptions([{
-          value: student.id,
-          label: `${student.matricule} - ${student.prenom} ${student.nom}`,
-          description: `${student.classe} • ${student.niveau}`
-        }]);
-      }
-    } catch (error) {
-      // Erreur silencieuse pour la recherche rapide
+      // Le toast d'erreur est géré par le store
     }
   };
 
@@ -208,7 +341,7 @@ const NoteEntry: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Saisie de Notes</h1>
-          <p className="text-gray-600">Ajouter une nouvelle note pour un étudiant</p>
+          <p className="text-gray-600">Ajouter une nouvelle note pour un élève</p>
         </div>
       </div>
 
@@ -222,73 +355,79 @@ const NoteEntry: React.FC = () => {
             Saisissez les informations de la note. La validation se fait en temps réel.
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Filtre par classe (uniquement pour les non-TEACHER) */}
+            {userRole && userRole !== 'TEACHER' && (
+              <div className="space-y-2 mb-4">
+                <Label htmlFor="classroomFilter">Filtrer les cours par classe (optionnel)</Label>
+                <SearchableSelect
+                  options={classroomOptions}
+                  value={selectedClassroom}
+                  onValueChange={(value) => setSelectedClassroom(value as string | undefined)}
+                  placeholder="Toutes les classes..."
+                  searchPlaceholder="Rechercher une classe..."
+                  loading={loadingClassrooms}
+                  clearable
+                />
+                <p className="text-sm text-gray-500">
+                  Sélectionnez une classe pour filtrer les cours disponibles
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Sélection de l'étudiant */}
+              {/* Sélection de l'élève */}
               <div className="space-y-2">
-                <Label htmlFor="student">Étudiant *</Label>
+                <Label htmlFor="student">Élève *</Label>
                 <Controller
-                  name="student_id"
+                  name="studentId"
                   control={control}
                   render={({ field }) => (
                     <SearchableSelect
                       options={studentOptions}
                       value={field.value}
                       onValueChange={handleStudentSelect}
-                      onSearch={handleStudentSearch}
-                      placeholder="Rechercher un étudiant..."
-                      searchPlaceholder="Matricule, nom ou prénom..."
-                      loading={searchingStudent}
+                      placeholder="Sélectionner un élève..."
+                      searchPlaceholder="Rechercher par matricule, nom ou prénom..."
+                      loading={loadingStudents}
                       clearable
-                      className={errors.student_id ? 'border-red-500' : ''}
+                      className={errors.studentId ? 'border-red-500' : ''}
                     />
                   )}
                 />
-                {errors.student_id && (
-                  <p className="text-sm text-red-600">{errors.student_id.message}</p>
+                {errors.studentId && (
+                  <p className="text-sm text-red-600">{errors.studentId.message}</p>
                 )}
-                
-                {/* Recherche rapide par matricule */}
-                <div className="flex items-center space-x-2 text-sm text-gray-500">
-                  <Search className="h-4 w-4" />
-                  <span>Ou tapez directement le matricule:</span>
-                  <Input
-                    placeholder="Ex: 2024001"
-                    className="w-32"
-                    onBlur={(e) => handleMatriculeSearch(e.target.value)}
-                  />
-                </div>
               </div>
 
               {/* Sélection du cours */}
               <div className="space-y-2">
                 <Label htmlFor="course">Cours *</Label>
                 <Controller
-                  name="course_id"
+                  name="courseId"
                   control={control}
                   render={({ field }) => (
                     <SearchableSelect
                       options={courseOptions}
                       value={field.value}
                       onValueChange={handleCourseSelect}
-                      onSearch={handleCourseSearch}
-                      placeholder="Rechercher un cours..."
-                      searchPlaceholder="Code ou nom du cours..."
-                      loading={searchingCourse}
+                      placeholder="Sélectionner un cours..."
+                      searchPlaceholder="Titre du cours..."
+                      loading={loadingCourses}
                       clearable
                       disabled={!selectedStudent}
-                      className={errors.course_id ? 'border-red-500' : ''}
+                      className={errors.courseId ? 'border-red-500' : ''}
                     />
                   )}
                 />
-                {errors.course_id && (
-                  <p className="text-sm text-red-600">{errors.course_id.message}</p>
+                {errors.courseId && (
+                  <p className="text-sm text-red-600">{errors.courseId.message}</p>
                 )}
                 {!selectedStudent && (
                   <p className="text-sm text-gray-500">
-                    Sélectionnez d'abord un étudiant
+                    Sélectionnez d'abord un élève
                   </p>
                 )}
               </div>
@@ -331,15 +470,16 @@ const NoteEntry: React.FC = () => {
                         type="number"
                         step="0.01"
                         min="0"
-                        max={selectedCourse?.ponderation || 20}
+                        max={selectedCourse?.ponderation || 1000}
                         placeholder="Ex: 15.5"
+                        value={field.value || ''}
                         className={errors.note ? 'border-red-500' : ''}
                         onChange={(e) => {
                           const value = e.target.value ? parseFloat(e.target.value) : undefined;
                           field.onChange(value);
                         }}
                       />
-                      {selectedCourse && (
+                      {selectedCourse && !errors.note && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
                           /{selectedCourse.ponderation}
                         </div>
@@ -350,7 +490,7 @@ const NoteEntry: React.FC = () => {
                 {errors.note && (
                   <p className="text-sm text-red-600">{errors.note.message}</p>
                 )}
-                {selectedCourse && (
+                {selectedCourse && !errors.note && (
                   <p className="text-sm text-gray-500">
                     Note sur {selectedCourse.ponderation} (pondération du cours)
                   </p>
@@ -362,22 +502,22 @@ const NoteEntry: React.FC = () => {
             {(selectedStudent || selectedCourse) && (
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 <h3 className="font-medium text-gray-900">Informations sélectionnées</h3>
-                
+
                 {selectedStudent && (
                   <div className="flex items-center space-x-2 text-sm">
                     <CheckCircle className="h-4 w-4 text-green-600" />
                     <span>
-                      <strong>Étudiant:</strong> {selectedStudent.prenom} {selectedStudent.nom} 
-                      ({selectedStudent.matricule}) - {selectedStudent.classe}
+                      <strong>Élève:</strong> {selectedStudent.firstName} {selectedStudent.lastName}
+                      ({selectedStudent.matricule}) - {selectedStudent.classroom?.name || 'N/A'}
                     </span>
                   </div>
                 )}
-                
+
                 {selectedCourse && (
                   <div className="flex items-center space-x-2 text-sm">
                     <CheckCircle className="h-4 w-4 text-green-600" />
                     <span>
-                      <strong>Cours:</strong> {selectedCourse.nom} ({selectedCourse.code}) 
+                      <strong>Cours:</strong> {selectedCourse.titre}
                       - Pondération: {selectedCourse.ponderation}
                     </span>
                   </div>
@@ -386,12 +526,15 @@ const NoteEntry: React.FC = () => {
             )}
 
             {/* Validation et erreurs */}
-            {selectedStudent && selectedCourse && selectedStudent.niveau !== selectedCourse.niveau && (
+            {selectedStudent && selectedCourse && (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Attention: Le niveau de l'étudiant ({selectedStudent.niveau}) ne correspond pas 
-                  au niveau du cours ({selectedCourse.niveau}).
+                  Rôle utilisateur: <strong>{userRole}</strong> -
+                  {userRole === 'TEACHER'
+                    ? ' Cours récupérés depuis votre dashboard personnel'
+                    : ' Cours récupérés avec filtre par classe de l\'élève'
+                  }
                 </AlertDescription>
               </Alert>
             )}
@@ -405,13 +548,13 @@ const NoteEntry: React.FC = () => {
                   reset();
                   setSelectedStudent(null);
                   setSelectedCourse(null);
-                  setStudentOptions([]);
                   setCourseOptions([]);
+                  setLoadedCourses([]);
                 }}
               >
                 Réinitialiser
               </Button>
-              
+
               <Button
                 type="submit"
                 disabled={!isValid || loading.creating}
@@ -420,10 +563,10 @@ const NoteEntry: React.FC = () => {
                 {loading.creating ? (
                   <div className="flex items-center space-x-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Création...</span>
+                    <span>En cours...</span>
                   </div>
                 ) : (
-                  'Créer la Note'
+                  'Ajouter'
                 )}
               </Button>
             </div>

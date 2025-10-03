@@ -144,9 +144,9 @@ export const employeeFormSchema = z.object({
   assignedCourseIds: z.array(z.string()).optional(),
   
   // Champs spécifiques aux professeurs
-  specialty: z.enum(['mathématiques', 'sciences', 'langues', 'histoire', 'géographie', 'arts', 'sport', 'informatique']).optional(),
+  specialty: z.union([z.enum(['mathématiques', 'sciences', 'langues', 'histoire', 'géographie', 'arts', 'sport', 'informatique']), z.literal(''), z.undefined()]).optional(),
   secondarySpecialties: z.array(z.enum(['mathématiques', 'sciences', 'langues', 'histoire', 'géographie', 'arts', 'sport', 'informatique'])).optional(),
-  degree: z.enum(['licence', 'master', 'doctorat', 'agrégation', 'certification', 'bac', 'bts', 'dut']).optional(),
+  degree: z.union([z.enum(['licence', 'master', 'doctorat', 'agrégation', 'certification', 'bac', 'bts', 'dut']), z.literal(''), z.undefined()]).optional(),
   institution: z.string().optional(),
   graduationYear: z.number().min(1950).max(new Date().getFullYear()).optional(),
   maxCourses: z.number().min(1).max(10).optional(),
@@ -158,8 +158,8 @@ export const employeeFormSchema = z.object({
   
   // Champs spécifiques aux techniques
   skills: z.array(z.string()).optional(),
-  certifications: z.string().optional(), // Chaîne dans le formulaire, converti en tableau
-  equipment: z.string().optional() // Chaîne dans le formulaire, converti en tableau
+  certifications: z.union([z.string(), z.array(z.string())]).optional(),
+  equipment: z.union([z.string(), z.array(z.string())]).optional()
 });
 
 // =====================================================

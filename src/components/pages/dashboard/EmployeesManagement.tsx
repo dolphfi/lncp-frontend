@@ -59,6 +59,7 @@ import {
 } from '../../ui/select';
 
 import EmployeeForm from '../../forms/EmployeeForm';
+import ManageTeacherCoursesDialog from '../../modals/ManageTeacherCoursesDialog';
 
 import {
   useEmployeeStore,
@@ -111,6 +112,10 @@ export const EmployeesManagement: React.FC = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  
+  // État pour le dialog de gestion des cours (professeurs uniquement)
+  const [isManageCoursesDialogOpen, setIsManageCoursesDialogOpen] = useState(false);
+  const [teacherToManage, setTeacherToManage] = useState<Employee | null>(null);
 
   const {
     fetchEmployees,
@@ -191,6 +196,15 @@ export const EmployeesManagement: React.FC = () => {
   const handleEditEmployee = (employee: Employee) => {
     setEditingEmployee(employee);
     setIsEditDialogOpen(true);
+  };
+  
+  /**
+   * Ouvrir le dialog de gestion des cours pour un professeur
+   */
+  const handleManageCourses = (employee: Employee) => {
+    console.log('📚 Gestion des cours pour:', employee.firstName, employee.lastName);
+    setTeacherToManage(employee);
+    setIsManageCoursesDialogOpen(true);
   };
 
   const handleSubmitAdd = async (data: CreateEmployeeDto) => {
@@ -555,6 +569,13 @@ export const EmployeesManagement: React.FC = () => {
                             <Edit className="h-4 w-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
+                          {/* Action spéciale pour les professeurs: gérer leurs cours */}
+                          {employee.type === 'professeur' && (
+                            <DropdownMenuItem onClick={() => handleManageCourses(employee)}>
+                              <BookOpen className="h-4 w-4 mr-2 text-indigo-600" />
+                              Gérer les cours
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             onClick={() => handleDeleteEmployee(employee.id)}
                             className="text-red-600"
@@ -888,6 +909,13 @@ export const EmployeesManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de gestion des cours (professeurs uniquement) */}
+      <ManageTeacherCoursesDialog
+        open={isManageCoursesDialogOpen}
+        onOpenChange={setIsManageCoursesDialogOpen}
+        employee={teacherToManage}
+      />
 
       {/* Affichage des erreurs */}
       {error && (

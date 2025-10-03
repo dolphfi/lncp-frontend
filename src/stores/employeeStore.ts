@@ -71,6 +71,10 @@ interface EmployeeStore {
   deleteEmployee: (id: string) => Promise<void>;
   assignCourses: (data: AssignCoursesDto) => Promise<void>;
   
+  // Actions de gestion des cours (API backend)
+  addCoursesToEmployee: (employeeId: string, courseIds: string[]) => Promise<void>;
+  removeCoursesFromEmployee: (employeeId: string, courseIds: string[]) => Promise<void>;
+  
   // Actions de filtrage et tri
   setFilters: (filters: Partial<EmployeeFilters>) => void;
   setSortOptions: (sort: { field: keyof Employee; order: 'asc' | 'desc' }) => void;
@@ -332,22 +336,20 @@ export const useEmployeeStore = create<EmployeeStore>()(
         });
         
         try {
-          // Simuler un délai d'API
-          await delay(1200);
+          console.log('📝 Données reçues pour mise à jour:', data);
           
           const { id, ...updateData } = data;
-          const employeeIndex = mockEmployees.findIndex(e => e.id === id);
           
-          if (employeeIndex === -1) {
-            throw new Error('Employé non trouvé');
-          }
+          // Utiliser directement les données du formulaire (déjà au bon format)
+          const apiPayload = updateData as any;
           
-          // Mettre à jour l'employé
-          mockEmployees[employeeIndex] = {
-            ...mockEmployees[employeeIndex],
-            ...updateData,
-            updatedAt: new Date().toISOString()
-          };
+          console.log('🚀 Payload API à envoyer pour mise à jour:', apiPayload);
+          console.log('🆔 ID de l\'employé:', id);
+          
+          // Appel API pour mettre à jour l'employé
+          const updatedEmployee = await employeeService.updateEmployee(id, apiPayload);
+          
+          console.log('✅ Employé mis à jour avec succès:', updatedEmployee);
           
           set(state => {
             state.loadingAction = null;
@@ -357,6 +359,14 @@ export const useEmployeeStore = create<EmployeeStore>()(
           await get().fetchEmployees();
           
         } catch (error) {
+          console.error('❌ Erreur lors de la mise à jour de l\'employé:', error);
+          console.error('🔍 Détails de l\'erreur:', {
+            message: error instanceof Error ? error.message : 'Erreur inconnue',
+            stack: error instanceof Error ? error.stack : null,
+            response: (error as any)?.response?.data || null,
+            status: (error as any)?.response?.status || null
+          });
+          
           set(state => {
             state.loadingAction = null;
             state.error = {
@@ -475,6 +485,116 @@ export const useEmployeeStore = create<EmployeeStore>()(
               details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
             };
           });
+          throw error;
+        }
+      },
+      
+      /**
+       * Ajouter un ou plusieurs cours à un employé (TEACHER)
+       * Utilise l'endpoint backend POST /employees/{id}/add-courses
+       */
+      addCoursesToEmployee: async (employeeId: string, courseIds: string[]) => {
+        console.log('📚 Store - Ajout de cours à l\'employé', employeeId);
+        console.log('📋 Cours à ajouter:', courseIds);
+        
+        set(state => {
+          state.loadingAction = 'assign';
+          state.error = null;
+        });
+        
+        try {
+          // Appel API pour ajouter les cours
+          const updatedEmployee = await employeeService.addCoursesToEmployee(employeeId, courseIds);
+          
+          console.log('✅ Cours ajoutés avec succès');
+          console.log('👤 Employé mis à jour:', updatedEmployee);
+          
+          // Convertir la réponse API vers le format frontend
+          const frontendEmployee = convertEmployeeFromApi(updatedEmployee);
+          
+          // Mettre à jour l'employé dans le state
+          set(state => {
+            // Mettre à jour dans allEmployees
+            const index = state.allEmployees.findIndex(e => e.id === employeeId);
+            if (index !== -1) {
+              state.allEmployees[index] = frontendEmployee;
+            }
+            
+            state.loadingAction = null;
+          });
+          
+          // Réappliquer les filtres pour mettre à jour la vue
+          get().applyFiltersLocally();
+          
+          console.log('✅ Store mis à jour avec les nouveaux cours');
+          
+        } catch (error) {
+          console.error('❌ Erreur lors de l\'ajout des cours:', error);
+          
+          set(state => {
+            state.loadingAction = null;
+            state.error = {
+              message: 'Erreur lors de l\'ajout des cours à l\'employé',
+              code: 'ADD_COURSES_ERROR',
+              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
+            };
+          });
+          
+          throw error;
+        }
+      },
+      
+      /**
+       * Retirer un ou plusieurs cours d'un employé (TEACHER)
+       * Utilise l'endpoint backend POST /employees/{id}/remove-courses
+       */
+      removeCoursesFromEmployee: async (employeeId: string, courseIds: string[]) => {
+        console.log('📚 Store - Retrait de cours de l\'employé', employeeId);
+        console.log('📋 Cours à retirer:', courseIds);
+        
+        set(state => {
+          state.loadingAction = 'assign';
+          state.error = null;
+        });
+        
+        try {
+          // Appel API pour retirer les cours
+          const updatedEmployee = await employeeService.removeCoursesFromEmployee(employeeId, courseIds);
+          
+          console.log('✅ Cours retirés avec succès');
+          console.log('👤 Employé mis à jour:', updatedEmployee);
+          
+          // Convertir la réponse API vers le format frontend
+          const frontendEmployee = convertEmployeeFromApi(updatedEmployee);
+          
+          // Mettre à jour l'employé dans le state
+          set(state => {
+            // Mettre à jour dans allEmployees
+            const index = state.allEmployees.findIndex(e => e.id === employeeId);
+            if (index !== -1) {
+              state.allEmployees[index] = frontendEmployee;
+            }
+            
+            state.loadingAction = null;
+          });
+          
+          // Réappliquer les filtres pour mettre à jour la vue
+          get().applyFiltersLocally();
+          
+          console.log('✅ Store mis à jour après retrait des cours');
+          
+        } catch (error) {
+          console.error('❌ Erreur lors du retrait des cours:', error);
+          
+          set(state => {
+            state.loadingAction = null;
+            state.error = {
+              message: 'Erreur lors du retrait des cours de l\'employé',
+              code: 'REMOVE_COURSES_ERROR',
+              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
+            };
+          });
+          
           throw error;
         }
       },

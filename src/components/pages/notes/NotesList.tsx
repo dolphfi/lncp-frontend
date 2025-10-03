@@ -2,19 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller, Resolver } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { NoteFiltersFormData } from '../../../types/academic';
+import { NoteFiltersFormData } from '../../../types/note';
 import {
   Search,
   Filter,
-  Edit2,
-  Trash2,
   Download,
   RefreshCw,
   Eye,
   Calendar,
   User,
-  BookOpen,
-  MoreHorizontal
+  BookOpen
 } from 'lucide-react';
 import {
   useReactTable,
@@ -27,39 +24,15 @@ import {
 } from '@tanstack/react-table';
 import { toast } from 'react-toastify';
 
-import { useAcademicStore } from '../../../stores/academicStore';
-import { noteFiltersSchema } from '../../../schemas/academicSchemas';
-import { Note } from '../../../types/academic';
+import { useNoteStore } from '../../../stores/noteStore';
+import { noteFiltersSchema } from '../../../schemas/noteSchema';
+import { Note } from '../../../types/note';
 import SearchableSelect from '../../ui/searchable-select';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { Badge } from '../../ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../../ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../../ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from 'components/ui/alert-dialog';
 
 const columnHelper = createColumnHelper<Note>();
 
@@ -70,16 +43,11 @@ const NotesList: React.FC = () => {
     filters,
     pagination,
     fetchNotes,
-    updateNote,
-    deleteNote,
     setFilters,
     clearFilters
-  } = useAcademicStore();
+  } = useNoteStore();
 
   const [showFilters, setShowFilters] = useState(false);
-  const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [deletingNote, setDeletingNote] = useState<Note | null>(null);
-  const [editValue, setEditValue] = useState<number>(0);
 
   // Formulaire de filtres
   const {
@@ -92,15 +60,18 @@ const NotesList: React.FC = () => {
   } = useForm<NoteFiltersFormData>({
     resolver: yupResolver(noteFiltersSchema) as Resolver<NoteFiltersFormData>,
     defaultValues: {
-      student_matricule: undefined,
-      student_name: undefined,
-      course_code: undefined,
-      course_name: undefined,
+      search: undefined,
+      studentId: undefined,
+      studentName: undefined,
+      courseId: undefined,
+      courseName: undefined,
       trimestre: undefined,
       niveau: undefined,
       classe: undefined,
-      date_from: undefined,
-      date_to: undefined
+      dateFrom: undefined,
+      dateTo: undefined,
+      minNote: undefined,
+      maxNote: undefined
     }
   });
 
@@ -119,17 +90,17 @@ const NotesList: React.FC = () => {
         return (
           <div className="flex flex-col">
             <span className="font-medium text-gray-900">
-              {student.prenom} {student.nom}
+              {student?.firstName} {student?.lastName}
             </span>
             <span className="text-sm text-gray-500">
-              {student.matricule} • {student.classe}
+              {student?.studentId} • {student?.grade}
             </span>
           </div>
         );
       },
       sortingFn: (rowA, rowB) => {
-        const nameA = `${rowA.original.student.prenom} ${rowA.original.student.nom}`;
-        const nameB = `${rowB.original.student.prenom} ${rowB.original.student.nom}`;
+        const nameA = `${rowA.original.student?.firstName} ${rowA.original.student?.lastName}`;
+        const nameB = `${rowB.original.student?.firstName} ${rowB.original.student?.lastName}`;
         return nameA.localeCompare(nameB);
       }
     }),
@@ -141,67 +112,127 @@ const NotesList: React.FC = () => {
         const course = getValue();
         return (
           <div className="flex flex-col">
-            <span className="font-medium text-gray-900">{course.nom}</span>
+            <span className="font-medium text-gray-900">{course?.titre}</span>
             <span className="text-sm text-gray-500">
-              {course.code} • Pond. {course.ponderation}
+              Pond. {course?.ponderation}
             </span>
           </div>
         );
       },
       sortingFn: (rowA, rowB) => {
-        return rowA.original.course.nom.localeCompare(rowB.original.course.nom);
+        const titreA = rowA.original.course?.titre || '';
+        const titreB = rowB.original.course?.titre || '';
+        return titreA.localeCompare(titreB);
       }
     }),
 
-    columnHelper.accessor('trimestre', {
-      id: 'trimestre',
-      header: 'Trimestre',
-      cell: ({ getValue }) => {
-        const trimestre = getValue();
-        const colors = {
-          T1: 'bg-blue-100 text-blue-800',
-          T2: 'bg-green-100 text-green-800',
-          T3: 'bg-purple-100 text-purple-800'
-        };
-        return (
-          <Badge className={colors[trimestre]}>
-            {trimestre}
-          </Badge>
-        );
-      }
-    }),
-
-    columnHelper.accessor('note', {
-      id: 'note',
-      header: 'Note',
+    // Trimestre 1
+    columnHelper.accessor((row) => row.trimestre_1, {
+      id: 'trimestre_1',
+      header: () => (
+        <div className="text-center">
+          <div className="font-bold">Trimestre 1</div>
+        </div>
+      ),
       cell: ({ getValue, row }) => {
         const note = getValue();
-        const ponderation = row.original.course.ponderation;
-        const percentage = (note / ponderation) * 100;
+        const ponderation = row.original.course?.ponderation || 100;
         
+        if (note === null || note === undefined) {
+          return <span className="text-gray-400 text-center block">—</span>;
+        }
+        
+        const percentage = ponderation > 0 ? (note / ponderation) * 100 : 0;
         let colorClass = 'text-gray-900';
         if (percentage >= 80) colorClass = 'text-green-600';
         else if (percentage >= 60) colorClass = 'text-yellow-600';
         else if (percentage < 50) colorClass = 'text-red-600';
 
         return (
-          <div className="flex flex-col">
+          <div className="flex flex-col text-center">
             <span className={`font-bold ${colorClass}`}>
               {note.toFixed(2)}
             </span>
             <span className="text-xs text-gray-500">
-              /{ponderation} ({percentage.toFixed(0)}%)
+              ({percentage.toFixed(0)}%)
             </span>
           </div>
         );
-      },
-      sortingFn: (rowA, rowB) => {
-        return rowA.original.note - rowB.original.note;
       }
     }),
 
-    columnHelper.accessor('date_creation', {
-      id: 'date_creation',
+    // Trimestre 2
+    columnHelper.accessor((row) => row.trimestre_2, {
+      id: 'trimestre_2',
+      header: () => (
+        <div className="text-center">
+          <div className="font-bold">Trimestre 2</div>
+        </div>
+      ),
+      cell: ({ getValue, row }) => {
+        const note = getValue();
+        const ponderation = row.original.course?.ponderation || 100;
+        
+        if (note === null || note === undefined) {
+          return <span className="text-gray-400 text-center block">—</span>;
+        }
+        
+        const percentage = ponderation > 0 ? (note / ponderation) * 100 : 0;
+        let colorClass = 'text-gray-900';
+        if (percentage >= 80) colorClass = 'text-green-600';
+        else if (percentage >= 60) colorClass = 'text-yellow-600';
+        else if (percentage < 50) colorClass = 'text-red-600';
+
+        return (
+          <div className="flex flex-col text-center">
+            <span className={`font-bold ${colorClass}`}>
+              {note.toFixed(2)}
+            </span>
+            <span className="text-xs text-gray-500">
+              ({percentage.toFixed(0)}%)
+            </span>
+          </div>
+        );
+      }
+    }),
+
+    // Trimestre 3
+    columnHelper.accessor((row) => row.trimestre_3, {
+      id: 'trimestre_3',
+      header: () => (
+        <div className="text-center">
+          <div className="font-bold">Trimestre 3</div>
+        </div>
+      ),
+      cell: ({ getValue, row }) => {
+        const note = getValue();
+        const ponderation = row.original.course?.ponderation || 100;
+        
+        if (note === null || note === undefined) {
+          return <span className="text-gray-400 text-center block">—</span>;
+        }
+        
+        const percentage = ponderation > 0 ? (note / ponderation) * 100 : 0;
+        let colorClass = 'text-gray-900';
+        if (percentage >= 80) colorClass = 'text-green-600';
+        else if (percentage >= 60) colorClass = 'text-yellow-600';
+        else if (percentage < 50) colorClass = 'text-red-600';
+
+        return (
+          <div className="flex flex-col text-center">
+            <span className={`font-bold ${colorClass}`}>
+              {note.toFixed(2)}
+            </span>
+            <span className="text-xs text-gray-500">
+              ({percentage.toFixed(0)}%)
+            </span>
+          </div>
+        );
+      }
+    }),
+
+    columnHelper.accessor('createdAt', {
+      id: 'createdAt',
       header: 'Date de création',
       cell: ({ getValue }) => {
         const date = new Date(getValue());
@@ -211,9 +242,9 @@ const NotesList: React.FC = () => {
               {date.toLocaleDateString('fr-FR')}
             </span>
             <span className="text-xs text-gray-500">
-              {date.toLocaleTimeString('fr-FR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
+              {date.toLocaleTimeString('fr-FR', {
+                hour: '2-digit',
+                minute: '2-digit'
               })}
             </span>
           </div>
@@ -221,32 +252,43 @@ const NotesList: React.FC = () => {
       }
     }),
 
+    // Moyenne générale (optionnelle)
     columnHelper.display({
-      id: 'actions',
-      header: 'Actions',
+      id: 'moyenne',
+      header: () => (
+        <div className="text-center">
+          <div className="font-bold">Moyenne</div>
+        </div>
+      ),
       cell: ({ row }) => {
-        const note = row.original;
+        const t1 = row.original.trimestre_1;
+        const t2 = row.original.trimestre_2;
+        const t3 = row.original.trimestre_3;
+        
+        // Calculer la moyenne des trimestres saisis
+        const notes = [t1, t2, t3].filter((n): n is number => n !== null && n !== undefined);
+        if (notes.length === 0) {
+          return <span className="text-gray-400 text-center block">—</span>;
+        }
+        
+        const moyenne = notes.reduce((sum, n) => sum + n, 0) / notes.length;
+        const ponderation = row.original.course?.ponderation || 100;
+        const percentage = ponderation > 0 ? (moyenne / ponderation) * 100 : 0;
+        
+        let colorClass = 'text-gray-900';
+        if (percentage >= 80) colorClass = 'text-green-600';
+        else if (percentage >= 60) colorClass = 'text-yellow-600';
+        else if (percentage < 50) colorClass = 'text-red-600';
+
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEditNote(note)}>
-                <Edit2 className="h-4 w-4 mr-2" />
-                Modifier
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setDeletingNote(note)}
-                className="text-red-600"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Supprimer
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex flex-col text-center">
+            <span className={`font-bold ${colorClass}`}>
+              {moyenne.toFixed(2)}
+            </span>
+            <span className="text-xs text-gray-500">
+              ({percentage.toFixed(0)}%)
+            </span>
+          </div>
         );
       }
     })
@@ -269,12 +311,7 @@ const NotesList: React.FC = () => {
 
   // Gestion des filtres
   const onFiltersSubmit = (data: NoteFiltersFormData) => {
-    // Convertir les données pour correspondre au type SearchFilters
-    const filterData = {
-      ...data,
-      trimestre: data.trimestre as 'T1' | 'T2' | 'T3' | undefined
-    };
-    setFilters(filterData);
+    setFilters(data);
     setShowFilters(false);
   };
 
@@ -284,36 +321,8 @@ const NotesList: React.FC = () => {
     setShowFilters(false);
   };
 
-  // Gestion de l'édition
-  const handleEditNote = (note: Note) => {
-    setEditingNote(note);
-    setEditValue(note.note);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingNote) return;
-
-    const success = await updateNote(editingNote.id, { note: editValue });
-    if (success) {
-      setEditingNote(null);
-      fetchNotes(filters);
-    }
-  };
-
-  // Gestion de la suppression
-  const handleDeleteNote = async () => {
-    if (!deletingNote) return;
-
-    const success = await deleteNote(deletingNote.id);
-    if (success) {
-      setDeletingNote(null);
-      fetchNotes(filters);
-    }
-  };
-
   // Export des données
   const handleExport = () => {
-    // TODO: Implémenter l'export
     toast.info('Fonctionnalité d\'export en cours de développement');
   };
 
@@ -358,53 +367,32 @@ const NotesList: React.FC = () => {
             </Button>
           </div>
         </CardHeader>
-        
+
         {showFilters && (
           <CardContent>
             <form onSubmit={handleSubmit(onFiltersSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Matricule étudiant</Label>
-                  <Controller
-                    name="student_matricule"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        placeholder="Ex: 2024001"
-                        value={field.value || ''}
-                      />
-                    )}
+                  <Input
+                    {...register('studentId')}
+                    placeholder="Ex: 23N2001"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Nom étudiant</Label>
-                  <Controller
-                    name="student_name"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        placeholder="Nom ou prénom"
-                        value={field.value || ''}
-                      />
-                    )}
+                  <Input
+                    {...register('studentName')}
+                    placeholder="Nom ou prénom"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Code cours</Label>
-                  <Controller
-                    name="course_code"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        placeholder="Ex: MATH6"
-                        value={field.value || ''}
-                      />
-                    )}
+                  <Label>Nom du cours</Label>
+                  <Input
+                    {...register('courseName')}
+                    placeholder="Ex: Mathématiques"
                   />
                 </div>
 
@@ -438,13 +426,10 @@ const NotesList: React.FC = () => {
                       <SearchableSelect
                         options={[
                           { value: '', label: 'Tous les niveaux' },
-                          { value: '6eme', label: '6ème' },
-                          { value: '5eme', label: '5ème' },
-                          { value: '4eme', label: '4ème' },
-                          { value: '3eme', label: '3ème' },
-                          { value: '2nde', label: '2nde' },
-                          { value: '1ere', label: '1ère' },
-                          { value: 'Tle', label: 'Terminale' }
+                          { value: 'NSI', label: 'NS I' },
+                          { value: 'NSII', label: 'NS II' },
+                          { value: 'NSIII', label: 'NS III' },
+                          { value: 'NSIV', label: 'NS IV' }
                         ]}
                         value={field.value || ''}
                         onValueChange={field.onChange}
@@ -456,16 +441,9 @@ const NotesList: React.FC = () => {
 
                 <div className="space-y-2">
                   <Label>Classe</Label>
-                  <Controller
-                    name="classe"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        placeholder="Ex: 6eme A"
-                        value={field.value || ''}
-                      />
-                    )}
+                  <Input
+                    {...register('classe')}
+                    placeholder="Ex: NSII A"
                   />
                 </div>
               </div>
@@ -496,7 +474,7 @@ const NotesList: React.FC = () => {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           {loading.notes ? (
             <div className="flex items-center justify-center py-8">
@@ -573,65 +551,6 @@ const NotesList: React.FC = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Dialog d'édition */}
-      <Dialog open={!!editingNote} onOpenChange={() => setEditingNote(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Modifier la Note</DialogTitle>
-            <DialogDescription>
-              Modifiez la note de {editingNote?.student.prenom} {editingNote?.student.nom} 
-              pour le cours {editingNote?.course.nom}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Note (sur {editingNote?.course.ponderation})</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                max={editingNote?.course.ponderation || 20}
-                value={editValue}
-                onChange={(e) => setEditValue(parseFloat(e.target.value) || 0)}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingNote(null)}>
-              Annuler
-            </Button>
-            <Button onClick={handleSaveEdit} disabled={loading.updating}>
-              {loading.updating ? 'Modification...' : 'Modifier'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog de suppression */}
-      <AlertDialog open={!!deletingNote} onOpenChange={() => setDeletingNote(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer la note de {deletingNote?.student.prenom} {deletingNote?.student.nom} 
-              pour le cours {deletingNote?.course.nom} ? Cette action est irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteNote}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={loading.deleting}
-            >
-              {loading.deleting ? 'Suppression...' : 'Supprimer'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

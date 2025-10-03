@@ -10,8 +10,8 @@
 // TYPES POUR LES CLASSES ET SALLES
 // =====================================================
 
-// Type pour les classes (niveaux)
-export type ClassLevel = 'NSI' | 'NSII' | 'NSIII' | 'NSIV';
+// Type pour les classes (niveaux d'étude)
+export type ClassLevel = 'secondaire' | '3e_cycle' | 'fondamentale';
 
 // Type pour une salle
 export interface Room {

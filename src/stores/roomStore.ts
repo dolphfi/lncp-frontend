@@ -28,13 +28,12 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper: déduire le niveau de classe (ClassLevel) depuis le nom/level backend
 const toClassLevel = (nameOrLevel?: string): ClassLevel => {
-  const raw = (nameOrLevel || '').toUpperCase().replace(/\s+/g, '');
-  if (raw.includes('NSIII')) return 'NSIII';
-  if (raw.includes('NSIV')) return 'NSIV';
-  if (raw.includes('NSII')) return 'NSII';
-  if (raw.includes('NSI')) return 'NSI';
+  const raw = (nameOrLevel || '').toLowerCase().replace(/\s+/g, '');
+  if (raw.includes('secondaire')) return 'secondaire';
+  if (raw.includes('3ecycle') || raw.includes('3e_cycle')) return '3e_cycle';
+  if (raw.includes('fondamentale')) return 'fondamentale';
   // Fallback par défaut
-  return 'NSI';
+  return 'secondaire';
 };
 
 // =====================================================
@@ -323,10 +322,9 @@ export const useRoomStore = create<RoomStore>()(
             active: rooms.filter(room => room.isActive).length,
             inactive: rooms.filter(room => !room.isActive).length,
             byClassLevel: {
-              NSI: rooms.filter(room => room.classLevel === 'NSI').length,
-              NSII: rooms.filter(room => room.classLevel === 'NSII').length,
-              NSIII: rooms.filter(room => room.classLevel === 'NSIII').length,
-              NSIV: rooms.filter(room => room.classLevel === 'NSIV').length
+              secondaire: rooms.filter(room => room.classLevel === 'secondaire').length,
+              '3e_cycle': rooms.filter(room => room.classLevel === '3e_cycle').length,
+              fondamentale: rooms.filter(room => room.classLevel === 'fondamentale').length
             },
             totalCapacity: rooms.reduce((sum, room) => sum + room.capacity, 0),
             averageCapacity: rooms.length > 0 ? Math.round(rooms.reduce((sum, room) => sum + room.capacity, 0) / rooms.length) : 0

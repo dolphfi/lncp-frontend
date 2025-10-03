@@ -66,7 +66,6 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
     // Utiliser le nouveau schéma aligné avec l'API
     resolver: zodResolver(addStudentSchema),
     defaultValues: {
-      firstName: '', lastName: '', email: '', gender: 'male', dateOfBirth: '',
       avatar: undefined,
       placeOfBirth: '', communeDeNaissance: '', hasHandicap: false, handicapDetails: '',
       adresse: '', vacation: 'AM', niveauEnseignement: 'Secondaire', grade: 'NSI',
@@ -79,6 +78,33 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
 
   const selectedClassroomId = watch('selectedClassroomId');
   const responsableMode = watch('responsableMode');
+
+  // Mapping entre les niveaux de classe et les niveaux d'étude
+  const getGradeFromClassLevel = (className?: string): string => {
+    if (!className) return 'NSI';
+
+    const name = className.toLowerCase().trim();
+    console.log('DEBUG - Analyse du nom de classe:', `"${className}" -> "${name}"`);
+
+    // Mapping basé sur les vrais noms de classe du backend
+    if (name.includes('nsiii') || name.includes('ns iii') || name.includes('ns-iii') || name.includes('3') || name.includes('troisième') || name.includes('troisieme')) {
+      console.log('DEBUG - Mapping trouvé: NSIII');
+      return 'NSIII';
+    } else if (name.includes('nsiv') || name.includes('ns iv') || name.includes('ns-iv') || name.includes('4') || name.includes('quatrième') || name.includes('quatrieme')) {
+      console.log('DEBUG - Mapping trouvé: NSIV');
+      return 'NSIV';
+    } else if (name.includes('nsii') || name.includes('ns ii') || name.includes('ns-ii') || name.includes('2') || name.includes('deuxième') || name.includes('deuxieme')) {
+      console.log('DEBUG - Mapping trouvé: NSII');
+      return 'NSII';
+    } else if (name.includes('nsi') || name.includes('ns i') || name.includes('ns-i') || name.includes('1') || name.includes('première') || name.includes('premiere') || name.includes('premier')) {
+      console.log('DEBUG - Mapping trouvé: NSI');
+      return 'NSI';
+    }
+
+    // Si rien n'est trouvé, retourner NSI par défaut et logger pourquoi
+    console.log('DEBUG - Aucun mapping trouvé pour:', `"${className}"`, '- Retour à NSI par défaut');
+    return 'NSI';
+  };
 
   const fetchResponsables = async () => {
     try {
@@ -157,11 +183,52 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
     console.info('[AddStudentModal] Open state changed:', open);
   }, [open]);
 
+  // Effet pour auto-sélectionner le niveau d'étude quand une classe est choisie
   useEffect(() => {
-    if (!open) return;
-    // Charger responsables via service
-    // studentsService.getResponsables().then(setResponsables).catch(()=>{});
-  }, [open]);
+    if (selectedClassroomId && classrooms.length > 0) {
+      const selectedClass = classrooms.find(c => c.id === selectedClassroomId);
+      if (selectedClass) {
+        console.log('DEBUG - Classe sélectionnée:', {
+          id: selectedClass.id,
+          name: selectedClass.name,
+          level: selectedClass.level
+        });
+
+        const autoGrade = getGradeFromClassLevel(selectedClass.name);
+        console.log('DEBUG - Niveau déterminé:', autoGrade, 'pour la classe:', selectedClass.name);
+
+        // Seulement mettre à jour si le niveau actuel est différent
+        const currentGrade = watch('grade');
+        console.log('DEBUG - Niveau actuel:', currentGrade, 'nouveau niveau:', autoGrade);
+
+        if (currentGrade !== autoGrade) {
+          setValue('grade', autoGrade as 'NSI' | 'NSII' | 'NSIII' | 'NSIV');
+        }
+      }
+    }
+  }, [selectedClassroomId, classrooms, setValue, watch]);
+
+  // Test temporaire avec des données mockées pour vérifier le mapping
+  useEffect(() => {
+    // Simulation de données de classe pour tester
+    const testClasses = [
+      { id: '1', name: 'NSI A', level: 'NSI' },
+      { id: '2', name: 'NSII B', level: 'NSII' },
+      { id: '3', name: 'NSIII C', level: 'NSIII' },
+      { id: '4', name: 'NSIV D', level: 'NSIV' },
+      { id: '5', name: 'Première année', level: 'NSI' },
+      { id: '6', name: 'Deuxième année', level: 'NSII' },
+      { id: '7', name: 'Classe NSIII', level: 'NSIII' },
+      { id: '8', name: '3ème année', level: 'NSIII' },
+      { id: '9', name: 'NS-III', level: 'NSIII' },
+      { id: '10', name: 'NS 3', level: 'NSIII' }
+    ];
+
+    testClasses.forEach(c => {
+      const mappedGrade = getGradeFromClassLevel(c.name);
+      console.log(`TEST - Classe "${c.name}" -> Niveau déterminé: "${mappedGrade}" (attendu: "${c.level}")`);
+    });
+  }, []); // S'exécute une seule fois au montage
 
   useEffect(() => {
     if (!selectedClassroomId) { setRooms([]); return; }
@@ -474,8 +541,14 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
                 </FormField>
                 <FormField label="Niveau d'étude (NSI..NSIV)" required error={errors.grade?.message as any}>
                   <Controller name={'grade' as any} control={control as any} render={({field}) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="NSI..NSIV" /></SelectTrigger>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={!!selectedClassroomId} // Désactiver si une classe est sélectionnée
+                    >
+                      <SelectTrigger className={`h-9 ${selectedClassroomId ? 'bg-gray-50 text-gray-600' : ''}`}>
+                        <SelectValue placeholder={selectedClassroomId ? 'Auto-sélectionné depuis la classe' : 'NSI..NSIV'} />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="NSI">NSI</SelectItem>
                         <SelectItem value="NSII">NSII</SelectItem>

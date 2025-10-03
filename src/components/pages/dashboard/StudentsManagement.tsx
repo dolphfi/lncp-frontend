@@ -218,7 +218,7 @@ export const StudentsManagement: React.FC = () => {
         const matricule = s.matricule || s.studentId || s.user?.matricule || '—';
         const firstName = s.user?.firstName || s.firstName || '';
         const lastName = s.user?.lastName || s.lastName || '';
-        const classe = s.classroom?.name || s.grade || s.niveauEtude || '';
+        const classe = s.classroom?.name || s.grade || 'secondaire';
         const salle = s.room?.name || s.roomName || room?.name || '';
         return [matricule, lastName, firstName, classe, salle];
       });
@@ -433,7 +433,7 @@ export const StudentsManagement: React.FC = () => {
   
   const handleClassroomFilter = async (grade: string, className: string) => {
     try {
-      // Les grades des étudiants sont comme "NS I", "NS II", etc.
+      // Les grades des étudiants sont comme "secondaire", "3e_cycle", "fondamentale"
       // Normaliser les libellés pour faire une correspondance robuste
       const normalize = (s?: string) => (s || '')
         .toUpperCase()
@@ -602,8 +602,8 @@ export const StudentsManagement: React.FC = () => {
         // Vacation et niveau d'enseignement
         vacation: (data as any).vacation === 'AM' ? 'Matin (AM)' : 'Après-midi (PM)',
         niveauEnseignement: (data as any).niveauEnseignement,
-        // Niveau d'étude = grade (NSI..NSIV)
-        niveauEtude: data.grade === 'NSI' ? 'NSI' : data.grade === 'NSII' ? 'NSII' : data.grade === 'NSIII' ? 'NSIII' : 'NSIV',
+        // Niveau d'étude = grade (secondaire/3e_cycle/fondamentale)
+        niveauEtude: data.grade === 'secondaire' ? 'secondaire' : data.grade === '3e_cycle' ? '3e_cycle' : 'fondamentale',
         // Infos parents (obligatoires API)
         nomMere: (data as any).nomMere,
         prenomMere: (data as any).prenomMere,
@@ -770,7 +770,7 @@ export const StudentsManagement: React.FC = () => {
             // Informations académiques (structure backend)
             s.classroom?.name || '',
             s.niveauEnseignement || '',
-            s.niveauEtude || '',
+            s.grade || 'secondaire',
             s.room?.name || '',
             s.vacation || '',
             s.user?.isActive ? 'Actif' : 'Inactif',
@@ -964,7 +964,7 @@ export const StudentsManagement: React.FC = () => {
       adresse,
       vacation: rowData['Vacation']?.trim() || 'Matin (AM)',
       niveauEnseignement: rowData['Niveau d\'enseignement']?.trim() || 'Secondaire',
-      niveauEtude: rowData['Niveau d\'étude']?.trim() || 'NS I',
+      niveauEtude: rowData['Niveau d\'étude']?.trim() || 'secondaire',
       nomMere: rowData['Nom de la mère']?.trim() || '',
       prenomMere: rowData['Prénom de la mère']?.trim() || '',
       statutMere: rowData['Statut de la mère']?.trim() || 'Vivant',

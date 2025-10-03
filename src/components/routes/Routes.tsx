@@ -13,8 +13,6 @@ import AdminPanel from '../pages/dashboard/AdminPanel';
 import {CoursesManagement} from '../pages/dashboard/CoursesManagement';
 import StudentProfilePage from '../pages/dashboard/StudentProfile';
 import Profile from '../pages/dashboard/Profile';
-import NoteEntry from '../pages/notes/NoteEntry';
-import NotesList from '../pages/notes/NotesList';
 import IndividualBulletin from '../pages/bulletins/IndividualBulletin';
 import CollectiveBulletin from '../pages/bulletins/CollectiveBulletin';
 import TopLaureates from '../pages/statistics/TopLaureates';
@@ -23,6 +21,10 @@ import EnvDebug from '../utils/EnvDebug';
 import PrivateRoute from '../utils/PrivateRoute';
 import AcademicDashboard from '../pages/dashboard/AcademicDashboard';
 import RoleRoute from '../utils/RoleRoute';
+import NotesList from 'components/pages/notes/NotesList';
+import NoteEntry from 'components/pages/notes/NoteEntry';
+import ScheduleManagement from '../pages/schedules/ScheduleManagement';
+import MySchedule from '../pages/schedules/MySchedule';
 
 
 function AppRoutes() {
@@ -60,6 +62,10 @@ function AppRoutes() {
                 element={<RoleRoute requiredFeature="students"><StudentsManagement/></RoleRoute>}/>
             <Route path="/courses"
                 element={<RoleRoute requiredFeature="courses"><CoursesManagement/></RoleRoute>}/>
+            <Route path="/schedules"
+                element={<RoleRoute requiredFeature="courses"><ScheduleManagement/></RoleRoute>}/>
+            <Route path="/schedules/my-schedule"
+                element={<MySchedule/>}/>
             <Route path="/employee"
                 element={<RoleRoute requiredFeature="employees"><EmployeesManagement/></RoleRoute>}/>
             <Route path="/profile" element={<Profile/>} />

@@ -94,9 +94,9 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
       notes: '',
       assignedCourseIds: [],
       // Champs professeurs
-      specialty: undefined,
+      specialty: '',
       secondarySpecialties: [],
-      degree: undefined,
+      degree: '',
       institution: '',
       graduationYear: undefined,
       maxCourses: undefined,
@@ -119,49 +119,65 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
 
   useEffect(() => {
     if (employee) {
+      console.log('📝 Chargement employé pour édition:', employee);
+      
+      // Déterminer le role backend depuis le type
+      const backendRole = employee.type === 'professeur' ? 'TEACHER' : 
+                         employee.type === 'direction' ? 'DIRECTOR' : 
+                         employee.type === 'administratif' ? 'SECRETARY' : 'USER';
+      
       reset({
-        employeeId: employee.employeeId,
-        type: employee.type,
-        firstName: employee.firstName,
-        lastName: employee.lastName,
-        email: employee.email,
-        phone: employee.phone,
-        dateOfBirth: employee.dateOfBirth,
-        gender: employee.gender,
-        placeOfBirth: '', // Champ backend, pas dans l'ancien type
-        communeOfBirth: '', // Champ backend, pas dans l'ancien type
-        address: employee.address,
-        hireDate: employee.hireDate,
-        status: employee.status,
-        role: 'TEACHER' as BackendUserRole, // Par défaut
-        avatar: '',
-        handicap: false,
-        notes: employee.notes,
+        employeeId: employee.employeeId || '',
+        type: employee.type || 'professeur',
+        firstName: employee.firstName || '',
+        lastName: employee.lastName || '',
+        email: employee.email || '',
+        phone: employee.phone || '',
+        dateOfBirth: employee.dateOfBirth || '',
+        gender: employee.gender || 'homme',
+        placeOfBirth: employee.placeOfBirth || '',
+        communeOfBirth: employee.communeOfBirth || '',
+        address: employee.address || { street: '', city: '', postalCode: '', country: 'France' },
+        hireDate: employee.hireDate || '',
+        status: employee.status || 'actif',
+        role: backendRole as BackendUserRole,
+        avatar: employee.avatar || '',
+        handicap: employee.handicap || false,
+        notes: employee.notes || '',
         assignedCourseIds: employee.professorInfo?.assignedCourses?.map((c: any) => c.courseId) || [],
         
         // Champs spécifiques aux professeurs
-        specialty: employee.professorInfo?.specialty,
+        specialty: employee.professorInfo?.specialty || '',
         secondarySpecialties: employee.professorInfo?.secondarySpecialties || [],
-        degree: employee.professorInfo?.degree,
-        institution: employee.professorInfo?.institution,
+        degree: employee.professorInfo?.degree || '',
+        institution: employee.professorInfo?.institution || '',
         graduationYear: employee.professorInfo?.graduationYear,
         maxCourses: employee.professorInfo?.maxCourses,
         
         // Champs spécifiques aux administratifs
-        department: employee.administrativeInfo?.department,
-        position: employee.administrativeInfo?.position,
-        supervisor: employee.administrativeInfo?.supervisor,
+        department: employee.administrativeInfo?.department || '',
+        position: employee.administrativeInfo?.position || '',
+        supervisor: employee.administrativeInfo?.supervisor || '',
         
         // Champs spécifiques aux techniques
         skills: employee.technicalInfo?.skills || [],
-        certifications: employee.technicalInfo?.certifications || [],
-        equipment: employee.technicalInfo?.equipment || []
+        certifications: Array.isArray(employee.technicalInfo?.certifications) 
+          ? employee.technicalInfo.certifications.join(', ') 
+          : (employee.technicalInfo?.certifications || ''),
+        equipment: Array.isArray(employee.technicalInfo?.equipment) 
+          ? employee.technicalInfo.equipment.join(', ') 
+          : (employee.technicalInfo?.equipment || '')
       });
+      
+      // Mettre à jour le type sélectionné
+      setSelectedType(employee.type || 'professeur');
       
       // Charger l'avatar existant
       if (employee.avatar) {
         setImagePreview(employee.avatar);
       }
+      
+      console.log('✅ Formulaire réinitialisé avec les données de l\'employé');
     }
   }, [employee, reset]);
 
@@ -326,11 +342,11 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
             <div>
               <Label htmlFor="gender">Genre *</Label>
               <Select
+                value={watch('gender')}
                 onValueChange={(value: Gender) => setValue('gender', value)}
-                defaultValue="homme"
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Sélectionner un genre" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="homme">Homme</SelectItem>
@@ -379,11 +395,11 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
             <div>
               <Label htmlFor="status">Statut *</Label>
               <Select
+                value={watch('status')}
                 onValueChange={(value: EmployeeStatus) => setValue('status', value)}
-                defaultValue="actif"
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Sélectionner un statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="actif">Actif</SelectItem>
@@ -479,6 +495,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
               <div>
                 <Label htmlFor="specialty">Spécialité principale *</Label>
                 <Select
+                  value={watch('specialty')}
                   onValueChange={(value: ProfessorSpecialty) => setValue('specialty', value)}
                 >
                   <SelectTrigger>
@@ -500,6 +517,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, isLoading =
               <div>
                 <Label htmlFor="degree">Diplôme *</Label>
                 <Select
+                  value={watch('degree')}
                   onValueChange={(value: EmployeeDegree) => setValue('degree', value)}
                 >
                   <SelectTrigger>

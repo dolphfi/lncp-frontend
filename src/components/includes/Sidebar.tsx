@@ -278,7 +278,10 @@ const AppSidebar = () => {
             icon: BookOpen,
             subItems: [
               { to: "/courses", label: "Liste des cours" },
-              { to: "/schedules", label: "Horaires" },
+              { to: "/schedules", label: "Gestion Horaires" },
+              ...(user?.role === 'TEACHER' || user?.role === 'SUPPLEANT' ? [
+                { to: "/schedules/my-schedule", label: "Mon Horaire" }
+              ] : []),
               { to: "/enrollments", label: "Inscriptions" },
             ],
           }] : []),

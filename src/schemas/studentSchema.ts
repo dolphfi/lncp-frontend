@@ -12,10 +12,9 @@ import { z } from 'zod';
 // CONSTANTES POUR LES OPTIONS DE SÉLECTION
 // =====================================================
 export const GRADE_OPTIONS = [
-  { value: 'NSI', label: 'NSI' },
-  { value: 'NSII', label: 'NSII' },
-  { value: 'NSIII', label: 'NSIII' },
-  { value: 'NSIV', label: 'NSIV' }
+  { value: 'secondaire', label: 'Secondaire' },
+  { value: '3e_cycle', label: '3e Cycle' },
+  { value: 'fondamentale', label: 'Fondamentale' }
 ] as const;
 
 export const LEVEL_OPTIONS = [
@@ -155,9 +154,9 @@ export const createStudentSchema = z.object({
   }),
   
   grade: z.enum([
-    'NSI', 'NSII', 'NSIII', 'NSIV'
+    'secondaire', '3e_cycle', 'fondamentale'
   ], {
-    errorMap: () => ({ message: 'Veuillez sélectionner une classe valide' })
+    errorMap: () => ({ message: 'Veuillez sélectionner un niveau d\'étude valide' })
   }),
 
   // Id de la classe backend choisie (pilotera la liste des salles)
@@ -298,9 +297,9 @@ export const updateStudentSchema = z.object({
     .optional(),
   
   grade: z.enum([
-    'NSI', 'NSII', 'NSIII', 'NSIV'
+    'secondaire', '3e_cycle', 'fondamentale'
   ], {
-    errorMap: () => ({ message: 'Veuillez sélectionner une classe valide' })
+    errorMap: () => ({ message: 'Veuillez sélectionner un niveau d\'étude valide' })
   }).optional(),
   
   // Salle assignée

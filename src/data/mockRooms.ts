@@ -15,7 +15,7 @@ export const mockRooms: Room[] = [
   {
     id: '1',
     name: 'Salle A',
-    classLevel: 'NSI',
+    classLevel: 'secondaire',
     capacity: 30,
     description: 'Salle principale pour les élèves de NSI',
     isActive: true,
@@ -25,7 +25,7 @@ export const mockRooms: Room[] = [
   {
     id: '2',
     name: 'Salle B',
-    classLevel: 'NSI',
+    classLevel: 'secondaire',
     capacity: 25,
     description: 'Salle secondaire pour les élèves de NSI',
     isActive: true,
@@ -35,7 +35,7 @@ export const mockRooms: Room[] = [
   {
     id: '3',
     name: 'Salle C',
-    classLevel: 'NSII',
+    classLevel: '3e_cycle',
     capacity: 28,
     description: 'Salle principale pour les élèves de NSII',
     isActive: true,
@@ -45,7 +45,7 @@ export const mockRooms: Room[] = [
   {
     id: '4',
     name: 'Salle D',
-    classLevel: 'NSII',
+    classLevel: '3e_cycle',
     capacity: 32,
     description: 'Salle secondaire pour les élèves de NSII',
     isActive: true,
@@ -55,7 +55,7 @@ export const mockRooms: Room[] = [
   {
     id: '5',
     name: 'Salle E',
-    classLevel: 'NSIII',
+    classLevel: 'fondamentale',
     capacity: 30,
     description: 'Salle principale pour les élèves de NSIII',
     isActive: true,
@@ -65,7 +65,7 @@ export const mockRooms: Room[] = [
   {
     id: '6',
     name: 'Salle F',
-    classLevel: 'NSIII',
+    classLevel: 'fondamentale',
     capacity: 27,
     description: 'Salle secondaire pour les élèves de NSIII',
     isActive: true,
@@ -75,7 +75,7 @@ export const mockRooms: Room[] = [
   {
     id: '7',
     name: 'Salle G',
-    classLevel: 'NSIV',
+    classLevel: 'secondaire',
     capacity: 35,
     description: 'Salle principale pour les élèves de NSIV',
     isActive: true,
@@ -85,7 +85,7 @@ export const mockRooms: Room[] = [
   {
     id: '8',
     name: 'Salle H',
-    classLevel: 'NSIV',
+    classLevel: 'secondaire',
     capacity: 30,
     description: 'Salle secondaire pour les élèves de NSIV',
     isActive: true,
@@ -95,7 +95,7 @@ export const mockRooms: Room[] = [
   {
     id: '9',
     name: 'Salle I',
-    classLevel: 'NSI',
+    classLevel: 'secondaire',
     capacity: 20,
     description: 'Petite salle pour groupes réduits NSI',
     isActive: false,
@@ -105,7 +105,7 @@ export const mockRooms: Room[] = [
   {
     id: '10',
     name: 'Salle J',
-    classLevel: 'NSII',
+    classLevel: '3e_cycle',
     capacity: 22,
     description: 'Petite salle pour groupes réduits NSII',
     isActive: false,
@@ -115,24 +115,21 @@ export const mockRooms: Room[] = [
 ];
 
 // =====================================================
-// STATISTIQUES SIMULÉES DES SALLES
 // =====================================================
 export const mockRoomStats: RoomStats = {
   total: 10,
   active: 8,
   inactive: 2,
   byClassLevel: {
-    NSI: 3,
-    NSII: 3,
-    NSIII: 2,
-    NSIV: 2
+    secondaire: 3,
+    '3e_cycle': 3,
+    fondamentale: 2
   },
   totalCapacity: 279,
   averageCapacity: 27.9
 };
 
 // =====================================================
-// FONCTIONS UTILITAIRES
 // =====================================================
 
 // Simuler un délai d'API

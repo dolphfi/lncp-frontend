@@ -134,11 +134,10 @@ export const employeeService = {
           formData.append('avatar', payload.avatar);
         }
       }
-      // N'envoyer handicap que s'il est explicitement true
-      if (payload.handicap === true) {
-        formData.append('handicap', 'true');
+      // Envoyer handicap comme 0 ou 1 (format MySQL BOOLEAN)
+      if (payload.handicap !== undefined) {
+        formData.append('handicap', payload.handicap ? '1' : '0');
       }
-      // Si false ou undefined, ne pas envoyer le champ (valeur par défaut backend)
       if (payload.courseIds && payload.courseIds.length > 0) {
         // Ajouter chaque courseId individuellement
         payload.courseIds.forEach((courseId, index) => {
@@ -227,23 +226,145 @@ export const employeeService = {
 
   // Mettre à jour un employé
   updateEmployee: async (id: string, payload: Partial<CreateEmployeeApiPayload>): Promise<EmployeeApiResponse> => {
+    console.log('🌐 Service API - Mise à jour employé');
+    console.log('🆔 ID:', id);
+    console.log('📦 Payload reçu:', payload);
+    
     const client = createApiClient();
     const url = getApiUrl(`/employees/update-employee/${id}`);
-    const response = await client.patch<EmployeeApiResponse>(url, payload);
-    return response.data;
+    
+    console.log('🔗 URL API:', url);
+    
+    try {
+      // Créer un FormData pour multipart/form-data
+      const formData = new FormData();
+      
+      // Ajouter seulement les champs fournis
+      if (payload.firstName) formData.append('firstName', payload.firstName);
+      if (payload.lastName) formData.append('lastName', payload.lastName);
+      if (payload.email) formData.append('email', payload.email);
+      if (payload.phone) formData.append('phone', payload.phone);
+      if (payload.sexe) formData.append('sexe', payload.sexe);
+      if (payload.dateOfBirth) formData.append('dateOfBirth', payload.dateOfBirth);
+      if (payload.placeOfBirth) formData.append('placeOfBirth', payload.placeOfBirth);
+      if (payload.communeOfBirth) formData.append('communeOfBirth', payload.communeOfBirth);
+      if (payload.hireDate) formData.append('hireDate', payload.hireDate);
+      if (payload.role) formData.append('role', payload.role);
+      
+      // Ajouter les champs d'adresse si fournis
+      if (payload.adresse) {
+        formData.append('adresse.adresseLigne1', payload.adresse.adresseLigne1);
+        formData.append('adresse.departement', payload.adresse.departement);
+        formData.append('adresse.commune', payload.adresse.commune);
+        formData.append('adresse.sectionCommunale', payload.adresse.sectionCommunale);
+      }
+      
+      // Ajouter les champs optionnels
+      if (payload.avatar) {
+        // Si c'est une image base64, la convertir en Blob
+        if (payload.avatar.startsWith('data:image/')) {
+          const response = await fetch(payload.avatar);
+          const blob = await response.blob();
+          formData.append('avatar', blob, 'avatar.jpg');
+        } else {
+          // Si c'est une URL, l'envoyer directement
+          formData.append('avatar', payload.avatar);
+        }
+      }
+      
+      // N'envoyer handicap que s'il est explicitement défini (format MySQL BOOLEAN: 0 ou 1)
+      if (payload.handicap !== undefined) {
+        formData.append('handicap', payload.handicap ? '1' : '0');
+      }
+      
+      if (payload.courseIds && payload.courseIds.length > 0) {
+        // Ajouter chaque courseId individuellement
+        payload.courseIds.forEach((courseId, index) => {
+          formData.append(`courseIds[${index}]`, courseId);
+        });
+      }
+      
+      console.log('📋 FormData créé avec les champs:', Array.from(formData.keys()));
+      console.log('🔍 Valeurs FormData:');
+      for (const [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+      
+      const response = await client.patch<EmployeeApiResponse>(url, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      console.log('✅ Réponse API mise à jour reçue:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur API dans le service (update):', error);
+      console.error('🔍 Détails erreur API:', {
+        message: (error as any)?.message,
+        status: (error as any)?.response?.status,
+        statusText: (error as any)?.response?.statusText,
+        data: (error as any)?.response?.data
+      });
+      throw error;
+    }
   },
 
-  // Ajouter des cours à un employé
-  addCoursesToEmployee: async (id: string, courseIds: string[]): Promise<void> => {
+  /**
+   * Ajouter un ou plusieurs cours à un employé (TEACHER uniquement)
+   * @param id - ID de l'employé
+   * @param courseIds - Liste des IDs des cours à ajouter
+   * @returns Réponse de l'API (employé mis à jour)
+   */
+  addCoursesToEmployee: async (id: string, courseIds: string[]): Promise<EmployeeApiResponse> => {
+    console.log('🌐 Service API - Ajout de cours à un employé');
+    console.log('🆔 ID employé:', id);
+    console.log('📚 IDs des cours à ajouter:', courseIds);
+    
     const client = createApiClient();
     const url = getApiUrl(`/employees/${id}/add-courses`);
-    await client.post(url, { courseIds });
+    
+    try {
+      const response = await client.post<EmployeeApiResponse>(url, { courseIds });
+      console.log('✅ Cours ajoutés avec succès:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'ajout des cours:', error);
+      console.error('🔍 Détails erreur:', {
+        message: (error as any)?.message,
+        status: (error as any)?.response?.status,
+        data: (error as any)?.response?.data
+      });
+      throw error;
+    }
   },
 
-  // Supprimer des cours d'un employé
-  removeCoursesFromEmployee: async (id: string, courseIds: string[]): Promise<void> => {
+  /**
+   * Retirer un ou plusieurs cours d'un employé (TEACHER uniquement)
+   * @param id - ID de l'employé
+   * @param courseIds - Liste des IDs des cours à retirer
+   * @returns Réponse de l'API (employé mis à jour)
+   */
+  removeCoursesFromEmployee: async (id: string, courseIds: string[]): Promise<EmployeeApiResponse> => {
+    console.log('🌐 Service API - Retrait de cours d\'un employé');
+    console.log('🆔 ID employé:', id);
+    console.log('📚 IDs des cours à retirer:', courseIds);
+    
     const client = createApiClient();
     const url = getApiUrl(`/employees/${id}/remove-courses`);
-    await client.post(url, { courseIds });
+    
+    try {
+      const response = await client.post<EmployeeApiResponse>(url, { courseIds });
+      console.log('✅ Cours retirés avec succès:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur lors du retrait des cours:', error);
+      console.error('🔍 Détails erreur:', {
+        message: (error as any)?.message,
+        status: (error as any)?.response?.status,
+        data: (error as any)?.response?.data
+      });
+      throw error;
+    }
   }
 };

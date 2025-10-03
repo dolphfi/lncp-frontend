@@ -140,7 +140,11 @@ export interface Employee {
   phone: string;
   dateOfBirth: string;
   gender: Gender;
+  placeOfBirth?: string;
+  communeOfBirth?: string;
   address: Address;
+  avatar?: string;
+  handicap?: boolean;
   
   // Informations communes
   hireDate: string;
@@ -424,6 +428,10 @@ export const convertEmployeeFromApi = (apiEmployee: any): Employee => {
     phone: apiEmployee.user?.phone || apiEmployee.phone || '',
     dateOfBirth: apiEmployee.dateOfBirth || '',
     gender: apiEmployee.sexe === 'Homme' ? 'homme' : apiEmployee.sexe === 'Femme' ? 'femme' : 'autre',
+    placeOfBirth: apiEmployee.placeOfBirth || '',
+    communeOfBirth: apiEmployee.communeOfBirth || '',
+    avatar: apiEmployee.avatar || '',
+    handicap: apiEmployee.handicap || false,
     address: {
       street: apiEmployee.adresse?.adresseLigne1 || '',
       city: apiEmployee.adresse?.commune || '',
