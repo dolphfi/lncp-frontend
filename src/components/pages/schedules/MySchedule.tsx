@@ -2,7 +2,7 @@
  * =====================================================
  * COMPOSANT MON HORAIRE (VUE PERSONNELLE)
  * =====================================================
- * Affichage de l'emploi du temps personnel
+ * Affichage de l'emploi du temps personnel sous forme de calendrier moderne
  * Accès: TEACHER, STUDENT
  */
 
@@ -36,6 +36,12 @@ import { useScheduleStore } from '../../../stores/scheduleStore';
 import { Schedule, DayOfWeek, VacationType, TimeSlot } from '../../../types/schedule';
 import { DAY_OF_WEEK_OPTIONS, VACATION_OPTIONS } from '../../../schemas/scheduleSchema';
 import authService from '../../../services/authService';
+import { MobileScheduleView } from './MobileScheduleView';
+
+// Constantes pour la vue calendrier
+const HOURS = Array.from({ length: 11 }, (_, i) => i + 7); // 7h à 17h
+const DAYS_SHORT = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
+const DAYS_FULL: DayOfWeek[] = ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI', 'DIMANCHE'];
 
 /**
  * Page Mon Horaire (TEACHER/STUDENT)
@@ -51,6 +57,7 @@ export const MySchedule: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState<DayOfWeek | 'all'>('all');
   const [selectedVacation, setSelectedVacation] = useState<VacationType | 'all'>('all');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [mobileDayIndex, setMobileDayIndex] = useState<number>(0); // Index du jour actuel sur mobile
 
   // Récupérer l'utilisateur connecté
   useEffect(() => {
@@ -120,50 +127,99 @@ export const MySchedule: React.FC = () => {
     return colors[day] || 'border-l-gray-500';
   };
 
+  // Obtenir les couleurs pour les cours selon l'index (sans mauve)
+  const getCourseColor = (index: number) => {
+    const colors = [
+      { bg: 'bg-blue-600', border: 'border-blue-700', text: 'text-white' },
+      { bg: 'bg-emerald-600', border: 'border-emerald-700', text: 'text-white' },
+      { bg: 'bg-cyan-600', border: 'border-cyan-700', text: 'text-white' },
+      { bg: 'bg-orange-600', border: 'border-orange-700', text: 'text-white' },
+      { bg: 'bg-rose-600', border: 'border-rose-700', text: 'text-white' },
+      { bg: 'bg-teal-600', border: 'border-teal-700', text: 'text-white' },
+      { bg: 'bg-sky-600', border: 'border-sky-700', text: 'text-white' },
+    ];
+    return colors[index % colors.length];
+  };
+
+  // Convertir l'heure en position dans la grille
+  const getTimePosition = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return (hours - 7) * 60 + minutes; // Minutes depuis 7h
+  };
+
+  // Calculer la hauteur en fonction de la durée
+  const getSlotHeight = (startTime: string, endTime: string): number => {
+    const start = getTimePosition(startTime);
+    const end = getTimePosition(endTime);
+    return end - start; // Durée en minutes
+  };
+
+  // Obtenir tous les créneaux pour une journée spécifique
+  const getDaySlots = (day: DayOfWeek): TimeSlot[] => {
+    const morningSlots = getTimeSlotsForDayAndVacation(day, 'Matin (AM)');
+    const afternoonSlots = getTimeSlotsForDayAndVacation(day, 'Après-midi (PM)');
+    return [...morningSlots, ...afternoonSlots].sort((a, b) => {
+      const timeA = a.startTime.split(':').map(Number);
+      const timeB = b.startTime.split(':').map(Number);
+      return timeA[0] * 60 + timeA[1] - (timeB[0] * 60 + timeB[1]);
+    });
+  };
+
+  // Navigation mobile
+  const currentMobileDay = DAYS_FULL[mobileDayIndex];
+  const mobileDaySlots = getDaySlots(currentMobileDay);
+
+  const handlePreviousDay = () => {
+    setMobileDayIndex((prev) => (prev > 0 ? prev - 1 : DAYS_FULL.length - 1));
+  };
+
+  const handleNextDay = () => {
+    setMobileDayIndex((prev) => (prev < DAYS_FULL.length - 1 ? prev + 1 : 0));
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
+    <div className="space-y-2 sm:space-y-3 md:space-y-4 p-2 sm:p-3 md:p-4 lg:p-5">
       {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Mon Emploi du Temps</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Mon Emploi du Temps</h1>
+          <p className="text-xs sm:text-sm text-gray-600">
             {currentUser?.firstName} {currentUser?.lastName} - {currentUser?.role === 'TEACHER' ? 'Professeur' : 'Étudiant'}
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => loadSchedule()}
             disabled={loading}
-            className="flex-1 sm:flex-none"
+            className="h-7 px-2"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''} sm:mr-2`} />
-            <span className="hidden sm:inline">Actualiser</span>
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''} sm:mr-1.5`} />
+            <span className="hidden sm:inline text-xs">Actualiser</span>
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => toast.info('Export PDF à venir')}
-            className="flex-1 sm:flex-none"
+            className="hidden sm:flex h-7 px-2"
           >
-            <Download className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Exporter PDF</span>
+            <Download className="h-3 w-3 sm:mr-1.5" />
+            <span className="text-xs">PDF</span>
           </Button>
         </div>
       </div>
 
-      {/* Filtres */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+      {/* Filtres - Cachés sur mobile */}
+      <Card className="hidden sm:block">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-1.5 text-sm">
+            <Filter className="h-3.5 w-3.5" />
             Filtres
           </CardTitle>
-          <CardDescription>
-            Filtrez votre emploi du temps par jour ou période
-          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div className="space-y-2">
               <label className="text-sm font-medium">Jour de la semaine</label>
               <Select value={selectedDay} onValueChange={(value) => setSelectedDay(value as DayOfWeek | 'all')}>
@@ -203,13 +259,13 @@ export const MySchedule: React.FC = () => {
 
       {/* Calendrier hebdomadaire */}
       <Card>
-        <CardHeader>
-          <CardTitle>Calendrier de la Semaine</CardTitle>
-          <CardDescription>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm sm:text-base">Calendrier de la Semaine</CardTitle>
+          <CardDescription className="text-[10px] sm:text-xs hidden sm:block">
             Votre emploi du temps hebdomadaire
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0 px-2 sm:px-4 pb-2 sm:pb-4">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -224,153 +280,138 @@ export const MySchedule: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Tableau par jour */}
-              {DAY_OF_WEEK_OPTIONS.map(dayOption => {
-                // Ignorer si filtre actif et pas le bon jour
-                if (selectedDay && selectedDay !== 'all' && selectedDay !== dayOption.value) return null;
+            <>
+              {/* VUE MOBILE - Style Android */}
+              <MobileScheduleView
+                currentDay={currentMobileDay}
+                dayIndex={mobileDayIndex}
+                daySlots={mobileDaySlots}
+                daysShort={DAYS_SHORT}
+                onPreviousDay={handlePreviousDay}
+                onNextDay={handleNextDay}
+                getCourseColor={getCourseColor}
+              />
 
-                const morningSlots = getTimeSlotsForDayAndVacation(dayOption.value as DayOfWeek, 'Matin (AM)');
-                const afternoonSlots = getTimeSlotsForDayAndVacation(dayOption.value as DayOfWeek, 'Après-midi (PM)');
-
-                // Ignorer les jours sans créneaux
-                if (morningSlots.length === 0 && afternoonSlots.length === 0) return null;
-
-                return (
-                  <div key={dayOption.value} className="border rounded-lg overflow-hidden">
-                    {/* En-tête du jour */}
-                    <div className={`bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-3 sm:p-4 border-l-4 ${getDayColor(dayOption.value as DayOfWeek)}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                          <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-                          {dayOption.label}
-                        </h3>
-                        <Badge variant="secondary" className="bg-white/20 text-white text-xs sm:text-sm whitespace-nowrap">
-                          {morningSlots.length + afternoonSlots.length} cours
-                        </Badge>
+              {/* VUE CALENDRIER - Desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                  <div className="min-w-[700px]">
+                    {/* Grille de calendrier */}
+                    <div className="grid grid-cols-8 border rounded-lg overflow-hidden">
+                      {/* En-tête - Colonne des heures */}
+                      <div className="bg-gray-50 border-r font-medium text-center py-1 text-[10px] text-gray-600">
+                        Heure
                       </div>
+                      
+                      {/* En-têtes des jours */}
+                      {DAYS_FULL.map((day, dayIndex) => {
+                        const slots = getDaySlots(day);
+                        return (
+                          <div
+                            key={day}
+                            className={`bg-gradient-to-br from-blue-600 to-cyan-600 text-white text-center py-1 border-r last:border-r-0`}
+                          >
+                            <div className="font-semibold text-[10px]">{DAYS_SHORT[dayIndex]}</div>
+                            <div className="text-[8px] opacity-90">{slots.length}</div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Lignes des heures */}
+                      {HOURS.map((hour) => (
+                        <React.Fragment key={hour}>
+                          {/* Colonne de l'heure */}
+                          <div className="border-r border-t bg-gray-50 px-0.5 py-1 text-[9px] font-medium text-gray-500 text-center">
+                            {hour}h
+                          </div>
+                          
+                          {/* Colonnes des jours */}
+                          {DAYS_FULL.map((day, dayIndex) => {
+                            const daySlots = getDaySlots(day);
+                            const hourSlots = daySlots.filter(slot => {
+                              const startHour = parseInt(slot.startTime.split(':')[0]);
+                              return startHour === hour;
+                            });
+
+                            return (
+                              <div
+                                key={`${day}-${hour}`}
+                                className="border-r border-t last:border-r-0 min-h-[45px] p-0.5 bg-white hover:bg-gray-50 transition-colors relative"
+                              >
+                                {hourSlots.map((slot, slotIndex) => {
+                                  const color = getCourseColor(daySlots.indexOf(slot));
+                                  const duration = getSlotHeight(slot.startTime, slot.endTime);
+                                  const heightClass = duration <= 60 ? 'h-10' : duration <= 120 ? 'h-20' : 'h-32';
+                                  
+                                  return (
+                                    <div
+                                      key={slotIndex}
+                                      className={`${color.bg} ${color.border} ${color.text} ${heightClass} rounded p-1 mb-0.5 border-l-2 shadow-sm hover:shadow transition-all cursor-pointer overflow-hidden`}
+                                      title={`${slot.courseName}\n${slot.startTime.slice(0, 5)} - ${slot.endTime.slice(0, 5)}\n${slot.teacherName || ''}`}
+                                    >
+                                      <div className="text-[8px] font-bold mb-0.5 truncate leading-tight">
+                                        {slot.startTime.slice(0, 5)}-{slot.endTime.slice(0, 5)}
+                                      </div>
+                                      <div className="text-[9px] font-semibold truncate leading-tight">
+                                        {slot.courseName || 'Cours'}
+                                      </div>
+                                      {slot.teacherName && duration > 60 && (
+                                        <div className="text-[8px] opacity-90 truncate mt-0.5">
+                                          {slot.teacherName}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </React.Fragment>
+                      ))}
                     </div>
-
-                    {/* Créneaux du matin */}
-                    {(selectedVacation === 'all' || selectedVacation === 'Matin (AM)') && morningSlots.length > 0 && (
-                      <div className="p-3 sm:p-4 bg-amber-50/50">
-                        <h4 className="text-sm sm:text-base font-medium text-amber-900 mb-2 sm:mb-3 flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          Matin (AM)
-                        </h4>
-                        <div className="space-y-2">
-                          {morningSlots.map((slot, index) => (
-                            <div
-                              key={index}
-                              className="bg-white p-2 sm:p-3 rounded-lg border border-amber-200 hover:shadow-md transition-shadow"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-                                    <Badge className="bg-amber-600 text-white text-xs whitespace-nowrap w-fit">
-                                      {slot.startTime.slice(0, 5)} - {slot.endTime.slice(0, 5)}
-                                    </Badge>
-                                    <span className="text-sm sm:text-base font-medium text-gray-900 truncate">
-                                      {slot.courseName || 'Cours'}
-                                    </span>
-                                  </div>
-                                  {slot.teacherName && (
-                                    <p className="text-xs sm:text-sm text-gray-600 flex items-center gap-1 truncate">
-                                      <Users className="h-3 w-3 flex-shrink-0" />
-                                      <span className="truncate">{slot.teacherName}</span>
-                                    </p>
-                                  )}
-                                </div>
-                                <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 flex-shrink-0" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Créneaux de l'après-midi */}
-                    {(selectedVacation === 'all' || selectedVacation === 'Après-midi (PM)') && afternoonSlots.length > 0 && (
-                      <div className="p-3 sm:p-4 bg-indigo-50/50">
-                        <h4 className="text-sm sm:text-base font-medium text-indigo-900 mb-2 sm:mb-3 flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          Après-midi (PM)
-                        </h4>
-                        <div className="space-y-2">
-                          {afternoonSlots.map((slot, index) => (
-                            <div
-                              key={index}
-                              className="bg-white p-2 sm:p-3 rounded-lg border border-indigo-200 hover:shadow-md transition-shadow"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-                                    <Badge className="bg-indigo-600 text-white text-xs whitespace-nowrap w-fit">
-                                      {slot.startTime.slice(0, 5)} - {slot.endTime.slice(0, 5)}
-                                    </Badge>
-                                    <span className="text-sm sm:text-base font-medium text-gray-900 truncate">
-                                      {slot.courseName || 'Cours'}
-                                    </span>
-                                  </div>
-                                  {slot.teacherName && (
-                                    <p className="text-xs sm:text-sm text-gray-600 flex items-center gap-1 truncate">
-                                      <Users className="h-3 w-3 flex-shrink-0" />
-                                      <span className="truncate">{slot.teacherName}</span>
-                                    </p>
-                                  )}
-                                </div>
-                                <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 flex-shrink-0" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+            </>
           )}
         </CardContent>
       </Card>
 
       {/* Statistiques */}
       {mySchedule.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total de cours
+            <CardHeader className="pb-1">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-gray-600">
+                Total cours
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-indigo-600">
+            <CardContent className="pt-0 pb-2">
+              <div className="text-lg sm:text-xl font-bold text-blue-600">
                 {mySchedule.reduce((sum, s) => sum + s.timeSlots.length, 0)}
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Jours de cours
+            <CardHeader className="pb-1">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-gray-600">
+                Jours
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="pt-0 pb-2">
+              <div className="text-lg sm:text-xl font-bold text-emerald-600">
                 {new Set(mySchedule.map(s => s.dayOfWeek)).size}
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Classes concernées
+            <CardHeader className="pb-1">
+              <CardTitle className="text-[10px] sm:text-xs font-medium text-gray-600">
+                Classes
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
+            <CardContent className="pt-0 pb-2">
+              <div className="text-lg sm:text-xl font-bold text-cyan-600">
                 {new Set(mySchedule.map(s => s.classroomId)).size}
               </div>
             </CardContent>
