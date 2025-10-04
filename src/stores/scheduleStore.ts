@@ -113,18 +113,33 @@ export const useScheduleStore = create<ScheduleStore>()(
       try {
         const { filters } = get();
         
-        // Appel API
+        // Préparer les filtres - ne passer que les valeurs définies
+        const apiFilters: any = {};
+        if (filters.day) apiFilters.day = filters.day;
+        if (filters.vacation) apiFilters.vacation = filters.vacation;
+        
+        // Appel API avec paramètres par défaut
         const response = await scheduleService.getAllSchedules({
           page: 1,
           limit: 100,
-          day: filters.day,
-          vacation: filters.vacation
+          ...apiFilters
         });
         
-        console.log('✅ Horaires récupérés:', response);
+        console.log('✅ Horaires récupérés dans le store:', response);
+        console.log('📊 Nombre d\'horaires à convertir:', response.data?.length || 0);
         
         // Convertir les données API
-        const schedules = response.data.map(convertScheduleFromApi);
+        const schedules = (response.data || []).map((schedule, index) => {
+          console.log(`🔄 Conversion horaire ${index + 1}/${response.data.length}`);
+          try {
+            return convertScheduleFromApi(schedule);
+          } catch (conversionError) {
+            console.error(`❌ Erreur conversion horaire ${index}:`, conversionError);
+            throw conversionError;
+          }
+        });
+        
+        console.log('✅ Tous les horaires convertis:', schedules);
         
         set(state => {
           state.schedules = schedules;
@@ -133,11 +148,18 @@ export const useScheduleStore = create<ScheduleStore>()(
           state.loading = false;
         });
         
+        console.log('✅ State mis à jour avec succès');
+        
         // Calculer les statistiques
         get().calculateStats(schedules);
         
       } catch (error) {
         console.error('❌ Erreur lors de la récupération des horaires:', error);
+        console.error('❌ Détails de l\'erreur:', {
+          message: error instanceof Error ? error.message : 'Erreur inconnue',
+          stack: error instanceof Error ? error.stack : undefined,
+          error
+        });
         
         set(state => {
           state.loading = false;

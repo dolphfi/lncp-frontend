@@ -122,22 +122,48 @@ export const scheduleService = {
   }): Promise<ScheduleListApiResponse> => {
     console.log('🌐 Service API - Récupération de tous les horaires');
     console.log('🔍 Filtres:', filters);
-    
+
     const client = createApiClient();
     const url = getApiUrl('/schedules/all-schedules');
-    
+
+    // Filtrer les paramètres undefined
+    const params: any = {};
+    if (filters?.page !== undefined) params.page = filters.page;
+    if (filters?.limit !== undefined) params.limit = filters.limit;
+    if (filters?.day !== undefined) params.day = filters.day;
+    if (filters?.vacation !== undefined) params.vacation = filters.vacation;
+
     try {
-      const response = await client.get<ScheduleListApiResponse>(url, {
-        params: {
-          page: filters?.page || 1,
-          limit: filters?.limit || 100,
-          day: filters?.day,
-          vacation: filters?.vacation
-        }
+      const response = await client.get<any>(url, {
+        params
       });
-      
-      console.log('✅ Horaires récupérés:', response.data);
-      return response.data;
+
+      console.log('✅ Horaires récupérés (brut):', response.data);
+
+      // Le backend renvoie directement un tableau, pas un objet avec data et pagination
+      // On doit donc adapter la réponse
+      let normalizedResponse: ScheduleListApiResponse;
+
+      if (Array.isArray(response.data)) {
+        // Si c'est un tableau direct, on le normalise
+        console.log('📦 Normalisation : Tableau direct détecté');
+        normalizedResponse = {
+          data: response.data,
+          pagination: {
+            page: filters?.page || 1,
+            limit: filters?.limit || 100,
+            total: response.data.length,
+            totalPages: 1
+          }
+        };
+      } else {
+        // Si c'est déjà au bon format
+        console.log('📦 Format déjà correct');
+        normalizedResponse = response.data;
+      }
+
+      console.log('✅ Réponse normalisée:', normalizedResponse);
+      return normalizedResponse;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des horaires:', error);
       throw error;

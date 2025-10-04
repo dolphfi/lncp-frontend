@@ -24,10 +24,11 @@ import {
   SelectValue
 } from '../ui/select';
 
-import { createScheduleSchema, CreateScheduleFormData, DAY_OF_WEEK_OPTIONS, VACATION_OPTIONS, PRESET_TIME_SLOTS } from '../../schemas/scheduleSchema';
+import { createScheduleSchema, CreateScheduleFormData, DAY_OF_WEEK_OPTIONS, VACATION_OPTIONS, PRESET_TIME_SLOTS, PresetTimeSlot } from '../../schemas/scheduleSchema';
 import { Schedule, TimeSlot } from '../../types/schedule';
 import { useCourseStore } from '../../stores/courseStore';
 import { useRoomStore } from '../../stores/roomStore';
+import classroomService, { Classroom } from '../../services/classroomService';
 
 interface ScheduleFormProps {
   schedule?: Schedule | null;
@@ -49,6 +50,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const { rooms, fetchRooms } = useRoomStore();
   
   const [selectedVacation, setSelectedVacation] = useState<string>('');
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [loadingClassrooms, setLoadingClassrooms] = useState(false);
+  const [selectedClassroomId, setSelectedClassroomId] = useState<string>('');
 
   // Charger les données au montage
   useEffect(() => {
@@ -58,6 +62,22 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     if (rooms.length === 0) {
       fetchRooms();
     }
+    
+    // Charger les classes
+    const loadClassrooms = async () => {
+      setLoadingClassrooms(true);
+      try {
+        const response = await classroomService.getAll(1, 100);
+        setClassrooms(response.items);
+      } catch (error) {
+        console.error('❌ Erreur lors du chargement des classes:', error);
+        toast.error('Erreur lors du chargement des classes');
+      } finally {
+        setLoadingClassrooms(false);
+      }
+    };
+    
+    loadClassrooms();
   }, []);
 
   // Configuration du formulaire
@@ -99,27 +119,35 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     setSelectedVacation(vacationValue);
   }, [vacationValue]);
 
-  // Ajouter un créneau vide
+  // Surveiller la classe sélectionnée
+  const classroomIdValue = watch('classroomId');
+  useEffect(() => {
+    setSelectedClassroomId(classroomIdValue);
+  }, [classroomIdValue]);
+
+  // Initialiser la classe sélectionnée si on est en mode édition
+  useEffect(() => {
+    if (schedule?.classroomId) {
+      setSelectedClassroomId(schedule.classroomId);
+    }
+  }, [schedule]);
+
   const addTimeSlot = () => {
     append({
       startTime: '',
       endTime: '',
       courseId: '',
-      teacherId: '',
-      courseName: '',
-      teacherName: ''
+      type: 'COURSE'
     });
   };
 
   // Ajouter un créneau prédéfini
-  const addPresetTimeSlot = (preset: { startTime: string; endTime: string }) => {
+  const addPresetTimeSlot = (preset: { startTime: string; endTime: string; type: 'COURSE' | 'BREAK' }) => {
     append({
       startTime: preset.startTime,
       endTime: preset.endTime,
       courseId: '',
-      teacherId: '',
-      courseName: '',
-      teacherName: ''
+      type: preset.type
     });
   };
 
@@ -134,20 +162,34 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     }
   };
 
-  // Options pour les salles (rooms)
-  const roomOptions = rooms.map((room) => ({
+  // Options pour les classes
+  const classroomOptions = classrooms.map((classroom) => ({
+    value: classroom.id,
+    label: `${classroom.name}${classroom.level ? ` - ${classroom.level}` : ''}`
+  }));
+
+  // Obtenir les salles de la classe sélectionnée
+  const selectedClassroom = classrooms.find((c) => c.id === selectedClassroomId);
+  const filteredRooms = selectedClassroomId && selectedClassroom?.rooms 
+    ? selectedClassroom.rooms 
+    : rooms; // Si aucune classe sélectionnée, afficher toutes les salles
+
+  // Options pour les salles (filtrées par classe)
+  const roomOptions = filteredRooms.map((room) => ({
     value: room.id,
     label: `${room.name} ${room.capacity ? `(Capacité: ${room.capacity})` : ''}`
   }));
 
-  // Options pour les cours
-  const courseOptions = allCourses.map((course) => ({
-    value: course.id,
-    label: `${course.code} - ${course.titre}`
-  }));
+  // Options pour les cours (filtrées par classe)
+  const courseOptions = allCourses
+    .filter(course => !selectedClassroomId || course.classroomId === selectedClassroomId)
+    .map((course) => ({
+      value: course.id,
+      label: `${course.code} - ${course.titre}`
+    }));
 
   // Créneaux prédéfinis selon la période
-  const presetSlots = selectedVacation === 'Matin (AM)' 
+  const presetSlots: readonly PresetTimeSlot[] = selectedVacation === 'Matin (AM)' 
     ? PRESET_TIME_SLOTS.morning 
     : PRESET_TIME_SLOTS.afternoon;
 
@@ -241,17 +283,31 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               <Label htmlFor="classroomId">
                 Classe <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="classroomId"
-                {...register('classroomId')}
-                placeholder="ID de la classe"
-                disabled={isLoading}
-              />
+              <Select
+                value={watch('classroomId')}
+                onValueChange={(value) => {
+                  setValue('classroomId', value);
+                  // Réinitialiser la salle quand on change de classe
+                  setValue('roomId', '');
+                }}
+                disabled={isLoading || loadingClassrooms}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingClassrooms ? "Chargement..." : "Sélectionner une classe"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {classroomOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {errors.classroomId && (
                 <p className="text-sm text-red-600">{errors.classroomId.message}</p>
               )}
               <p className="text-xs text-gray-500">
-                Entrez l'ID de la classe concernée
+                La sélection de la classe filtrera les salles disponibles
               </p>
             </div>
 
@@ -263,21 +319,38 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               <Select
                 value={watch('roomId')}
                 onValueChange={(value) => setValue('roomId', value)}
-                disabled={isLoading}
+                disabled={isLoading || !selectedClassroomId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une salle" />
+                  <SelectValue placeholder={
+                    !selectedClassroomId 
+                      ? "Sélectionnez d'abord une classe" 
+                      : roomOptions.length === 0 
+                      ? "Aucune salle disponible"
+                      : "Sélectionner une salle"
+                  } />
                 </SelectTrigger>
                 <SelectContent>
-                  {roomOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
+                  {roomOptions.length === 0 ? (
+                    <div className="p-2 text-center text-sm text-gray-500">
+                      Aucune salle disponible pour cette classe
+                    </div>
+                  ) : (
+                    roomOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {errors.roomId && (
                 <p className="text-sm text-red-600">{errors.roomId.message}</p>
+              )}
+              {selectedClassroomId && selectedClassroom?.rooms && (
+                <p className="text-xs text-gray-500">
+                  {roomOptions.length} salle(s) disponible(s) pour cette classe
+                </p>
               )}
             </div>
           </div>
@@ -321,9 +394,13 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                   size="sm"
                   onClick={() => addPresetTimeSlot(preset)}
                   disabled={isLoading}
+                  className="text-xs"
                 >
                   <Plus className="h-3 w-3 mr-1" />
                   {preset.label}
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {preset.type === 'COURSE' ? 'Cours' : 'Pause'}
+                  </Badge>
                 </Button>
               ))}
             </div>
@@ -361,12 +438,13 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   {/* Heure de début */}
                   <div className="space-y-2">
                     <Label>Heure de début</Label>
                     <Input
                       type="time"
+                      step="1"
                       {...register(`timeSlots.${index}.startTime`)}
                       disabled={isLoading}
                     />
@@ -382,6 +460,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     <Label>Heure de fin</Label>
                     <Input
                       type="time"
+                      step="1"
                       {...register(`timeSlots.${index}.endTime`)}
                       disabled={isLoading}
                     />
@@ -392,28 +471,74 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     )}
                   </div>
 
+                  {/* Type */}
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <Select
+                      value={watch(`timeSlots.${index}.type`)}
+                      onValueChange={(value) => setValue(`timeSlots.${index}.type`, value as 'COURSE' | 'BREAK')}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner le type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="COURSE">Cours</SelectItem>
+                        <SelectItem value="BREAK">Pause</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.timeSlots?.[index]?.type && (
+                      <p className="text-xs text-red-600">
+                        {errors.timeSlots[index]?.type?.message}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Cours */}
                   <div className="space-y-2">
                     <Label>Cours</Label>
                     <Select
                       value={watch(`timeSlots.${index}.courseId`)}
                       onValueChange={(value) => setValue(`timeSlots.${index}.courseId`, value)}
-                      disabled={isLoading}
+                      disabled={isLoading || watch(`timeSlots.${index}.type`) === 'BREAK'}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un cours" />
+                        <SelectValue placeholder={
+                          watch(`timeSlots.${index}.type`) === 'BREAK'
+                            ? "Non applicable pour les pauses"
+                            : !selectedClassroomId
+                            ? "Sélectionnez d'abord une classe"
+                            : courseOptions.length === 0
+                            ? "Aucun cours disponible"
+                            : "Sélectionner un cours"
+                        } />
                       </SelectTrigger>
                       <SelectContent>
-                        {courseOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
+                        {watch(`timeSlots.${index}.type`) === 'BREAK' ? (
+                          <div className="p-2 text-center text-sm text-gray-500">
+                            Non applicable pour les pauses
+                          </div>
+                        ) : courseOptions.length === 0 ? (
+                          <div className="p-2 text-center text-sm text-gray-500">
+                            Aucun cours disponible pour cette classe
+                          </div>
+                        ) : (
+                          courseOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     {errors.timeSlots?.[index]?.courseId && (
                       <p className="text-xs text-red-600">
                         {errors.timeSlots[index]?.courseId?.message}
+                      </p>
+                    )}
+                    {selectedClassroomId && watch(`timeSlots.${index}.type`) === 'COURSE' && (
+                      <p className="text-xs text-gray-500">
+                        {courseOptions.length} cours disponible(s) pour cette classe
                       </p>
                     )}
                   </div>

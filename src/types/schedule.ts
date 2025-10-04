@@ -57,12 +57,20 @@ export const VACATION_OPTIONS = [
  */
 export interface TimeSlot {
   id?: string;
-  startTime: string;        // Format: "HH:mm" (ex: "08:00")
-  endTime: string;          // Format: "HH:mm" (ex: "09:00")
-  courseId: string;         // ID du cours
+  startTime: string;        // Format: "HH:mm:ss" (ex: "08:00:00")
+  endTime: string;          // Format: "HH:mm:ss" (ex: "09:00:00")
+  courseId?: string;        // ID du cours (optionnel pour les pauses)
+  type: 'COURSE' | 'BREAK'; // Type de créneau
   teacherId?: string;       // ID du professeur (optionnel)
   courseName?: string;      // Nom du cours (pour affichage)
   teacherName?: string;     // Nom du professeur (pour affichage)
+  // Champs du backend (pour compatibilité)
+  course?: {
+    id: string;
+    code: string;
+    titre: string;
+    [key: string]: any;
+  };
 }
 
 // =====================================================
@@ -77,15 +85,15 @@ export interface Schedule {
   name: string;                   // Ex: "Monday Schedule for Grade 5"
   dayOfWeek: DayOfWeek;          // Jour de la semaine
   vacation: VacationType;        // Matin ou Après-midi
-  classroomId: string;           // ID de la classe
-  roomId: string;                // ID de la salle
+  classroomId: string;           // ID de la classe (extrait du backend)
+  roomId: string;                // ID de la salle (extrait du backend)
   timeSlots: TimeSlot[];         // Créneaux horaires
   
   // Informations relationnelles (pour affichage)
   classroom?: {
     id: string;
     name: string;
-    niveau: string;
+    niveau?: string; // Rendre optionnel car peut ne pas exister dans les données du backend
   };
   room?: {
     id: string;
@@ -132,13 +140,26 @@ export interface ScheduleApiResponse {
   name: string;
   dayOfWeek: DayOfWeek;
   vacation: VacationType;
-  classroomId: string;
-  roomId: string;
+  // Structure réelle du backend - classroomId et roomId sont dans les objets imbriqués
+  classroom?: {
+    id: string;
+    name: string;
+    description?: string | null;
+  };
+  room?: {
+    id: string;
+    name: string;
+    capacity?: number;
+    status?: string;
+    classroom?: {
+      id: string;
+      name: string;
+      description?: string | null;
+    };
+  };
   timeSlots: TimeSlot[];
-  classroom?: any;
-  room?: any;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /**
@@ -219,19 +240,55 @@ export interface ScheduleApiError {
  * Convertir un horaire de l'API vers le format frontend
  */
 export const convertScheduleFromApi = (apiSchedule: ScheduleApiResponse): Schedule => {
-  return {
+  console.log('🔄 Conversion API → Frontend:', apiSchedule);
+
+  // Extraire les IDs depuis les objets imbriqués
+  const classroomId = apiSchedule.room?.classroom?.id || apiSchedule.classroom?.id || '';
+  const roomId = apiSchedule.room?.id || '';
+
+  console.log('📋 IDs extraits:', { classroomId, roomId });
+
+  // Convertir les timeSlots du format backend vers le format frontend
+  const convertedTimeSlots = (apiSchedule.timeSlots || []).map((slot, index) => {
+    console.log(`🔄 Conversion timeSlot ${index}:`, slot);
+
+    return {
+      id: slot.id,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      type: slot.type,
+      courseId: slot.course?.id || slot.courseId,
+      courseName: slot.course?.titre || slot.courseName,
+      teacherId: slot.teacherId,
+      teacherName: slot.teacherName,
+      course: slot.course // Garder l'objet course pour compatibilité
+    };
+  });
+
+  const result = {
     id: apiSchedule.id,
     name: apiSchedule.name,
     dayOfWeek: apiSchedule.dayOfWeek,
     vacation: apiSchedule.vacation,
-    classroomId: apiSchedule.classroomId,
-    roomId: apiSchedule.roomId,
-    timeSlots: apiSchedule.timeSlots || [],
-    classroom: apiSchedule.classroom,
-    room: apiSchedule.room,
-    createdAt: apiSchedule.createdAt,
-    updatedAt: apiSchedule.updatedAt
+    classroomId: classroomId,
+    roomId: roomId,
+    timeSlots: convertedTimeSlots,
+    classroom: classroomId ? {
+      id: classroomId,
+      name: apiSchedule.room?.classroom?.name || apiSchedule.classroom?.name || '',
+      niveau: apiSchedule.room?.classroom?.description || ''
+    } : undefined,
+    room: roomId ? {
+      id: roomId,
+      name: apiSchedule.room?.name || '',
+      capacity: apiSchedule.room?.capacity
+    } : undefined,
+    createdAt: apiSchedule.createdAt || new Date().toISOString(),
+    updatedAt: apiSchedule.updatedAt || new Date().toISOString()
   };
+
+  console.log('✅ Conversion terminée:', result);
+  return result;
 };
 
 /**
@@ -285,13 +342,18 @@ export const sortTimeSlotsByStartTime = (slots: TimeSlot[]): TimeSlot[] => {
   return [...slots].sort((a, b) => {
     const timeA = a.startTime.split(':').map(Number);
     const timeB = b.startTime.split(':').map(Number);
-    
+
     // Comparer les heures
     if (timeA[0] !== timeB[0]) {
       return timeA[0] - timeB[0];
     }
-    
+
     // Si les heures sont égales, comparer les minutes
-    return timeA[1] - timeB[1];
+    if (timeA[1] !== timeB[1]) {
+      return timeA[1] - timeB[1];
+    }
+
+    // Si les minutes sont égales, comparer les secondes
+    return timeA[2] - timeB[2];
   });
 };
