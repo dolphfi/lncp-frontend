@@ -103,7 +103,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
 
   SUPPLEANT: [
-    // Gestion pédagogique (équivalent à TEACHER)
+    // Gestion pédagogique (équivalent à TEACHER) - Notes et horaires académiques
     'users.read',
     'students.read', 'students.write',
     'courses.read', 'courses.write',
@@ -113,8 +113,9 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
 
   TEACHER: [
-    // Gestion pédagogique limitée - SEULEMENT les notes
-    'notes.read', 'notes.write'
+    // Gestion pédagogique limitée - Notes et horaires académiques
+    'notes.read', 'notes.write',
+    'academic.read'  // ✅ Ajout de l'accès en lecture aux horaires académiques
   ],
 
   SECRETARY: [

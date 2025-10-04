@@ -188,34 +188,35 @@ export const ScheduleManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
       {/* En-tête */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestion des Horaires</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Gestion des Horaires</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             Créez et gérez les emplois du temps des classes
           </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="outline"
             onClick={() => fetchSchedules()}
             disabled={loading}
+            className="flex-1 sm:flex-none"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''} sm:mr-2`} />
+            <span className="hidden sm:inline">Actualiser</span>
           </Button>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvel Horaire
+          <Button onClick={() => setIsCreateDialogOpen(true)} className="flex-1 sm:flex-none">
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nouvel Horaire</span>
           </Button>
         </div>
       </div>
 
       {/* Statistiques */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600">
@@ -372,92 +373,163 @@ export const ScheduleManagement: React.FC = () => {
               <p className="text-gray-500">Aucun horaire trouvé</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Jour</TableHead>
-                    <TableHead>Période</TableHead>
-                    <TableHead>Classe</TableHead>
-                    <TableHead>Salle</TableHead>
-                    <TableHead>Créneaux</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {schedules.map((schedule) => (
-                    <TableRow key={schedule.id}>
-                      <TableCell className="font-medium">
+            <>
+              {/* Vue Desktop - Tableau */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nom</TableHead>
+                      <TableHead>Jour</TableHead>
+                      <TableHead>Période</TableHead>
+                      <TableHead>Classe</TableHead>
+                      <TableHead>Salle</TableHead>
+                      <TableHead>Créneaux</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {schedules.map((schedule) => (
+                      <TableRow key={schedule.id}>
+                        <TableCell className="font-medium">
+                          {schedule.name}
+                        </TableCell>
+                        
+                        <TableCell>
+                          <Badge className={getDayBadgeColor(schedule.dayOfWeek)}>
+                            {DAY_OF_WEEK_OPTIONS.find(d => d.value === schedule.dayOfWeek)?.label}
+                          </Badge>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <Badge className={getVacationBadgeColor(schedule.vacation)}>
+                            {schedule.vacation}
+                          </Badge>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Users className="h-4 w-4 mr-2 text-gray-400" />
+                            {schedule.classroom?.name || schedule.classroomId}
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                            {schedule.room?.name || schedule.roomId}
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <Badge variant="outline">
+                            {schedule.timeSlots.length} créneau(x)
+                          </Badge>
+                        </TableCell>
+                        
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewDetails(schedule)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Voir détails
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditSchedule(schedule)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Modifier
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setScheduleToDelete(schedule);
+                                  setIsDeleteDialogOpen(true);
+                                }}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Supprimer
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Vue Mobile - Cartes */}
+              <div className="md:hidden space-y-3">
+                {schedules.map((schedule) => (
+                  <div 
+                    key={schedule.id} 
+                    className="border rounded-lg p-3 bg-white hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="font-semibold text-gray-900 text-sm truncate flex-1">
                         {schedule.name}
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Badge className={getDayBadgeColor(schedule.dayOfWeek)}>
+                      </h3>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewDetails(schedule)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Voir détails
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditSchedule(schedule)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Modifier
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setScheduleToDelete(schedule);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge className={`${getDayBadgeColor(schedule.dayOfWeek)} text-xs`}>
                           {DAY_OF_WEEK_OPTIONS.find(d => d.value === schedule.dayOfWeek)?.label}
                         </Badge>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Badge className={getVacationBadgeColor(schedule.vacation)}>
+                        <Badge className={`${getVacationBadgeColor(schedule.vacation)} text-xs`}>
                           {schedule.vacation}
                         </Badge>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Users className="h-4 w-4 mr-2 text-gray-400" />
-                          {schedule.classroom?.name || schedule.classroomId}
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="flex items-center">
-                          <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                          {schedule.room?.name || schedule.roomId}
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Badge variant="outline">
+                        <Badge variant="outline" className="text-xs">
                           {schedule.timeSlots.length} créneau(x)
                         </Badge>
-                      </TableCell>
+                      </div>
                       
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewDetails(schedule)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Voir détails
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditSchedule(schedule)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Modifier
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setScheduleToDelete(schedule);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Supprimer
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                      <div className="space-y-1 text-xs text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <Users className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{schedule.classroom?.name || schedule.classroomId}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{schedule.room?.name || schedule.roomId}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -465,7 +537,7 @@ export const ScheduleManagement: React.FC = () => {
       {/* Dialog des détails */}
       {selectedSchedule && (
         <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[85vh] sm:max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
@@ -478,7 +550,7 @@ export const ScheduleManagement: React.FC = () => {
 
             <div className="space-y-6">
               {/* Informations générales */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label className="text-gray-600">Jour</Label>
                   <p className="font-medium">

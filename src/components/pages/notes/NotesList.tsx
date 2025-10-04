@@ -44,10 +44,28 @@ const NotesList: React.FC = () => {
     pagination,
     fetchNotes,
     setFilters,
-    clearFilters
+    clearFilters,
+    getTeacherCourses
   } = useNoteStore();
 
   const [showFilters, setShowFilters] = useState(false);
+  const [availableClasses, setAvailableClasses] = useState<Array<{ value: string; label: string }>>([
+    { value: '', label: 'Toutes les classes' }
+  ]);
+  const [localFilters, setLocalFilters] = useState<NoteFiltersFormData>({
+    search: undefined,
+    studentId: undefined,
+    studentName: undefined,
+    courseId: undefined,
+    courseName: undefined,
+    trimestre: undefined,
+    niveau: undefined,
+    classe: undefined,
+    dateFrom: undefined,
+    dateTo: undefined,
+    minNote: undefined,
+    maxNote: undefined
+  });
 
   // Formulaire de filtres
   const {
@@ -75,10 +93,116 @@ const NotesList: React.FC = () => {
     }
   });
 
-  // Charger les notes au montage et lors des changements de filtres
+  // Charger les notes et les classes au montage
   useEffect(() => {
-    fetchNotes(filters);
-  }, [fetchNotes, filters]);
+    fetchNotes();
+    loadAvailableClasses();
+  }, [fetchNotes]);
+
+  // Charger les classes depuis les cours du professeur
+  const loadAvailableClasses = async () => {
+    try {
+      const courses = await getTeacherCourses();
+      console.log('🏫 Cours du professeur:', courses);
+      
+      // Extraire les classes uniques depuis les cours
+      const classesSet = new Set<string>();
+      courses.forEach((course: any) => {
+        const className = course.classroom?.name || course.classroomName;
+        if (className) {
+          classesSet.add(className);
+        }
+      });
+      
+      const classOptions = [
+        { value: '', label: 'Toutes les classes' },
+        ...Array.from(classesSet).sort().map(className => ({
+          value: className,
+          label: className
+        }))
+      ];
+      
+      console.log('🏫 Classes disponibles:', classOptions);
+      setAvailableClasses(classOptions);
+    } catch (error) {
+      console.error('❌ Erreur chargement classes:', error);
+    }
+  };
+
+  // Surveiller les changements du formulaire et appliquer automatiquement les filtres
+  const formValues = watch();
+  useEffect(() => {
+    // Appliquer les filtres automatiquement avec un petit délai pour les champs texte
+    const timeoutId = setTimeout(() => {
+      const cleanedData: NoteFiltersFormData = {
+        ...formValues,
+        trimestre: formValues.trimestre === '' as any ? undefined : formValues.trimestre,
+        niveau: formValues.niveau === '' as any ? undefined : formValues.niveau,
+        classe: formValues.classe === '' as any ? undefined : formValues.classe,
+      };
+      setLocalFilters(cleanedData);
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [formValues]);
+
+  // Filtrer les notes côté client
+  const filteredNotes = React.useMemo(() => {
+    let filtered = [...notes];
+
+    // Filtre par matricule étudiant
+    if (localFilters.studentId) {
+      const searchTerm = localFilters.studentId.toLowerCase();
+      filtered = filtered.filter(note => 
+        note.student?.matricule?.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Filtre par nom étudiant
+    if (localFilters.studentName) {
+      const searchTerm = localFilters.studentName.toLowerCase();
+      filtered = filtered.filter(note => {
+        const fullName = `${note.student?.firstName || ''} ${note.student?.lastName || ''}`.toLowerCase();
+        return fullName.includes(searchTerm);
+      });
+    }
+
+    // Filtre par nom de cours
+    if (localFilters.courseName) {
+      const searchTerm = localFilters.courseName.toLowerCase();
+      filtered = filtered.filter(note =>
+        note.course?.titre?.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Filtre par trimestre (vérifie si au moins un des 3 trimestres correspond)
+    if (localFilters.trimestre) {
+      filtered = filtered.filter(note => {
+        const trimestre = localFilters.trimestre;
+        if (trimestre === 'T1') return note.trimestre_1 !== null && note.trimestre_1 !== undefined;
+        if (trimestre === 'T2') return note.trimestre_2 !== null && note.trimestre_2 !== undefined;
+        if (trimestre === 'T3') return note.trimestre_3 !== null && note.trimestre_3 !== undefined;
+        return true;
+      });
+    }
+
+    // Filtre par classe
+    if (localFilters.classe) {
+      filtered = filtered.filter(note =>
+        note.student?.grade === localFilters.classe
+      );
+    }
+
+    // Filtre par niveau (pour compatibilité si utilisé)
+    if (localFilters.niveau) {
+      filtered = filtered.filter(note =>
+        note.student?.grade?.includes(localFilters.niveau || '')
+      );
+    }
+
+    console.log(`🔍 Filtrage: ${notes.length} notes → ${filtered.length} après filtres`);
+    return filtered;
+  }, [notes, localFilters]);
 
   // Colonnes du tableau
   const columns = [
@@ -93,7 +217,7 @@ const NotesList: React.FC = () => {
               {student?.firstName} {student?.lastName}
             </span>
             <span className="text-sm text-gray-500">
-              {student?.studentId} • {student?.grade}
+              {student?.matricule} {student?.grade ? `• ${student?.grade}` : ''}
             </span>
           </div>
         );
@@ -231,6 +355,30 @@ const NotesList: React.FC = () => {
       }
     }),
 
+    columnHelper.accessor('status', {
+      id: 'status',
+      header: 'Statut',
+      cell: ({ getValue }) => {
+        const status = getValue();
+        
+        if (!status) return <span className="text-gray-400">—</span>;
+        
+        const statusConfig: Record<string, { label: string; color: string }> = {
+          PENDING: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800' },
+          APPROVED: { label: 'Approuvée', color: 'bg-green-100 text-green-800' },
+          REJECTED: { label: 'Rejetée', color: 'bg-red-100 text-red-800' }
+        };
+        
+        const config = statusConfig[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
+        
+        return (
+          <Badge className={`${config.color} text-xs`}>
+            {config.label}
+          </Badge>
+        );
+      }
+    }),
+
     columnHelper.accessor('createdAt', {
       id: 'createdAt',
       header: 'Date de création',
@@ -294,9 +442,9 @@ const NotesList: React.FC = () => {
     })
   ];
 
-  // Configuration du tableau
+  // Configuration du tableau avec notes filtrées
   const table = useReactTable({
-    data: notes,
+    data: filteredNotes,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -309,13 +457,39 @@ const NotesList: React.FC = () => {
     },
   });
 
-  // Gestion des filtres
+  // Gestion des filtres (conservé pour la soumission manuelle si nécessaire)
   const onFiltersSubmit = (data: NoteFiltersFormData) => {
-    setFilters(data);
-    setShowFilters(false);
+    console.log('📝 Application manuelle des filtres:', data);
+    
+    // Nettoyer les valeurs vides (convertir '' en undefined)
+    const cleanedData: NoteFiltersFormData = {
+      ...data,
+      trimestre: data.trimestre === '' as any ? undefined : data.trimestre,
+      niveau: data.niveau === '' as any ? undefined : data.niveau,
+    };
+    
+    setLocalFilters(cleanedData);
+    setFilters(cleanedData);
+    // Ne pas fermer automatiquement pour permettre d'ajuster les filtres
   };
 
   const handleClearFilters = () => {
+    console.log('🗑️ Effacement des filtres');
+    const emptyFilters: NoteFiltersFormData = {
+      search: undefined,
+      studentId: undefined,
+      studentName: undefined,
+      courseId: undefined,
+      courseName: undefined,
+      trimestre: undefined,
+      niveau: undefined,
+      classe: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      minNote: undefined,
+      maxNote: undefined
+    };
+    setLocalFilters(emptyFilters);
     clearFilters();
     reset();
     setShowFilters(false);
@@ -327,27 +501,28 @@ const NotesList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
       {/* En-tête */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Consultation des Notes</h1>
-          <p className="text-gray-600">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Consultation des Notes</h1>
+          <p className="text-sm sm:text-base text-gray-600">
             Visualisez et modifiez les notes des étudiants
           </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="outline"
             onClick={() => fetchNotes(filters)}
             disabled={loading.notes}
+            className="flex-1 sm:flex-none"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading.notes ? 'animate-spin' : ''}`} />
-            Actualiser
+            <RefreshCw className={`h-4 w-4 ${loading.notes ? 'animate-spin' : ''} sm:mr-2`} />
+            <span className="hidden sm:inline">Actualiser</span>
           </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Exporter
+          <Button variant="outline" onClick={handleExport} className="flex-1 sm:flex-none">
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Exporter</span>
           </Button>
         </div>
       </div>
@@ -356,7 +531,15 @@ const NotesList: React.FC = () => {
       <Card>
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Recherche et Filtres</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">Recherche et Filtres</CardTitle>
+              {(localFilters.studentId || localFilters.studentName || localFilters.courseName || 
+                localFilters.trimestre || localFilters.classe || localFilters.niveau) && (
+                <Badge variant="secondary" className="bg-indigo-100 text-indigo-800">
+                  Filtres actifs
+                </Badge>
+              )}
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -370,7 +553,7 @@ const NotesList: React.FC = () => {
 
         {showFilters && (
           <CardContent>
-            <form onSubmit={handleSubmit(onFiltersSubmit)} className="space-y-4">
+            <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Matricule étudiant</Label>
@@ -418,46 +601,39 @@ const NotesList: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Niveau</Label>
+                  <Label>Classe</Label>
                   <Controller
-                    name="niveau"
+                    name="classe"
                     control={control}
                     render={({ field }) => (
                       <SearchableSelect
-                        options={[
-                          { value: '', label: 'Tous les niveaux' },
-                          { value: 'NSI', label: 'NS I' },
-                          { value: 'NSII', label: 'NS II' },
-                          { value: 'NSIII', label: 'NS III' },
-                          { value: 'NSIV', label: 'NS IV' }
-                        ]}
+                        options={availableClasses}
                         value={field.value || ''}
                         onValueChange={field.onChange}
-                        placeholder="Sélectionner..."
+                        placeholder="Sélectionner une classe..."
                       />
                     )}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Classe</Label>
+                  <Label>Salle</Label>
                   <Input
-                    {...register('classe')}
-                    placeholder="Ex: NSII A"
+                    {...register('niveau')}
+                    placeholder="Ex: Salle A"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3">
-                <Button type="button" variant="outline" onClick={handleClearFilters}>
-                  Effacer
-                </Button>
-                <Button type="submit">
-                  <Search className="h-4 w-4 mr-2" />
-                  Rechercher
+              <div className="flex justify-between items-center pt-3 border-t">
+                <p className="text-sm text-gray-600">
+                  {filteredNotes.length} résultat{filteredNotes.length > 1 ? 's' : ''} {filteredNotes.length !== notes.length && `sur ${notes.length}`}
+                </p>
+                <Button type="button" variant="outline" onClick={handleClearFilters} size="sm">
+                  Effacer tous les filtres
                 </Button>
               </div>
-            </form>
+            </div>
           </CardContent>
         )}
       </Card>
@@ -469,7 +645,8 @@ const NotesList: React.FC = () => {
             <div>
               <CardTitle>Liste des Notes</CardTitle>
               <CardDescription>
-                {pagination.total} notes trouvées
+                {filteredNotes.length} note{filteredNotes.length > 1 ? 's' : ''} trouvée{filteredNotes.length > 1 ? 's' : ''}
+                {filteredNotes.length !== notes.length && ` (sur ${notes.length} au total)`}
               </CardDescription>
             </div>
           </div>
@@ -481,9 +658,15 @@ const NotesList: React.FC = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
               <span className="ml-2">Chargement des notes...</span>
             </div>
+          ) : table.getRowModel().rows.length === 0 ? (
+            <div className="text-center py-8">
+              <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">Aucune note trouvée</p>
+            </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Vue Desktop - Tableau */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     {table.getHeaderGroups().map(headerGroup => (
@@ -522,13 +705,103 @@ const NotesList: React.FC = () => {
                 </table>
               </div>
 
+              {/* Vue Mobile - Cartes */}
+              <div className="md:hidden space-y-3">
+                {table.getRowModel().rows.map(row => {
+                  const note = row.original;
+                  const t1 = note.trimestre_1;
+                  const t2 = note.trimestre_2;
+                  const t3 = note.trimestre_3;
+                  const notes = [t1, t2, t3].filter((n): n is number => n !== null && n !== undefined);
+                  const moyenne = notes.length > 0 ? notes.reduce((sum, n) => sum + n, 0) / notes.length : null;
+                  const ponderation = note.course?.ponderation || 100;
+                  
+                  return (
+                    <div key={row.id} className="border rounded-lg p-3 bg-white hover:shadow-md transition-shadow">
+                      {/* Étudiant */}
+                      <div className="mb-2">
+                        <div className="font-semibold text-gray-900 text-sm">
+                          {note.student?.firstName} {note.student?.lastName}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {note.student?.matricule} {note.student?.grade ? `• ${note.student?.grade}` : ''}
+                        </div>
+                      </div>
+                      
+                      {/* Cours */}
+                      <div className="mb-2 pb-2 border-b">
+                        <div className="text-sm font-medium text-gray-900">{note.course?.titre}</div>
+                        <div className="text-xs text-gray-500">Pond. {note.course?.ponderation}</div>
+                      </div>
+                      
+                      {/* Notes par trimestre */}
+                      <div className="grid grid-cols-3 gap-2 mb-2">
+                        <div className="text-center">
+                          <div className="text-xs text-gray-600 mb-1">T1</div>
+                          {t1 !== null && t1 !== undefined ? (
+                            <div className="text-sm font-bold text-gray-900">
+                              {t1.toFixed(2)}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-400">—</div>
+                          )}
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-gray-600 mb-1">T2</div>
+                          {t2 !== null && t2 !== undefined ? (
+                            <div className="text-sm font-bold text-gray-900">
+                              {t2.toFixed(2)}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-400">—</div>
+                          )}
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-gray-600 mb-1">T3</div>
+                          {t3 !== null && t3 !== undefined ? (
+                            <div className="text-sm font-bold text-gray-900">
+                              {t3.toFixed(2)}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-400">—</div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Moyenne et statut */}
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <div>
+                          <div className="text-xs text-gray-600">Moyenne</div>
+                          {moyenne !== null ? (
+                            <div className="text-sm font-bold text-indigo-600">
+                              {moyenne.toFixed(2)} ({((moyenne / ponderation) * 100).toFixed(0)}%)
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-400">—</div>
+                          )}
+                        </div>
+                        {note.status && (
+                          <Badge className={
+                            note.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                            note.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                          }>
+                            {note.status === 'PENDING' ? 'En attente' : note.status === 'APPROVED' ? 'Approuvée' : 'Rejetée'}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               {/* Pagination */}
-              <div className="flex items-center justify-between mt-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
                 <div className="text-sm text-gray-700">
                   Page {table.getState().pagination.pageIndex + 1} sur{' '}
                   {table.getPageCount()}
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"

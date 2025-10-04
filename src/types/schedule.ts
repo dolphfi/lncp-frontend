@@ -13,13 +13,13 @@
 /**
  * Jours de la semaine (format backend)
  */
-export type DayOfWeek = 
-  | 'LUNDI' 
-  | 'MARDI' 
-  | 'MERCREDI' 
-  | 'JEUDI' 
-  | 'VENDREDI' 
-  | 'SAMEDI' 
+export type DayOfWeek =
+  | 'LUNDI'
+  | 'MARDI'
+  | 'MERCREDI'
+  | 'JEUDI'
+  | 'VENDREDI'
+  | 'SAMEDI'
   | 'DIMANCHE';
 
 /**
@@ -88,7 +88,7 @@ export interface Schedule {
   classroomId: string;           // ID de la classe (extrait du backend)
   roomId: string;                // ID de la salle (extrait du backend)
   timeSlots: TimeSlot[];         // Créneaux horaires
-  
+
   // Informations relationnelles (pour affichage)
   classroom?: {
     id: string;
@@ -100,7 +100,7 @@ export interface Schedule {
     name: string;
     capacity?: number;
   };
-  
+
   // Métadonnées
   createdAt?: string;
   updatedAt?: string;
@@ -252,6 +252,11 @@ export const convertScheduleFromApi = (apiSchedule: ScheduleApiResponse): Schedu
   const convertedTimeSlots = (apiSchedule.timeSlots || []).map((slot, index) => {
     console.log(`🔄 Conversion timeSlot ${index}:`, slot);
 
+    // Extraire le nom du professeur depuis le tableau employees
+    const teacherName = slot.course?.employees && slot.course.employees.length > 0
+      ? `${slot.course.employees[0].firstName} ${slot.course.employees[0].lastName}`
+      : slot.teacherName || '';
+
     return {
       id: slot.id,
       startTime: slot.startTime,
@@ -259,8 +264,8 @@ export const convertScheduleFromApi = (apiSchedule: ScheduleApiResponse): Schedu
       type: slot.type,
       courseId: slot.course?.id || slot.courseId,
       courseName: slot.course?.titre || slot.courseName,
-      teacherId: slot.teacherId,
-      teacherName: slot.teacherName,
+      teacherId: slot.course?.employees?.[0]?.id || slot.teacherId,
+      teacherName: teacherName,
       course: slot.course // Garder l'objet course pour compatibilité
     };
   });
@@ -270,12 +275,12 @@ export const convertScheduleFromApi = (apiSchedule: ScheduleApiResponse): Schedu
     name: apiSchedule.name,
     dayOfWeek: apiSchedule.dayOfWeek,
     vacation: apiSchedule.vacation,
-    classroomId: classroomId,
+    classroomId: classroomId || 'unknown',  // Utiliser 'unknown' si pas de classroomId
     roomId: roomId,
     timeSlots: convertedTimeSlots,
     classroom: classroomId ? {
       id: classroomId,
-      name: apiSchedule.room?.classroom?.name || apiSchedule.classroom?.name || '',
+      name: apiSchedule.room?.classroom?.name || apiSchedule.classroom?.name || 'Classe inconnue',
       niveau: apiSchedule.room?.classroom?.description || ''
     } : undefined,
     room: roomId ? {

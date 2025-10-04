@@ -2,6 +2,7 @@ import * as React from "react"
 import {
   BarChart,
   BookOpen,
+  Calendar,
   EllipsisVertical,
   Fence,
   FileText,
@@ -279,11 +280,14 @@ const AppSidebar = () => {
             subItems: [
               { to: "/courses", label: "Liste des cours" },
               { to: "/schedules", label: "Gestion Horaires" },
-              ...(user?.role === 'TEACHER' || user?.role === 'SUPPLEANT' ? [
-                { to: "/schedules/my-schedule", label: "Mon Horaire" }
-              ] : []),
               { to: "/enrollments", label: "Inscriptions" },
             ],
+          }] : []),
+          // Mon Horaire - accessible aux enseignants et suppléants avec academic.read
+          ...((canAccessNotes && (user?.role === 'TEACHER' || user?.role === 'SUPPLEANT')) ? [{
+            to: "/schedules/my-schedule",
+            label: "Mon Horaire",
+            icon: Calendar,
           }] : []),
           // Gestion Notes - seulement si on peut gérer ou accéder aux notes
           ...(canManageNotes || canAccessNotes ? [{

@@ -358,6 +358,63 @@ class NoteService {
   }
 
   /**
+   * Convertir les pendingNotes du dashboard vers le format frontend
+   * Format pendingNotes: [{id, student, course, trimestre: "T1", note, status, createdAt}]
+   * Format attendu: [{id, student, course, trimestre_1, trimestre_2, trimestre_3, status, createdAt}]
+   */
+  private convertPendingNotesToFrontend(pendingNotes: any[]): any[] {
+    const notesMap = new Map<string, any>();
+    
+    pendingNotes.forEach((pendingNote: any) => {
+      const key = `${pendingNote.student?.id || 'unknown'}_${pendingNote.course?.id || 'unknown'}`;
+      
+      if (!notesMap.has(key)) {
+        // Créer une nouvelle entrée pour cet étudiant/cours
+        notesMap.set(key, {
+          id: pendingNote.id,
+          student: {
+            id: pendingNote.student?.id || '',
+            matricule: pendingNote.student?.matricule || '',
+            firstName: pendingNote.student?.user?.firstName || pendingNote.student?.firstName || '',
+            lastName: pendingNote.student?.user?.lastName || pendingNote.student?.lastName || '',
+            grade: pendingNote.student?.classroom?.name || ''
+          },
+          course: {
+            id: pendingNote.course?.id || '',
+            code: pendingNote.course?.code || '',
+            titre: pendingNote.course?.titre || '',
+            ponderation: pendingNote.course?.ponderation || 100
+          },
+          trimestre_1: null,
+          trimestre_2: null,
+          trimestre_3: null,
+          status: pendingNote.status || 'PENDING',
+          createdAt: pendingNote.createdAt || '',
+          updatedAt: pendingNote.updatedAt || ''
+        });
+      }
+      
+      // Ajouter la note dans le bon trimestre
+      const entry = notesMap.get(key)!;
+      const note = parseFloat(pendingNote.note);
+      
+      switch (pendingNote.trimestre) {
+        case 'T1':
+          entry.trimestre_1 = note;
+          break;
+        case 'T2':
+          entry.trimestre_2 = note;
+          break;
+        case 'T3':
+          entry.trimestre_3 = note;
+          break;
+      }
+    });
+    
+    return Array.from(notesMap.values());
+  }
+
+  /**
    * Récupérer les notes en attente depuis le dashboard (TEACHER)
    * Endpoint: GET /dashboard - champ pendingNotes
    */
@@ -373,8 +430,8 @@ class NoteService {
       
       console.log(`📝 Reçu ${apiPendingNotes.length} notes en attente de l'API`);
       
-      // Convertir vers le format frontend (avec enrichissement des cours)
-      const convertedNotes = await this.convertApiNotesToFrontend(apiPendingNotes);
+      // Convertir vers le format frontend (spécifique pour pendingNotes)
+      const convertedNotes = this.convertPendingNotesToFrontend(apiPendingNotes);
       
       console.log(`✅ ${convertedNotes.length} entrées de notes après conversion`);
       return convertedNotes;

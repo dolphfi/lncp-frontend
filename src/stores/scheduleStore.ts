@@ -196,8 +196,11 @@ export const useScheduleStore = create<ScheduleStore>()(
         
         console.log('✅ Mon horaire récupéré:', response);
         
+        // La réponse est directement un tableau d'horaires
+        const schedulesData = Array.isArray(response) ? response : [];
+        
         // Convertir les données API
-        const schedules = response.data.map(convertScheduleFromApi);
+        const schedules = schedulesData.map(convertScheduleFromApi);
         
         set(state => {
           state.mySchedule = schedules;

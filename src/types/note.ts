@@ -25,6 +25,10 @@ export interface Note {
   trimestre?: 'T1' | 'T2' | 'T3'; // Trimestre (T1, T2, T3)
   note?: number;                 // Note obtenue
   
+  // Statut de la note (pour workflow d'approbation)
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;      // Raison du rejet (si REJECTED)
+  
   // Métadonnées
   createdAt: string;             // Date de création (ISO string)
   updatedAt: string;             // Date de dernière mise à jour (ISO string)

@@ -65,7 +65,7 @@ function AppRoutes() {
             <Route path="/schedules"
                 element={<RoleRoute requiredFeature="courses"><ScheduleManagement/></RoleRoute>}/>
             <Route path="/schedules/my-schedule"
-                element={<MySchedule/>}/>
+                element={<RoleRoute requiredFeature="academic"><MySchedule/></RoleRoute>}/>
             <Route path="/employee"
                 element={<RoleRoute requiredFeature="employees"><EmployeesManagement/></RoleRoute>}/>
             <Route path="/profile" element={<Profile/>} />

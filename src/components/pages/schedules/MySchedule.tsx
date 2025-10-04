@@ -48,8 +48,8 @@ export const MySchedule: React.FC = () => {
   } = useScheduleStore();
 
   // États locaux
-  const [selectedDay, setSelectedDay] = useState<DayOfWeek | ''>('');
-  const [selectedVacation, setSelectedVacation] = useState<VacationType | ''>('');
+  const [selectedDay, setSelectedDay] = useState<DayOfWeek | 'all'>('all');
+  const [selectedVacation, setSelectedVacation] = useState<VacationType | 'all'>('all');
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Récupérer l'utilisateur connecté
@@ -66,9 +66,9 @@ export const MySchedule: React.FC = () => {
   // Charger l'horaire avec filtres
   const loadSchedule = () => {
     const filters: any = {};
-    if (selectedDay) filters.day = selectedDay;
-    if (selectedVacation) filters.vacation = selectedVacation;
-    
+    if (selectedDay && selectedDay !== 'all') filters.day = selectedDay;
+    if (selectedVacation && selectedVacation !== 'all') filters.vacation = selectedVacation;
+
     fetchMySchedule(filters);
   };
 
@@ -121,30 +121,32 @@ export const MySchedule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
       {/* En-tête */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Mon Emploi du Temps</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Mon Emploi du Temps</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             {currentUser?.firstName} {currentUser?.lastName} - {currentUser?.role === 'TEACHER' ? 'Professeur' : 'Étudiant'}
           </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="outline"
             onClick={() => loadSchedule()}
             disabled={loading}
+            className="flex-1 sm:flex-none"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''} sm:mr-2`} />
+            <span className="hidden sm:inline">Actualiser</span>
           </Button>
           <Button
             variant="outline"
             onClick={() => toast.info('Export PDF à venir')}
+            className="flex-1 sm:flex-none"
           >
-            <Download className="h-4 w-4 mr-2" />
-            Exporter PDF
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Exporter PDF</span>
           </Button>
         </div>
       </div>
@@ -164,12 +166,12 @@ export const MySchedule: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Jour de la semaine</label>
-              <Select value={selectedDay} onValueChange={(value) => setSelectedDay(value as DayOfWeek | '')}>
+              <Select value={selectedDay} onValueChange={(value) => setSelectedDay(value as DayOfWeek | 'all')}>
                 <SelectTrigger>
                   <SelectValue placeholder="Tous les jours" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les jours</SelectItem>
+                  <SelectItem value="all">Tous les jours</SelectItem>
                   {DAY_OF_WEEK_OPTIONS.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -181,12 +183,12 @@ export const MySchedule: React.FC = () => {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Période</label>
-              <Select value={selectedVacation} onValueChange={(value) => setSelectedVacation(value as VacationType | '')}>
+              <Select value={selectedVacation} onValueChange={(value) => setSelectedVacation(value as VacationType | 'all')}>
                 <SelectTrigger>
                   <SelectValue placeholder="Toutes les périodes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Toutes les périodes</SelectItem>
+                  <SelectItem value="all">Toutes les périodes</SelectItem>
                   {VACATION_OPTIONS.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -226,7 +228,7 @@ export const MySchedule: React.FC = () => {
               {/* Tableau par jour */}
               {DAY_OF_WEEK_OPTIONS.map(dayOption => {
                 // Ignorer si filtre actif et pas le bon jour
-                if (selectedDay && selectedDay !== dayOption.value) return null;
+                if (selectedDay && selectedDay !== 'all' && selectedDay !== dayOption.value) return null;
 
                 const morningSlots = getTimeSlotsForDayAndVacation(dayOption.value as DayOfWeek, 'Matin (AM)');
                 const afternoonSlots = getTimeSlotsForDayAndVacation(dayOption.value as DayOfWeek, 'Après-midi (PM)');
@@ -237,22 +239,22 @@ export const MySchedule: React.FC = () => {
                 return (
                   <div key={dayOption.value} className="border rounded-lg overflow-hidden">
                     {/* En-tête du jour */}
-                    <div className={`bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 border-l-4 ${getDayColor(dayOption.value as DayOfWeek)}`}>
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                          <Calendar className="h-5 w-5" />
+                    <div className={`bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-3 sm:p-4 border-l-4 ${getDayColor(dayOption.value as DayOfWeek)}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                          <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
                           {dayOption.label}
                         </h3>
-                        <Badge variant="secondary" className="bg-white/20 text-white">
+                        <Badge variant="secondary" className="bg-white/20 text-white text-xs sm:text-sm whitespace-nowrap">
                           {morningSlots.length + afternoonSlots.length} cours
                         </Badge>
                       </div>
                     </div>
 
                     {/* Créneaux du matin */}
-                    {(!selectedVacation || selectedVacation === 'Matin (AM)') && morningSlots.length > 0 && (
-                      <div className="p-4 bg-amber-50/50">
-                        <h4 className="font-medium text-amber-900 mb-3 flex items-center gap-2">
+                    {(selectedVacation === 'all' || selectedVacation === 'Matin (AM)') && morningSlots.length > 0 && (
+                      <div className="p-3 sm:p-4 bg-amber-50/50">
+                        <h4 className="text-sm sm:text-base font-medium text-amber-900 mb-2 sm:mb-3 flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           Matin (AM)
                         </h4>
@@ -260,26 +262,26 @@ export const MySchedule: React.FC = () => {
                           {morningSlots.map((slot, index) => (
                             <div
                               key={index}
-                              className="bg-white p-3 rounded-lg border border-amber-200 hover:shadow-md transition-shadow"
+                              className="bg-white p-2 sm:p-3 rounded-lg border border-amber-200 hover:shadow-md transition-shadow"
                             >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge className="bg-amber-600 text-white">
-                                      {slot.startTime} - {slot.endTime}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                                    <Badge className="bg-amber-600 text-white text-xs whitespace-nowrap w-fit">
+                                      {slot.startTime.slice(0, 5)} - {slot.endTime.slice(0, 5)}
                                     </Badge>
-                                    <span className="font-medium text-gray-900">
+                                    <span className="text-sm sm:text-base font-medium text-gray-900 truncate">
                                       {slot.courseName || 'Cours'}
                                     </span>
                                   </div>
                                   {slot.teacherName && (
-                                    <p className="text-sm text-gray-600 flex items-center gap-1">
-                                      <Users className="h-3 w-3" />
-                                      {slot.teacherName}
+                                    <p className="text-xs sm:text-sm text-gray-600 flex items-center gap-1 truncate">
+                                      <Users className="h-3 w-3 flex-shrink-0" />
+                                      <span className="truncate">{slot.teacherName}</span>
                                     </p>
                                   )}
                                 </div>
-                                <BookOpen className="h-5 w-5 text-amber-600" />
+                                <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 flex-shrink-0" />
                               </div>
                             </div>
                           ))}
@@ -288,9 +290,9 @@ export const MySchedule: React.FC = () => {
                     )}
 
                     {/* Créneaux de l'après-midi */}
-                    {(!selectedVacation || selectedVacation === 'Après-midi (PM)') && afternoonSlots.length > 0 && (
-                      <div className="p-4 bg-indigo-50/50">
-                        <h4 className="font-medium text-indigo-900 mb-3 flex items-center gap-2">
+                    {(selectedVacation === 'all' || selectedVacation === 'Après-midi (PM)') && afternoonSlots.length > 0 && (
+                      <div className="p-3 sm:p-4 bg-indigo-50/50">
+                        <h4 className="text-sm sm:text-base font-medium text-indigo-900 mb-2 sm:mb-3 flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           Après-midi (PM)
                         </h4>
@@ -298,26 +300,26 @@ export const MySchedule: React.FC = () => {
                           {afternoonSlots.map((slot, index) => (
                             <div
                               key={index}
-                              className="bg-white p-3 rounded-lg border border-indigo-200 hover:shadow-md transition-shadow"
+                              className="bg-white p-2 sm:p-3 rounded-lg border border-indigo-200 hover:shadow-md transition-shadow"
                             >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge className="bg-indigo-600 text-white">
-                                      {slot.startTime} - {slot.endTime}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                                    <Badge className="bg-indigo-600 text-white text-xs whitespace-nowrap w-fit">
+                                      {slot.startTime.slice(0, 5)} - {slot.endTime.slice(0, 5)}
                                     </Badge>
-                                    <span className="font-medium text-gray-900">
+                                    <span className="text-sm sm:text-base font-medium text-gray-900 truncate">
                                       {slot.courseName || 'Cours'}
                                     </span>
                                   </div>
                                   {slot.teacherName && (
-                                    <p className="text-sm text-gray-600 flex items-center gap-1">
-                                      <Users className="h-3 w-3" />
-                                      {slot.teacherName}
+                                    <p className="text-xs sm:text-sm text-gray-600 flex items-center gap-1 truncate">
+                                      <Users className="h-3 w-3 flex-shrink-0" />
+                                      <span className="truncate">{slot.teacherName}</span>
                                     </p>
                                   )}
                                 </div>
-                                <BookOpen className="h-5 w-5 text-indigo-600" />
+                                <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 flex-shrink-0" />
                               </div>
                             </div>
                           ))}
