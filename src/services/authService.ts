@@ -380,6 +380,23 @@ class AuthService {
   }
 
   /**
+   * Changer le mot de passe de l'utilisateur connecté
+   */
+  async changePassword(data: { currentPassword: string; newPassword: string; confirmPassword: string }): Promise<{ message: string }> {
+    const token = this.getAccessToken();
+    if (!token) {
+      throw new Error('Aucun token d\'accès disponible');
+    }
+
+    const response = await authApi.patch('/users/me/password', {
+      currentPassword: data.currentPassword,
+      newPassword: data.newPassword,
+      confirmNewPassword: data.confirmPassword,
+    });
+    return response.data;
+  }
+
+  /**
    * Mettre à jour le profil utilisateur
    */
   async updateProfile(userData: Partial<User>): Promise<User> {
