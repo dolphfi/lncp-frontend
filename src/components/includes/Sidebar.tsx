@@ -13,6 +13,7 @@ import {
   PanelLeft,
   PanelRight,
   Settings,
+  User,
   UserPlus,
   UserRoundCog,
   Wallet,
@@ -169,12 +170,6 @@ const AppSidebar = () => {
   const isStudentOrParent = user?.role === 'STUDENT' || user?.role === 'PARENT'
 
   React.useEffect(() => {
-    // Redirection automatique pour les étudiants et parents
-    if (isStudentOrParent) {
-      navigate('/student-profile', { replace: true })
-      return
-    }
-
     // Fallback depuis le store
     if (user) {
       const name = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email
@@ -230,7 +225,27 @@ const AppSidebar = () => {
   const navGroups = React.useMemo(() => {
     const groups = []
 
-    // Général - accessible à tous les utilisateurs authentifiés
+    // Menu spécial pour les élèves et parents
+    if (isStudentOrParent) {
+      if (user?.role === 'STUDENT') {
+        groups.push({
+          title: "Mon Espace",
+          items: [
+            { to: "/student-profile", label: "Mon Profil", icon: User },
+          ],
+        })
+      } else if (user?.role === 'PARENT') {
+        groups.push({
+          title: "Mes Élèves",
+          items: [
+            { to: "/student-profile", label: "Mes Élèves", icon: GraduationCap },
+          ],
+        })
+      }
+      return groups
+    }
+
+    // Général - accessible aux autres utilisateurs
     groups.push({
       title: "Général",
       items: [
@@ -363,12 +378,7 @@ const AppSidebar = () => {
     }
 
     return groups
-  }, [canManageStudents, canManageCourses, canManageNotes, canAccessNotes, canManageEmployees, user?.role])
-
-  // Ne pas afficher la sidebar pour les étudiants et parents (ils sont redirigés)
-  if (isStudentOrParent) {
-    return null
-  }
+  }, [canManageStudents, canManageCourses, canManageNotes, canAccessNotes, canManageEmployees, user?.role, isStudentOrParent])
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">

@@ -20,7 +20,8 @@ const {
     clearError,
     isLoading,
     error,
-    isAuthenticated
+    isAuthenticated,
+    user
 } = useAuthStore();
 
   const [formData, setFormData] = useState({
@@ -34,10 +35,15 @@ const [isSubmitting, setIsSubmitting] = useState(false);
 
 // Rediriger si déjà authentifié
 useEffect(() => {
-    if (isAuthenticated) {
-        navigate('/dashboard', {replace: true});
+    if (isAuthenticated && user) {
+        // Rediriger selon le rôle
+        if (user.role === 'STUDENT' || user.role === 'PARENT') {
+            navigate('/student-profile', {replace: true});
+        } else {
+            navigate('/dashboard', {replace: true});
+        }
     }
-}, [isAuthenticated, navigate]);
+}, [isAuthenticated, user, navigate]);
 
 // Nettoyer les erreurs au démontage
 useEffect(() => {
@@ -79,8 +85,16 @@ setIsSubmitting(true);
 
 try {
     await login({ email: formData.email, password: formData.password });
-    // si aucune erreur, on navigue
-    navigate('/dashboard', { replace: true });
+    
+    // Récupérer l'utilisateur après login pour rediriger
+    const loggedUser = useAuthStore.getState().user;
+    
+    // Redirection selon le rôle
+    if (loggedUser?.role === 'STUDENT' || loggedUser?.role === 'PARENT') {
+        navigate('/student-profile', { replace: true });
+    } else {
+        navigate('/dashboard', { replace: true });
+    }
 } catch (error) {
     // L'erreur est déjà gérée dans le store
     console.error('Erreur de connexion:', error);

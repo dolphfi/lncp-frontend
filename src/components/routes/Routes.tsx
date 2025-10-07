@@ -48,13 +48,13 @@ function AppRoutes() {
         <Route path="/results"
             element={<Results/>}/>
 
-        <Route path='/student-profile'
-            element={<StudentProfilePage/>}/>
       {/* Routes privées */}
         <Route element={
             <PrivateRoute><DashboardLayout/></PrivateRoute>
         }>
-
+            {/* Route pour les élèves et parents */}
+            <Route path='/student-profile'
+                element={<StudentProfilePage/>}/>
 
             <Route path="/dashboard"
                 element={<Dashboard/>}/>
