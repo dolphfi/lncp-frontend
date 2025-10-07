@@ -19,6 +19,8 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Calendar,
+  Activity,
 } from "lucide-react";
 import { toast } from "react-toastify";
 // IMPORTANT: Installer la dépendance si elle n'est pas déjà présente:
@@ -192,7 +194,7 @@ const Profile: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {/* Carte profil */}
             <div className="md:col-span-1">
-              <div className="rounded-2xl backdrop-blur-xl bg-white/40 shadow-xl shadow-blue-900/5 overflow-hidden border border-gray-200/60">
+              <div className="rounded-2xl backdrop-blur-xl bg-white/40 overflow-hidden border border-gray-200/60">
                 {/* Cover Photo Section */}
                 <div className="relative h-36 bg-gradient-to-r from-blue-100 to-sky-200">
                   <img
@@ -203,7 +205,7 @@ const Profile: React.FC = () => {
                   {/* Status Icons */}
                   <div className="absolute top-3 right-3 flex gap-2">
                     {/* Verified Status */}
-                    <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-full px-2 py-1 shadow-sm">
+                    <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-full px-2 py-1">
                       {me?.isVerified ? (
                         <CheckCircle className="w-3 h-3 text-green-600" />
                       ) : (
@@ -214,7 +216,7 @@ const Profile: React.FC = () => {
                       </span>
                     </div>
                     {/* Active Status */}
-                    <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-full px-2 py-1 shadow-sm">
+                    <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-full px-2 py-1">
                       {me?.isActive ? (
                         <Circle className="w-3 h-3 text-green-500 fill-green-500" />
                       ) : (
@@ -232,7 +234,7 @@ const Profile: React.FC = () => {
                   {/* Avatar */}
                   <div className="-mt-12 mb-4 flex justify-center">
                     <div className="relative inline-block">
-                      <div className="w-24 h-24 rounded-full border-4 border-white/50 shadow-lg bg-blue-100 text-blue-700 flex items-center justify-center text-3xl font-bold overflow-hidden">
+                      <div className="w-24 h-24 rounded-full border-4 border-white/50 bg-blue-100 text-blue-700 flex items-center justify-center text-3xl font-bold overflow-hidden">
                         {me?.avatarUrl || avatarPreview ? (
                           <img
                             src={avatarPreview || me?.avatarUrl}
@@ -245,7 +247,7 @@ const Profile: React.FC = () => {
                       </div>
                       <button
                         type="button"
-                        className="absolute -bottom-1 -right-1 p-2 rounded-full bg-blue-600 text-white shadow hover:bg-blue-700"
+                        className="absolute -bottom-1 -right-1 p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700"
                         title="Changer la photo"
                         onClick={() => fileInputRef.current?.click()}
                       >
@@ -265,18 +267,7 @@ const Profile: React.FC = () => {
                   </div>
 
                   {/* Contact Info */}
-                  <div className="mt-5 md:mt-6 space-y-2 text-xs">
-                    <div className="flex items-center text-blue-900/80">
-                      <Mail className="w-3 h-3 mr-2 text-blue-500" />{" "}
-                      {me?.email || user?.email}
-                    </div>
-                    {me?.phone && (
-                      <div className="flex items-center text-blue-900/80">
-                        <Phone className="w-3 h-3 mr-2 text-blue-500" />{" "}
-                        {me.phone}
-                      </div>
-                    )}
-                  </div>
+             
                   {/* Statistiques utilisateur */}
                   <div className="mt-6 space-y-3">
                     <h4 className="text-xs font-semibold text-blue-900/80 flex items-center gap-1">
@@ -310,18 +301,29 @@ const Profile: React.FC = () => {
                             Dernière connexion
                           </span>
                         </div>
-                        <span className="text-xs text-blue-900/80 text-right max-w-[140px] group-hover:text-blue-900">
+                        <span className="text-xs text-blue-900/80 text-right max-w-[160px] group-hover:text-blue-900">
                           {me?.lastLoginAt
-                            ? new Date(me.lastLoginAt).toLocaleDateString(
-                                "fr-FR",
-                                {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )
+                            ? (() => {
+                                const date = new Date(me.lastLoginAt);
+                                const formattedDate = date.toLocaleDateString(
+                                  "fr-FR",
+                                  {
+                                    weekday: "long",
+                                    day: "numeric",
+                                    month: "long",
+                                    year: "numeric",
+                                  }
+                                );
+                                const formattedTime = date.toLocaleTimeString(
+                                  "fr-FR",
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                  }
+                                );
+                                return `${formattedDate} à ${formattedTime}`;
+                              })()
                             : "Jamais"}
                         </span>
                       </button>
@@ -351,7 +353,7 @@ const Profile: React.FC = () => {
 
             {/* Détails & activité */}
             <div className="md:col-span-2 space-y-4 md:space-y-6">
-              <div className="rounded-2xl p-5 md:p-6 backdrop-blur-xl bg-white/40 shadow-xl shadow-blue-900/5 border border-gray-200/60">
+              <div className="rounded-2xl p-5 md:p-6 backdrop-blur-xl bg-white/40 border border-gray-200/60">
                 <h3 className="text-xs font-medium text-blue-900 mb-4 flex items-center">
                   <UserRound className="w-3 h-3 mr-2" /> Détails
                 </h3>
@@ -437,7 +439,7 @@ const Profile: React.FC = () => {
                           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 text-xs"
                         >
                           <Save className="w-3 h-3" />{" "}
-                          {saving ? "Enregistrement..." : "Enregistrer"}
+                          {saving ? "Modification..." : "Modifier"}
                         </button>
                       </div>
                     </form>
@@ -451,7 +453,7 @@ const Profile: React.FC = () => {
                 )}
               </div>
 
-              <div className="rounded-2xl p-5 md:p-6 backdrop-blur-xl bg-white/40 shadow-xl shadow-blue-900/5 border border-gray-200/60">
+              <div className="rounded-2xl p-5 md:p-6 backdrop-blur-xl bg-white/40 border border-gray-200/60">
                 <h3 className="text-xs font-medium text-blue-900 mb-4">
                   Activité récente
                 </h3>
@@ -463,25 +465,64 @@ const Profile: React.FC = () => {
                 ) : error ? (
                   <p className="text-red-600 text-xs">{error}</p>
                 ) : (
-                  <ul className="space-y-2 text-xs text-blue-900/90 max-h-64 overflow-y-auto pr-1 md:pr-2">
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1 md:pr-2">
                     {me?.activityLogs?.length ? (
-                      me.activityLogs.map((log: any, idx: number) => (
-                        <li
-                          key={idx}
-                          className="flex items-center justify-between bg-white/60 rounded-lg px-3 py-2 border border-gray-200/80"
-                        >
-                          <span className="font-medium">{log.action}</span>
-                          <span className="text-xs text-blue-900/70">
-                            {new Date(log.timestamp).toLocaleString()}
-                          </span>
-                        </li>
-                      ))
+                      me.activityLogs.map((log: any, idx: number) => {
+                        const date = new Date(log.timestamp);
+                        const formattedDate = date.toLocaleDateString("fr-FR", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        });
+                        const formattedTime = date.toLocaleTimeString("fr-FR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        });
+
+                        return (
+                          <div
+                            key={idx}
+                            className="bg-white/70 rounded-xl p-4 border border-gray-200/60 hover:bg-white/80 transition-colors duration-200"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <h4 className="text-sm font-semibold text-blue-900 mb-1">
+                                  {log.action}
+                                </h4>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs text-blue-900/70">
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {formattedDate}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {formattedTime}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex-shrink-0">
+                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
                     ) : (
-                      <li className="text-blue-900/70">
-                        Aucune activité récente
-                      </li>
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                          <Activity className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <p className="text-blue-900/70 text-sm">
+                          Aucune activité récente
+                        </p>
+                        <p className="text-blue-900/50 text-xs mt-1">
+                          Vos activités apparaîtront ici
+                        </p>
+                      </div>
                     )}
-                  </ul>
+                  </div>
                 )}
               </div>
             </div>
@@ -492,9 +533,9 @@ const Profile: React.FC = () => {
       {/* Crop overlay */}
       {cropping && avatarPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white overflow-hidden">
             <button
-              className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white shadow"
+              className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white"
               onClick={() => {
                 setCropping(false);
                 setAvatarPreview(null);
@@ -575,7 +616,7 @@ const Profile: React.FC = () => {
       {/* Password Change Modal */}
       {showPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden border border-gray-200/80">
+          <div className="relative w-full max-w-md rounded-2xl bg-white overflow-hidden border border-gray-200/80">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
