@@ -96,7 +96,6 @@ const HomePage: React.FC = () => {
     );
   };
 
-
   const openImageModal = (slide: Slide): void => {
     setSelectedImage(slide);
   };
@@ -120,7 +119,10 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen text-white overflow-hidden relative">
+    <section
+      id="home"
+      className="min-h-screen text-white overflow-hidden relative"
+    >
       {/* Dynamic Background Image */}
       <div className="absolute inset-0 z-0">
         <div className="relative w-full h-full">
@@ -298,7 +300,7 @@ const HomePage: React.FC = () => {
           className="w-full object-cover"
         />
       </div>
-    </div>
+    </section>
   );
 };
 

@@ -21,6 +21,9 @@ import {
   EyeOff,
   Calendar,
   Activity,
+  Download,
+  Copy,
+  QrCode,
 } from "lucide-react";
 import { toast } from "react-toastify";
 // IMPORTANT: Installer la dépendance si elle n'est pas déjà présente:
@@ -53,6 +56,22 @@ const Profile: React.FC = () => {
     confirm: false,
   });
   const [passwordSaving, setPasswordSaving] = useState(false);
+  
+  // 2FA modal states
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([
+    "ABCD-1234-EFGH-5678",
+    "IJKL-9012-MNOP-3456",
+    "QRST-7890-UVWX-1234",
+    "YZAB-5678-CDEF-9012",
+    "GHIJ-3456-KLMN-7890",
+    "OPQR-1234-STUV-5678",
+    "WXYZ-9012-ABCD-3456",
+    "EFGH-7890-IJKL-1234",
+  ]);
+  
   // Avatar + Crop states
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [cropping, setCropping] = useState(false);
@@ -129,6 +148,42 @@ const Profile: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handle2FAToggle = (enabled: boolean) => {
+    if (enabled) {
+      // Générer un QR code (simulé ici avec une URL placeholder)
+      setQrCodeUrl("https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/LNCP:" + (me?.email || user?.email) + "?secret=JBSWY3DPEHPK3PXP&issuer=LNCP");
+      setShow2FAModal(true);
+    } else {
+      setTwoFactorEnabled(false);
+      toast.success("Authentification 2FA désactivée");
+    }
+  };
+
+  const handleEnable2FA = () => {
+    setTwoFactorEnabled(true);
+    setShow2FAModal(false);
+    toast.success("Authentification 2FA activée avec succès");
+  };
+
+  const downloadBackupCodes = () => {
+    const content = backupCodes.join("\n");
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "lncp-backup-codes.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Codes de secours téléchargés");
+  };
+
+  const copyBackupCodes = () => {
+    navigator.clipboard.writeText(backupCodes.join("\n"));
+    toast.success("Codes de secours copiés dans le presse-papier");
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -349,6 +404,91 @@ const Profile: React.FC = () => {
                   reader.readAsDataURL(file);
                 }}
               />
+
+              {/* Section Paramètres */}
+              <div className="mt-4 rounded-2xl backdrop-blur-xl bg-white/40 overflow-hidden border border-gray-200/60">
+                <div className="p-5">
+                  <h3 className="text-xs font-medium text-blue-900 mb-4 flex items-center">
+                    <Shield className="w-3 h-3 mr-2" /> Paramètres
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    {/* Notifications */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/50 border border-gray-200/80 hover:bg-white/70 transition-all duration-200">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-full bg-blue-100 text-blue-600">
+                          <Mail className="w-3 h-3" />
+                        </div>
+                        <span className="text-xs font-medium text-blue-900">
+                          Notifications par email
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" defaultChecked />
+                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+
+                    {/* Authentification à deux facteurs */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/50 border border-gray-200/80 hover:bg-white/70 transition-all duration-200">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-full bg-green-100 text-green-600">
+                          <Shield className="w-3 h-3" />
+                        </div>
+                        <span className="text-xs font-medium text-blue-900">
+                          Authentification 2FA
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={twoFactorEnabled}
+                          onChange={(e) => handle2FAToggle(e.target.checked)}
+                        />
+                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+
+                    {/* Visibilité du profil */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/50 border border-gray-200/80 hover:bg-white/70 transition-all duration-200">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-full bg-purple-100 text-purple-600">
+                          <Eye className="w-3 h-3" />
+                        </div>
+                        <span className="text-xs font-medium text-blue-900">
+                          Profil public
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" defaultChecked />
+                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+
+                    {/* Changer le mot de passe */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordModal(true)}
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-white/50 border border-gray-200/80 hover:bg-white/70 transition-all duration-200"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-full bg-orange-100 text-orange-600">
+                          <Lock className="w-3 h-3" />
+                        </div>
+                        <span className="text-xs font-medium text-blue-900">
+                          Changer le mot de passe
+                        </span>
+                      </div>
+                      <div className="text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Détails & activité */}
@@ -423,16 +563,7 @@ const Profile: React.FC = () => {
                           }
                         />
                       </div>
-                      <div className="md:col-span-2 flex justify-between items-center">
-                        <button
-                          type="button"
-                          onClick={() => setShowPasswordModal(true)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 text-xs transition-colors duration-200"
-                        >
-                          <Lock className="w-3 h-3" />
-                          Changer le mot de passe
-                        </button>
-
+                      <div className="md:col-span-2 flex justify-end items-center">
                         <button
                           type="submit"
                           disabled={saving}
@@ -773,6 +904,112 @@ const Profile: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2FA Setup Modal */}
+      {show2FAModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="relative w-full max-w-md rounded-xl bg-white overflow-hidden border border-gray-200/80 shadow-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <h3 className="text-xs font-semibold text-blue-900 flex items-center gap-2">
+                <QrCode className="w-3.5 h-3.5" />
+                Configuration 2FA
+              </h3>
+              <button
+                onClick={() => setShow2FAModal(false)}
+                className="p-1 rounded-full hover:bg-gray-100 transition-colors duration-200"
+              >
+                <X className="w-3.5 h-3.5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 space-y-4">
+              {/* QR Code Section */}
+              <div className="text-center">
+                <div className="inline-block p-2 bg-white border border-gray-200 rounded-lg">
+                  <img
+                    src={qrCodeUrl}
+                    alt="QR Code"
+                    className="w-32 h-32"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-500 mt-2">
+                  Scannez avec votre app d'authentification
+                </p>
+              </div>
+
+              {/* Backup Codes Section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-medium text-blue-900">
+                    Codes de secours
+                  </h4>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={copyBackupCodes}
+                      className="p-1 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors duration-200"
+                      title="Copier"
+                    >
+                      <Copy className="w-3 h-3 text-gray-600" />
+                    </button>
+                    <button
+                      onClick={downloadBackupCodes}
+                      className="p-1 rounded-md bg-blue-100 hover:bg-blue-200 transition-colors duration-200"
+                      title="Télécharger"
+                    >
+                      <Download className="w-3 h-3 text-blue-600" />
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto">
+                    {backupCodes.map((code, index) => (
+                      <div
+                        key={index}
+                        className="bg-white px-2 py-1.5 rounded border border-gray-200 text-center"
+                      >
+                        <span className="text-[10px] font-mono text-blue-900 font-medium">
+                          {code}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2">
+                <div className="flex gap-2">
+                  <Shield className="w-3 h-3 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-amber-800">
+                    Sauvegardez vos codes de secours avant d'activer la 2FA.
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShow2FAModal(false)}
+                  className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors duration-200"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEnable2FA}
+                  className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center gap-1.5"
+                >
+                  <Shield className="w-3 h-3" />
+                  Activer
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

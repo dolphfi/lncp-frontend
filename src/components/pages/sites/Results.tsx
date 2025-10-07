@@ -19,6 +19,7 @@ import {
   GraduationCap,
   School,
   Trophy,
+  ArrowLeft,
 } from "lucide-react";
 
 interface StudentResult {
@@ -211,8 +212,19 @@ const Results = () => {
       </div>
 
       <div className="z-20 px-6 md:px-16 lg:px-32 pt-24 pb-20">
+        {/* Back to Site Button */}
+        <div className="mb-8">
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-white/20 transition-all duration-200 text-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Retour au site
+          </a>
+        </div>
+
         {/* Header */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur-lg rounded-full mb-6 border border-white/20">
             <GraduationCap className="w-8 h-8 text-yellow-400" />
           </div>
@@ -220,75 +232,44 @@ const Results = () => {
             Résultats Scolaires
           </h1>
           <p className="text-sm text-white/90 max-w-2xl mx-auto leading-relaxed">
-            Consultez vos résultats scolaires en temps réel. Entrez votre numéro
-            de matricule pour accéder à votre bulletin de notes.
+            Consultez vos résultats scolaires en temps réel
           </p>
         </div>
 
-        {/* Search Form */}
-        <div className="max-w-2xl mx-auto mb-16">
-          <div className="relative h-full bg-white/5 rounded-2xl border border-white/20 overflow-hidden shadow-xl">
-            <div className="relative p-6">
-              <div className="flex items-center mb-6">
-                <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center mr-3">
-                  <Search className="w-5 h-5 text-blue-300" />
-                </div>
-                <h2 className="text-lg font-medium text-white">
-                  Rechercher vos résultats
-                </h2>
+        {/* Simple Search Bar */}
+        <div className="max-w-xl mx-auto mb-12">
+          <form onSubmit={handleSearch} className="relative">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search className="w-4 h-4 text-white/50" />
               </div>
-
-              <form onSubmit={handleSearch} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="matricule"
-                    className="block text-white/80 text-sm font-medium mb-2"
-                  >
-                    Numéro de Matricule
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <User className="w-4 h-4 text-white/50" />
-                    </div>
-                    <input
-                      type="text"
-                      id="matricule"
-                      value={matricule}
-                      onChange={(e) => setMatricule(e.target.value)}
-                      className="w-full pl-10 pr-3 py-3 bg-white/10 border border-white/20 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 text-white placeholder-white/50 text-sm"
-                      placeholder="Ex: LNCP2024001"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-500/90 to-blue-600/90 text-white font-medium py-3 px-4 rounded-full hover:from-blue-600/90 hover:to-blue-700/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center space-x-2 text-sm shadow-lg hover:shadow-blue-500/20"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Recherche en cours...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-4 h-4" />
-                      <span>Consulter les résultats</span>
-                    </>
-                  )}
-                </button>
-              </form>
-
-              {error && (
-                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center space-x-2 animate-fade-in">
-                  <AlertCircle className="h-4 w-4 text-red-300" />
-                  <span className="text-red-200 text-sm">{error}</span>
-                </div>
-              )}
+              <input
+                type="text"
+                value={matricule}
+                onChange={(e) => setMatricule(e.target.value)}
+                className="w-full pl-11 pr-24 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 text-white placeholder-white/50 text-sm"
+                placeholder="Entrez votre matricule..."
+                required
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center text-xs font-medium"
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  "Rechercher"
+                )}
+              </button>
             </div>
-          </div>
+            {error && (
+              <div className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center space-x-2">
+                <AlertCircle className="h-3.5 w-3.5 text-red-300" />
+                <span className="text-red-200 text-xs">{error}</span>
+              </div>
+            )}
+          </form>
         </div>
 
         {/* Results Display */}
@@ -296,48 +277,53 @@ const Results = () => {
           <div className="space-y-8">
             {/* Student Info Card */}
             <div className="relative group">
-              <div className="relative h-full bg-white/5 rounded-2xl border border-white/20 overflow-hidden shadow-xl">
-                <div className="relative px-6 py-4">
+              <div className="relative h-full overflow-hidden">
+                <div className="relative">
                   {/* Header compact */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-blue-600/20 rounded-full flex items-center justify-center">
-                        <User className="w-6 h-6 text-blue-300" />
+                  <div className="mb-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      {/* Nom et photo */}
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <div className="w-12 h-12 bg-blue-600/20 rounded-full flex items-center justify-center flex-shrink-0">
+                          <User className="w-6 h-6 text-blue-300" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base md:text-lg font-bold text-white truncate">
+                            {studentResult.prenom} {studentResult.nom}
+                          </h3>
+                          <p className="text-[10px] md:text-xs text-white/60">
+                            {studentResult.matricule}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-white">
-                          {studentResult.prenom} {studentResult.nom}
-                        </h3>
-                        <p className="text-xs text-white/60">
-                          {studentResult.matricule}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4 text-xs text-white/70">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>{studentResult.anneeAcademique}</span>
-                      </div>
-                      <div className="px-3 py-1 bg-white/10 rounded-full font-medium text-white">
-                        {studentResult.classe}
+
+                      {/* Année académique et classe - à droite en desktop */}
+                      <div className="flex items-center gap-3 text-[10px] md:text-xs text-white/70 flex-wrap">
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                          <span>{studentResult.anneeAcademique}</span>
+                        </div>
+                        <div className="px-2 md:px-3 py-1 bg-white/10 rounded-full font-medium text-white">
+                          {studentResult.classe}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Stats compactes */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white/5 backdrop-blur-sm px-3 py-2.5 rounded-xl border border-white/10 text-center">
-                      <div className="text-2xl font-bold text-blue-300">
+                  <div className="grid grid-cols-3 gap-2 md:gap-3">
+                    <div className="bg-white/5 backdrop-blur-sm px-2 md:px-3 py-2 md:py-2.5 rounded-xl border border-white/10 text-center">
+                      <div className="text-xl md:text-2xl font-bold text-blue-300">
                         {studentResult.moyenneGenerale.toFixed(2)}
                       </div>
-                      <div className="text-[10px] text-white/60 uppercase tracking-wide mt-0.5">
+                      <div className="text-[9px] md:text-[10px] text-white/60 uppercase tracking-wide mt-0.5">
                         Moyenne
                       </div>
                     </div>
-                    <div className="bg-white/5 backdrop-blur-sm px-3 py-2.5 rounded-xl border border-white/10 text-center">
-                      <div className="text-2xl font-bold text-green-300">
+                    <div className="bg-white/5 backdrop-blur-sm px-2 md:px-3 py-2 md:py-2.5 rounded-xl border border-white/10 text-center">
+                      <div className="text-xl md:text-2xl font-bold text-green-300">
                         {studentResult.rang}
-                        <span className="text-xs text-white/50">
+                        <span className="text-[10px] md:text-xs text-white/50">
                           {studentResult.rang === 1
                             ? "er"
                             : studentResult.rang === 2
@@ -347,19 +333,19 @@ const Results = () => {
                             : "e"}
                         </span>
                       </div>
-                      <div className="text-[10px] text-white/60 uppercase tracking-wide mt-0.5">
+                      <div className="text-[9px] md:text-[10px] text-white/60 uppercase tracking-wide mt-0.5">
                         Rang
                       </div>
                     </div>
                     <div
                       className={`bg-gradient-to-br ${getDecisionColor(
                         studentResult.decision
-                      )} px-3 py-2.5 rounded-xl border border-white/20 text-center`}
+                      )} px-2 md:px-3 py-2 md:py-2.5 rounded-xl border border-white/20 text-center`}
                     >
-                      <div className="text-lg font-bold text-white">
+                      <div className="text-base md:text-lg font-bold text-white">
                         {studentResult.decision}
                       </div>
-                      <div className="text-[10px] text-white/80 uppercase tracking-wide mt-0.5">
+                      <div className="text-[9px] md:text-[10px] text-white/80 uppercase tracking-wide mt-0.5">
                         Décision
                       </div>
                     </div>
@@ -370,15 +356,24 @@ const Results = () => {
 
             {/* Grades Table */}
             <div className="relative group">
-              <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/5 backdrop-blur-sm">
+              <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md shadow-2xl">
                 <div className="px-6 py-4 border-b border-white/10">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center mr-3">
-                      <Award className="w-5 h-5 text-blue-300" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center mr-3">
+                        <Award className="w-5 h-5 text-blue-300" />
+                      </div>
+                      <h2 className="text-base md:text-lg font-medium text-white">
+                        Bulletin de Notes
+                      </h2>
                     </div>
-                    <h2 className="text-lg font-medium text-white">
-                      Bulletin de Notes
-                    </h2>
+                    <button
+                      onClick={handleDownloadPDF}
+                      className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-blue-600/80 hover:bg-blue-600 text-white rounded-full transition-all duration-200 text-[10px] md:text-xs font-medium"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Télécharger PDF
+                    </button>
                   </div>
                 </div>
 
@@ -482,17 +477,14 @@ const Results = () => {
               </div>
             </div>
 
-            {/* Download Button */}
-            <div className="flex justify-center pt-4">
+            {/* New Search Button */}
+            <div className="flex justify-start pt-4">
               <button
-                onClick={handleDownloadPDF}
-                className="group relative overflow-hidden px-6 py-3 bg-gradient-to-r from-blue-500/90 to-blue-600/90 text-white rounded-full hover:from-blue-600/90 hover:to-blue-700/90 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-blue-500/30"
+                onClick={() => setStudentResult(null)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-white/60 hover:text-white transition-colors duration-200 text-xs"
               >
-                <span className="relative z-10 flex items-center">
-                  <Download className="w-5 h-5 mr-2" />
-                  Télécharger le bulletin complet (PDF)
-                </span>
-                <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Nouvelle recherche
               </button>
             </div>
           </div>
