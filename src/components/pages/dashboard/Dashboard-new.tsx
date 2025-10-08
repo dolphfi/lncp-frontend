@@ -46,10 +46,10 @@ const attendanceData = [
 
 // Mock data for Students per Class Chart
 const studentsPerClassData = [
-  { classe: 'NS 1', eleves: 28, filles: 15, garcons: 13, cours: 8 },
-  { classe: 'NS 2', eleves: 30, filles: 16, garcons: 14, cours: 9 },
-  { classe: 'NS 3', eleves: 29, filles: 15, garcons: 14, cours: 10 },
-  { classe: 'NS 4', eleves: 31, filles: 17, garcons: 14, cours: 11 },
+  { classe: '6ème A', eleves: 28, filles: 15, garcons: 13, cours: 8 },
+  { classe: '5ème A', eleves: 30, filles: 16, garcons: 14, cours: 9 },
+  { classe: '4ème A', eleves: 29, filles: 15, garcons: 14, cours: 10 },
+  { classe: '3ème A', eleves: 31, filles: 17, garcons: 14, cours: 11 },
 ];
 
 // Mock data for the table
