@@ -11,7 +11,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<User | null>;
   logout: () => void;
   clearError: () => void;
   checkAuth: () => void;
@@ -35,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
 
           set({ user: res.user, isAuthenticated: true, isLoading: false, error: null });
           toast.success(`Bienvenue ${res.user.first_name || res.user.email}`);
+          return res.user;
         } catch (err) {
           const apiErr = err as ApiError;
           const msg = apiErr?.message || 'Erreur de connexion';

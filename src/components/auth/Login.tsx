@@ -35,12 +35,11 @@ const [isSubmitting, setIsSubmitting] = useState(false);
 
 // Rediriger si déjà authentifié
 useEffect(() => {
-    if (isAuthenticated && user) {
-        // Rediriger selon le rôle
-        if (user.role === 'STUDENT' || user.role === 'PARENT') {
-            navigate('/student-profile', {replace: true});
+    if (isAuthenticated) {
+        if (user?.role === 'PARENT' || user?.role === 'STUDENT') {
+            navigate('/dashboard-overview', { replace: true });
         } else {
-            navigate('/dashboard', {replace: true});
+            navigate('/dashboard', { replace: true });
         }
     }
 }, [isAuthenticated, user, navigate]);
@@ -84,14 +83,9 @@ if (!formData.email || !formData.password) {
 setIsSubmitting(true);
 
 try {
-    await login({ email: formData.email, password: formData.password });
-    
-    // Récupérer l'utilisateur après login pour rediriger
-    const loggedUser = useAuthStore.getState().user;
-    
-    // Redirection selon le rôle
-    if (loggedUser?.role === 'STUDENT' || loggedUser?.role === 'PARENT') {
-        navigate('/student-profile', { replace: true });
+    const loggedInUser = await login({ email: formData.email, password: formData.password });
+    if (loggedInUser?.role === 'PARENT' || loggedInUser?.role === 'STUDENT') {
+        navigate('/dashboard-overview', { replace: true });
     } else {
         navigate('/dashboard', { replace: true });
     }

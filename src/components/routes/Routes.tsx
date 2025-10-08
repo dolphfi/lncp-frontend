@@ -6,7 +6,7 @@ import MainLayout from '../pages/sites/MainLayout';
 import Results from '../pages/sites/Results';
 import SiteLayout from '../layouts/SiteLayout';
 import DashboardLayout from '../layouts/DashboardLayout';
-import Dashboard from '../pages/dashboard/Dashboard';
+import MainDashboard from '../pages/dashboard/MainDashboard';
 import {StudentsManagement} from '../pages/dashboard/StudentsManagement';
 import {EmployeesManagement} from '../pages/dashboard/EmployeesManagement';
 import AdminPanel from '../pages/dashboard/AdminPanel';
@@ -25,6 +25,7 @@ import NotesList from 'components/pages/notes/NotesList';
 import NoteEntry from 'components/pages/notes/NoteEntry';
 import ScheduleManagement from '../pages/schedules/ScheduleManagement';
 import MySchedule from '../pages/schedules/MySchedule';
+import ParentStudentDashboard from '../pages/dashboard/ParentStudentDashboard';
 
 
 function AppRoutes() {
@@ -52,12 +53,17 @@ function AppRoutes() {
         <Route element={
             <PrivateRoute><DashboardLayout/></PrivateRoute>
         }>
-            {/* Route pour les élèves et parents */}
+
             <Route path='/student-profile'
                 element={<StudentProfilePage/>}/>
 
             <Route path="/dashboard"
-                element={<Dashboard/>}/>
+                element={<MainDashboard/>}/>
+            <Route path="/dashboard-overview"
+                element={<ParentStudentDashboard/>}/>
+            
+            {/* Route par défaut pour rediriger vers le bon endroit selon le rôle */}
+            <Route index element={<MainDashboard/>} />
             <Route path="/students"
                 element={<RoleRoute requiredFeature="students"><StudentsManagement/></RoleRoute>}/>
             <Route path="/courses"
