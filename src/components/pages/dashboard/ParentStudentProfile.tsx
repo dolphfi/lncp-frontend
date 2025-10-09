@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import authService from "../../../services/authService";
 import { useAuthStore } from "../../../stores/authStoreSimple";
-import DashboardHeader from "../../includes/DashboardHeader";
 import {
   Loader2,
   Mail,
@@ -33,7 +32,6 @@ import Cropper from "react-easy-crop";
 
 const Profile: React.FC = () => {
   const { user } = useAuthStore();
-  const isStudentOrParent = user?.role === 'STUDENT' || user?.role === 'PARENT';
   const [me, setMe] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -245,11 +243,8 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <section className="relative overflow-hidden min-h-screen bg-gray-50">
-      {/* Header pour STUDENT et PARENT */}
-      {isStudentOrParent && <DashboardHeader />}
-      
-      <div className={`px-4 ${isStudentOrParent ? 'py-6 pb-24 md:pb-8' : 'py-6 md:py-8'}`}>
+    <section className="relative overflow-hidden min-h-screen">
+      <div className="px-4 py-6 md:py-8">
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {/* Carte profil */}

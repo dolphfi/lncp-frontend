@@ -49,7 +49,13 @@ function AppRoutes() {
         <Route path="/results"
             element={<Results/>}/>
 
-      {/* Routes privées */}
+        {/* Routes sans sidebar pour STUDENT et PARENT */}
+        <Route path="/dashboard-overview"
+            element={<PrivateRoute><ParentStudentDashboard/></PrivateRoute>}/>
+        <Route path="/my-profile"
+            element={<PrivateRoute><Profile/></PrivateRoute>}/>
+
+      {/* Routes privées avec sidebar (pour ADMIN, TEACHER, etc.) */}
         <Route element={
             <PrivateRoute><DashboardLayout/></PrivateRoute>
         }>
@@ -59,8 +65,6 @@ function AppRoutes() {
 
             <Route path="/dashboard"
                 element={<MainDashboard/>}/>
-            <Route path="/dashboard-overview"
-                element={<ParentStudentDashboard/>}/>
             
             {/* Route par défaut pour rediriger vers le bon endroit selon le rôle */}
             <Route index element={<MainDashboard/>} />
