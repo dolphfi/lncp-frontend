@@ -30,7 +30,8 @@ import {
     Lock,
     Key,
     CheckCircle,
-    X
+    X,
+    Archive
 } from 'lucide-react';
 
 import {Button} from '../../ui/button';
@@ -69,6 +70,7 @@ import {useAcademicYearStore} from '../../../stores/academicYearStore';
 import {useSettingStore} from '../../../stores/settingStore';
 import {toast} from 'react-toastify';
 import type { SettingKey, SettingsGroup } from '../../../types/setting';
+import ArchivesTab from './ArchivesTab';
 
 // Types pour les données d'administration
 interface SystemUser {
@@ -393,6 +395,7 @@ const AdminPanel: React.FC = () => { // États locaux
                         <SelectItem value="users">👥 Utilisateurs</SelectItem>
                         <SelectItem value="academic-years">📅 Années Académiques</SelectItem>
                         <SelectItem value="classes">🏫 Classes</SelectItem>
+                        <SelectItem value="archives">📦 Archives</SelectItem>
                         <SelectItem value="settings">⚙️ Paramètres</SelectItem>
                         <SelectItem value="logs">📝 Logs système</SelectItem>
                         <SelectItem value="backup">💾 Sauvegardes</SelectItem>
@@ -402,11 +405,12 @@ const AdminPanel: React.FC = () => { // États locaux
             </div>
             
             {/* Menu desktop - Tabs */}
-            <TabsList className="hidden lg:grid w-full grid-cols-8 h-auto">
+            <TabsList className="hidden lg:grid w-full grid-cols-9 h-auto">
                 <TabsTrigger value="overview" className="text-xs xl:text-sm py-2">Vue d'ensemble</TabsTrigger>
                 <TabsTrigger value="users" className="text-xs xl:text-sm py-2">Utilisateurs</TabsTrigger>
                 <TabsTrigger value="academic-years" className="text-xs xl:text-sm py-2">Années Acad.</TabsTrigger>
                 <TabsTrigger value="classes" className="text-xs xl:text-sm py-2">Classes</TabsTrigger>
+                <TabsTrigger value="archives" className="text-xs xl:text-sm py-2">Archives</TabsTrigger>
                 <TabsTrigger value="settings" className="text-xs xl:text-sm py-2">Paramètres</TabsTrigger>
                 <TabsTrigger value="logs" className="text-xs xl:text-sm py-2">Logs</TabsTrigger>
                 <TabsTrigger value="backup" className="text-xs xl:text-sm py-2">Sauvegardes</TabsTrigger>
@@ -627,6 +631,11 @@ const AdminPanel: React.FC = () => { // États locaux
             {/* Gestion des années académiques */}
             <TabsContent value="academic-years" className="space-y-6">
                 <AcademicYearTab />
+            </TabsContent>
+
+            {/* Gestion des archives */}
+            <TabsContent value="archives" className="space-y-4 sm:space-y-6">
+                <ArchivesTab />
             </TabsContent>
 
             {/* Gestion des paramètres */}
