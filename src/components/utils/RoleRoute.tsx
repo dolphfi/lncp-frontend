@@ -23,7 +23,7 @@ interface RoleRouteProps {
   children: React.ReactNode;
   allowedRoles?: UserRole[]; // les rôles autorisés (ancien système)
   requiredPermission?: string; // nouvelle approche basée sur les permissions
-  requiredFeature?: 'users' | 'students' | 'courses' | 'employees' | 'academic' | 'notes' | 'admin' | 'system'; // accès à une fonctionnalité
+  requiredFeature?: 'users' | 'students' | 'courses' | 'employees' | 'academic' | 'notes' | 'admin' | 'system' | 'payments'; // accès à une fonctionnalité
 }
 
 function RoleRoute({ children, allowedRoles, requiredPermission, requiredFeature }: RoleRouteProps): React.ReactElement {

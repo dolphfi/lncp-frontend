@@ -39,6 +39,9 @@ export type Permission =
   | 'notes.read'
   | 'notes.write'
   | 'notes.delete'
+  | 'payments.read'
+  | 'payments.write'
+  | 'payments.delete'
   | 'admin.read'
   | 'admin.write'
   | 'system.read'
@@ -54,6 +57,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'employees.read', 'employees.write', 'employees.delete',
     'academic.read', 'academic.write', 'academic.delete',
     'notes.read', 'notes.write', 'notes.delete',
+    'payments.read', 'payments.write', 'payments.delete',
     'admin.read', 'admin.write',
     'system.read', 'system.write'
   ],
@@ -66,6 +70,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'employees.read', 'employees.write', 'employees.delete',
     'academic.read', 'academic.write', 'academic.delete',
     'notes.read', 'notes.write', 'notes.delete',
+    'payments.read', 'payments.write', 'payments.delete',
     'admin.read', 'admin.write'
   ],
 
@@ -99,6 +104,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'employees.read',
     'academic.read',
     'notes.read',
+    'payments.read', 'payments.write', 'payments.delete',
     'admin.read'
   ],
 
@@ -183,7 +189,7 @@ export function getRolePermissions(role: UserRole): Permission[] {
 /**
  * Vérifier si un rôle peut accéder à une fonctionnalité donnée
  */
-export function canAccessFeature(userRole: UserRole | undefined, feature: 'users' | 'students' | 'courses' | 'employees' | 'academic' | 'notes' | 'admin' | 'system'): boolean {
+export function canAccessFeature(userRole: UserRole | undefined, feature: 'users' | 'students' | 'courses' | 'employees' | 'academic' | 'notes' | 'admin' | 'system' | 'payments'): boolean {
   if (!userRole) return false;
 
   switch (feature) {
@@ -199,6 +205,8 @@ export function canAccessFeature(userRole: UserRole | undefined, feature: 'users
       return hasAnyPermission(userRole, ['academic.read', 'academic.write', 'academic.delete']);
     case 'notes':
       return hasAnyPermission(userRole, ['notes.read', 'notes.write', 'notes.delete']);
+    case 'payments':
+      return hasAnyPermission(userRole, ['payments.read', 'payments.write', 'payments.delete']);
     case 'admin':
       return hasAnyPermission(userRole, ['admin.read', 'admin.write']);
     case 'system':

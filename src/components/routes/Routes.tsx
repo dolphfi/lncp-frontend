@@ -26,6 +26,8 @@ import NoteEntry from 'components/pages/notes/NoteEntry';
 import ScheduleManagement from '../pages/schedules/ScheduleManagement';
 import MySchedule from '../pages/schedules/MySchedule';
 import ParentStudentDashboard from '../pages/dashboard/ParentStudentDashboard';
+import PaymentsManagement from '../pages/payments/PaymentsManagement';
+import StudentBalanceView from '../pages/payments/StudentBalanceView';
 
 
 function AppRoutes() {
@@ -81,6 +83,12 @@ function AppRoutes() {
             <Route path="/profile" element={<Profile/>} />
             <Route path="/admin_panel"
                 element={<RoleRoute requiredFeature="admin"><AdminPanel/></RoleRoute>}/>
+            
+            {/* Routes de gestion des paiements */}
+            <Route path="/payments"
+                element={<RoleRoute requiredFeature="payments"><PaymentsManagement/></RoleRoute>}/>
+            <Route path="/payments/balance"
+                element={<RoleRoute requiredFeature="payments"><StudentBalanceView/></RoleRoute>}/>
         </Route>
 
         {/* Routes du système académique */}
