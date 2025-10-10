@@ -333,11 +333,22 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         filtered = filtered.filter(
-          (p) =>
-            p.reference.toLowerCase().includes(query) ||
-            p.studentName.toLowerCase().includes(query) ||
-            p.studentMatricule.toLowerCase().includes(query) ||
-            p.description?.toLowerCase().includes(query)
+          (p) => {
+            // Recherche dans les champs communs
+            if (p.reference.toLowerCase().includes(query)) return true;
+            if (p.description?.toLowerCase().includes(query)) return true;
+            
+            // Recherche dans les champs étudiant
+            if (p.studentName?.toLowerCase().includes(query)) return true;
+            if (p.studentMatricule?.toLowerCase().includes(query)) return true;
+            
+            // Recherche dans les champs employé
+            if (p.employee?.user?.firstName?.toLowerCase().includes(query)) return true;
+            if (p.employee?.user?.lastName?.toLowerCase().includes(query)) return true;
+            if (p.employee?.employeeId?.toLowerCase().includes(query)) return true;
+            
+            return false;
+          }
         );
       }
 

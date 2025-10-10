@@ -345,31 +345,35 @@ const AdminPanel: React.FC = () => { // États locaux
         }
     };
 
-    return (<div className="container mx-auto px-4 py-6"> {/* En-tête */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    return (<div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6"> {/* En-tête */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                     Panel d'Administration
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                     Gestion complète du système et des utilisateurs
                 </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Button variant="outline"
-                    onClick={loadAdminData}>
-                    <RefreshCw className="h-4 w-4 mr-2"/>
-                    Actualiser
+                    onClick={loadAdminData}
+                    className="flex-1 sm:flex-none text-xs sm:text-sm">
+                    <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
+                    <span className="hidden sm:inline">Actualiser</span>
+                    <span className="sm:hidden">Refresh</span>
                 </Button>
                 <Button onClick={
                     () => {
                         setActiveTab('settings');
                         // Le dialog sera ouvert par le composant SettingsTab via un état partagé
                     }
-                }>
-                    <Settings className="h-4 w-4 mr-2"/>
-                    Configuration
+                }
+                    className="flex-1 sm:flex-none text-xs sm:text-sm">
+                    <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
+                    <span className="hidden sm:inline">Configuration</span>
+                    <span className="sm:hidden">Config</span>
                 </Button>
             </div>
         </div>
@@ -377,21 +381,41 @@ const AdminPanel: React.FC = () => { // États locaux
         {/* Onglets principaux */}
         <Tabs value={activeTab}
             onValueChange={setActiveTab}
-            className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8">
-                <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-                <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-                <TabsTrigger value="academic-years">Années Académiques</TabsTrigger>
-                <TabsTrigger value="classes">Classes</TabsTrigger>
-                <TabsTrigger value="settings">Paramètres</TabsTrigger>
-                <TabsTrigger value="logs">Logs système</TabsTrigger>
-                <TabsTrigger value="backup">Sauvegardes</TabsTrigger>
-                <TabsTrigger value="security">Sécurité</TabsTrigger>
+            className="space-y-4 sm:space-y-6">
+            {/* Menu mobile - Select dropdown */}
+            <div className="lg:hidden">
+                <Select value={activeTab} onValueChange={setActiveTab}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="overview">📋 Vue d'ensemble</SelectItem>
+                        <SelectItem value="users">👥 Utilisateurs</SelectItem>
+                        <SelectItem value="academic-years">📅 Années Académiques</SelectItem>
+                        <SelectItem value="classes">🏫 Classes</SelectItem>
+                        <SelectItem value="settings">⚙️ Paramètres</SelectItem>
+                        <SelectItem value="logs">📝 Logs système</SelectItem>
+                        <SelectItem value="backup">💾 Sauvegardes</SelectItem>
+                        <SelectItem value="security">🔒 Sécurité</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            
+            {/* Menu desktop - Tabs */}
+            <TabsList className="hidden lg:grid w-full grid-cols-8 h-auto">
+                <TabsTrigger value="overview" className="text-xs xl:text-sm py-2">Vue d'ensemble</TabsTrigger>
+                <TabsTrigger value="users" className="text-xs xl:text-sm py-2">Utilisateurs</TabsTrigger>
+                <TabsTrigger value="academic-years" className="text-xs xl:text-sm py-2">Années Acad.</TabsTrigger>
+                <TabsTrigger value="classes" className="text-xs xl:text-sm py-2">Classes</TabsTrigger>
+                <TabsTrigger value="settings" className="text-xs xl:text-sm py-2">Paramètres</TabsTrigger>
+                <TabsTrigger value="logs" className="text-xs xl:text-sm py-2">Logs</TabsTrigger>
+                <TabsTrigger value="backup" className="text-xs xl:text-sm py-2">Sauvegardes</TabsTrigger>
+                <TabsTrigger value="security" className="text-xs xl:text-sm py-2">Sécurité</TabsTrigger>
             </TabsList>
 
             {/* Vue d'ensemble */}
-            <TabsContent value="overview" className="space-y-6"> {/* Statistiques système */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <TabsContent value="overview" className="space-y-4 sm:space-y-6"> {/* Statistiques système */}
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Utilisateurs Actifs</CardTitle>
@@ -461,7 +485,7 @@ const AdminPanel: React.FC = () => { // États locaux
                 </div>
 
                 {/* Configuration rapide */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"> {/* Building icon removed as per edit hint */}
@@ -533,19 +557,20 @@ const AdminPanel: React.FC = () => { // États locaux
             </TabsContent>
 
             {/* Gestion des utilisateurs */}
-            <TabsContent value="users" className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Gestion des Utilisateurs</h2>
+            <TabsContent value="users" className="space-y-4 sm:space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h2 className="text-lg sm:text-xl font-semibold">Gestion des Utilisateurs</h2>
                     <Button onClick={
                         () => setShowUserDialog(true)
-                    }>
+                    }
+                        className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2"/>
                         Nouvel Utilisateur
                     </Button>
                 </div>
 
                 <Card>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -610,12 +635,12 @@ const AdminPanel: React.FC = () => { // États locaux
             </TabsContent>
 
             {/* Logs système */}
-            <TabsContent value="logs" className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Logs Système</h2>
-                    <div className="flex gap-2">
+            <TabsContent value="logs" className="space-y-4 sm:space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h2 className="text-lg sm:text-xl font-semibold">Logs Système</h2>
+                    <div className="flex gap-2 w-full sm:w-auto">
                         <Select>
-                            <SelectTrigger className="w-32">
+                            <SelectTrigger className="w-32 text-xs sm:text-sm">
                                 <SelectValue placeholder="Niveau"/>
                             </SelectTrigger>
                             <SelectContent>
@@ -626,15 +651,16 @@ const AdminPanel: React.FC = () => { // États locaux
                                 <SelectItem value="critical">Critique</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button variant="outline">
-                            <Download className="h-4 w-4 mr-2"/>
-                            Exporter
+                        <Button variant="outline" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                            <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
+                            <span className="hidden sm:inline">Exporter</span>
+                            <span className="sm:hidden">Export</span>
                         </Button>
                     </div>
                 </div>
 
                 <Card>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -672,25 +698,27 @@ const AdminPanel: React.FC = () => { // États locaux
             </TabsContent>
 
             {/* Sauvegardes */}
-            <TabsContent value="backup" className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Gestion des Sauvegardes</h2>
-                    <div className="flex gap-2">
+            <TabsContent value="backup" className="space-y-4 sm:space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h2 className="text-lg sm:text-xl font-semibold">Gestion des Sauvegardes</h2>
+                    <div className="flex gap-2 w-full sm:w-auto">
                         <Button onClick={
                             () => setShowBackupDialog(true)
-                        }>
-                            <Database className="h-4 w-4 mr-2"/>
-                            Nouvelle Sauvegarde
+                        }
+                            className="flex-1 sm:flex-none text-xs sm:text-sm">
+                            <Database className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
+                            <span className="hidden sm:inline">Nouvelle Sauvegarde</span>
+                            <span className="sm:hidden">Nouvelle</span>
                         </Button>
-                        <Button variant="outline">
-                            <Upload className="h-4 w-4 mr-2"/>
+                        <Button variant="outline" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                            <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
                             Restaurer
                         </Button>
                     </div>
                 </div>
 
                 <Card>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -746,8 +774,8 @@ const AdminPanel: React.FC = () => { // États locaux
             </TabsContent>
 
             {/* Sécurité */}
-            <TabsContent value="security" className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
+            <TabsContent value="security" className="space-y-4 sm:space-y-6">
+                <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">

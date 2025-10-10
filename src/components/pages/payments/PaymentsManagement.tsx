@@ -158,7 +158,7 @@ const PaymentsManagement: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Gestion des Paiements</h1>
-          <p className="text-sm sm:text-base text-gray-500">Gérez tous les paiements des étudiants</p>
+          <p className="text-sm sm:text-base text-gray-500">Gérez tous les paiements des Élèves</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -191,41 +191,70 @@ const PaymentsManagement: React.FC = () => {
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+        <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Total des paiements</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">Total paiements</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold">{stats.totalPayments}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Montant total</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">Reçus (Élèves)</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600 flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{stats.totalAmount.toLocaleString()} HTG</div>
+            <div className="text-base sm:text-lg font-bold text-green-600 break-words">
+              {payments.filter(p => p.student).reduce((sum, p) => sum + p.amount, 0).toLocaleString()} HTG
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {payments.filter(p => p.student).length} paiement(s)
+            </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Complétés</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">Payés (Employés)</CardTitle>
+            <DollarSign className="h-4 w-4 text-red-600 flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.completedAmount.toLocaleString()} HTG</div>
+            <div className="text-base sm:text-lg font-bold text-red-600 break-words">
+              {payments.filter(p => p.employee).reduce((sum, p) => sum + p.amount, 0).toLocaleString()} HTG
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {payments.filter(p => p.employee).length} paiement(s)
+            </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">En attente</CardTitle>
-            <DollarSign className="h-4 w-4 text-yellow-600" />
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">Complétés (Élèves)</CardTitle>
+            <DollarSign className="h-4 w-4 text-blue-600 flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.pendingAmount.toLocaleString()} HTG</div>
+            <div className="text-base sm:text-lg font-bold text-blue-600 break-words">
+              {payments.filter(p => p.student && p.status === 'COMPLETED').reduce((sum, p) => sum + p.amount, 0).toLocaleString()} HTG
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {payments.filter(p => p.student && p.status === 'COMPLETED').length} paiement(s)
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium truncate">En attente (Élèves)</CardTitle>
+            <DollarSign className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-base sm:text-lg font-bold text-yellow-600 break-words">
+              {payments.filter(p => p.student && p.status === 'PENDING').reduce((sum, p) => sum + p.amount, 0).toLocaleString()} HTG
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {payments.filter(p => p.student && p.status === 'PENDING').length} paiement(s)
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -244,7 +273,7 @@ const PaymentsManagement: React.FC = () => {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Rechercher par référence, étudiant..."
+                placeholder="Rechercher par référence, Élève..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -319,7 +348,7 @@ const PaymentsManagement: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Référence</TableHead>
-                  <TableHead>Étudiant</TableHead>
+                  <TableHead>Élève/Employé</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Montant</TableHead>
                   <TableHead>Statut</TableHead>
@@ -334,10 +363,30 @@ const PaymentsManagement: React.FC = () => {
                     <TableCell className="font-mono text-xs sm:text-sm whitespace-nowrap">{payment.reference}</TableCell>
                     <TableCell className="min-w-[150px]">
                       <div>
-                        <p className="font-medium text-sm">{payment.studentName || 'Non disponible'}</p>
-                        <p className="text-xs text-gray-500">
-                          {payment.studentMatricule || (payment.studentId ? `ID: ${payment.studentId}` : '-')}
-                        </p>
+                        {payment.student ? (
+                          <>
+                            <p className="font-medium text-sm">{payment.studentName || 'Non disponible'}</p>
+                            <p className="text-xs text-gray-500">
+                              {payment.studentMatricule || (payment.studentId ? `ID: ${payment.studentId}` : '-')}
+                            </p>
+                            <p className="text-xs text-green-600 font-medium">Élève</p>
+                          </>
+                        ) : payment.employee ? (
+                          <>
+                            <p className="font-medium text-sm">
+                              {payment.employee.user?.firstName || ''} {payment.employee.user?.lastName || 'Employé'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {payment.employee.employeeId || payment.employeeId || '-'}
+                            </p>
+                            <p className="text-xs text-red-600 font-medium">Employé</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-medium text-sm">Non disponible</p>
+                            <p className="text-xs text-gray-500">-</p>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="min-w-[120px]">
@@ -346,7 +395,7 @@ const PaymentsManagement: React.FC = () => {
                         <span className="text-sm">{getTypeLabel(payment.transactionType)}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-semibold text-sm whitespace-nowrap">{payment.amount.toLocaleString()} HTG</TableCell>
+                    <TableCell className="font-semibold text-xs sm:text-sm whitespace-nowrap">{payment.amount.toLocaleString()} HTG</TableCell>
                     <TableCell>{getStatusBadge(payment.status)}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap">{payment.academicYear}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap">{new Date(payment.createdAt).toLocaleDateString('fr-FR')}</TableCell>
@@ -400,7 +449,7 @@ const PaymentsManagement: React.FC = () => {
                   <div>{getStatusBadge(selectedPayment.status)}</div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Étudiant</p>
+                  <p className="text-sm font-medium text-gray-500">Élève</p>
                   <p className="text-sm">{selectedPayment.studentName || 'Non disponible'}</p>
                   {selectedPayment.studentMatricule ? (
                     <p className="text-xs text-gray-500">{selectedPayment.studentMatricule}</p>
@@ -506,7 +555,7 @@ const PaymentsManagement: React.FC = () => {
                   <strong>Référence:</strong> {selectedPayment.reference}
                 </p>
                 <p className="text-sm text-blue-800">
-                  <strong>Étudiant:</strong> {selectedPayment.studentName || 'Non disponible'} {selectedPayment.studentMatricule && `(${selectedPayment.studentMatricule})`}
+                  <strong>Élève:</strong> {selectedPayment.studentName || 'Non disponible'} {selectedPayment.studentMatricule && `(${selectedPayment.studentMatricule})`}
                 </p>
                 {selectedPayment.studentId && (
                   <p className="text-xs text-blue-600 mt-1">

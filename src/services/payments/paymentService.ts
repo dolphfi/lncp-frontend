@@ -36,6 +36,9 @@ const mapPaymentFromApi = (apiPayment: any): Payment => {
   const student = apiPayment.student || {};
   const user = student.user || {};
   
+  // L'API peut aussi retourner un objet employee
+  const employee = apiPayment.employee || {};
+  
   return {
     ...apiPayment,
     // Extraire le nom complet depuis student.user
@@ -47,6 +50,10 @@ const mapPaymentFromApi = (apiPayment: any): Payment => {
     studentMatricule: apiPayment.studentMatricule || student.matricule || student.studentId,
     // Extraire l'ID depuis student.id
     studentId: apiPayment.studentId || student.id,
+    // Conserver l'objet employee complet
+    employee: employee.id ? employee : undefined,
+    // Extraire l'ID de l'employé
+    employeeId: apiPayment.employeeId || employee.id,
   };
 };
 

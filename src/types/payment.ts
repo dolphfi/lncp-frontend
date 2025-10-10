@@ -16,9 +16,9 @@ export type OnlinePaymentProvider = 'STRIPE' | 'PAYPAL' | 'BOUSANM';
 export interface Payment {
   id: string;
   reference: string;
-  studentId: string;
-  studentMatricule: string;
-  studentName: string;
+  studentId?: string;
+  studentMatricule?: string;
+  studentName?: string;
   amount: number;
   transactionType: TransactionType;
   status: PaymentStatus;
@@ -26,15 +26,23 @@ export interface Payment {
   description?: string;
   receiptUrl?: string;
   
+  // Relations avec les entités
+  student?: any; // Objet étudiant complet du backend
+  employee?: any; // Objet employé complet du backend
+  employeeId?: string; // ID de l'employé pour les paiements CHECK
+  
   // Champs spécifiques aux chèques
   checkNumber?: string;
   checkBank?: string;
   checkIssueDate?: string;
+  issueDate?: string; // Alias pour checkIssueDate
   
   // Champs spécifiques aux dépôts bancaires
   bankName?: string;
   depositSlipNumber?: string;
   depositDate?: string;
+  bankReceiptNumber?: string;
+  bankReceiptUrl?: string;
   
   // Champs spécifiques aux paiements en ligne
   onlineProvider?: OnlinePaymentProvider;
