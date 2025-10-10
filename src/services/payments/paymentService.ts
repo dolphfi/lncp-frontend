@@ -29,6 +29,28 @@ const getAuthHeaders = () => ({
 });
 
 /**
+ * Mapper les données du backend vers le format frontend
+ */
+const mapPaymentFromApi = (apiPayment: any): Payment => {
+  // L'API retourne un objet student avec user imbriqué
+  const student = apiPayment.student || {};
+  const user = student.user || {};
+  
+  return {
+    ...apiPayment,
+    // Extraire le nom complet depuis student.user
+    studentName: apiPayment.studentName || 
+                 (user.firstName && user.lastName 
+                   ? `${user.firstName} ${user.lastName}` 
+                   : undefined),
+    // Extraire le matricule depuis student.matricule
+    studentMatricule: apiPayment.studentMatricule || student.matricule || student.studentId,
+    // Extraire l'ID depuis student.id
+    studentId: apiPayment.studentId || student.id,
+  };
+};
+
+/**
  * POST /payments/manual-payment
  * Créer un paiement manuel (Cash ou Check)
  */
@@ -40,7 +62,7 @@ export const createManualPayment = async (
     data,
     getAuthHeaders()
   );
-  return response.data;
+  return mapPaymentFromApi(response.data);
 };
 
 /**
@@ -66,7 +88,7 @@ export const createBankDeposit = async (
       },
     }
   );
-  return response.data;
+  return mapPaymentFromApi(response.data);
 };
 
 /**
@@ -93,7 +115,10 @@ export const getAllPayments = async (): Promise<Payment[]> => {
     getAuthHeaders()
   );
   // L'API retourne { data: [], total: 0, page: 1, limit: 10, lastPage: 0 }
-  return response.data.data || [];
+  const paymentsData = response.data.data || [];
+  
+  // Mapper les données pour enrichir avec les infos de l'étudiant si disponibles
+  return paymentsData.map(mapPaymentFromApi);
 };
 
 /**
@@ -105,7 +130,7 @@ export const getPaymentById = async (id: string): Promise<Payment> => {
     `${API_URL}/payments/${id}`,
     getAuthHeaders()
   );
-  return response.data;
+  return mapPaymentFromApi(response.data);
 };
 
 /**
@@ -121,7 +146,7 @@ export const updatePayment = async (
     data,
     getAuthHeaders()
   );
-  return response.data;
+  return mapPaymentFromApi(response.data);
 };
 
 /**
@@ -143,7 +168,7 @@ export const getPaymentByReference = async (
     `${API_URL}/payments/by-reference/${reference}`,
     getAuthHeaders()
   );
-  return response.data;
+  return mapPaymentFromApi(response.data);
 };
 
 /**

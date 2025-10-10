@@ -42,7 +42,7 @@ import {
   Download,
   Eye,
   Edit,
-  Trash2,
+  X,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import type { TransactionType, PaymentStatus } from '../../../types/payment';
@@ -57,22 +57,46 @@ const PaymentsManagement: React.FC = () => {
   const setFilters = usePaymentStore((state) => state.setFilters);
   const setSearchQuery = usePaymentStore((state) => state.setSearchQuery);
   const deletePayment = usePaymentStore((state) => state.deletePayment);
+  const updatePayment = usePaymentStore((state) => state.updatePayment);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<'manual' | 'bank'>('manual');
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  
+  // États pour le formulaire de modification
+  const [editStatus, setEditStatus] = useState<PaymentStatus>('PENDING');
+  const [editDescription, setEditDescription] = useState('');
 
   useEffect(() => {
     fetchPayments();
   }, [fetchPayments]);
 
-  const handleDeletePayment = async (id: string) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce paiement ?')) {
-      try {
-        await deletePayment(id);
-        toast.success('Paiement supprimé avec succès');
-      } catch (error: any) {
-        toast.error(error.message || 'Erreur lors de la suppression');
-      }
+  const handleViewDetails = (payment: any) => {
+    setSelectedPayment(payment);
+    setViewDialogOpen(true);
+  };
+
+  const handleEditPayment = (payment: any) => {
+    setSelectedPayment(payment);
+    setEditStatus(payment.status);
+    setEditDescription(payment.description || '');
+    setEditDialogOpen(true);
+  };
+
+  const handleSavePayment = async () => {
+    if (!selectedPayment) return;
+    
+    try {
+      await updatePayment(selectedPayment.id, {
+        status: editStatus,
+        description: editDescription || undefined,
+      });
+      setEditDialogOpen(false);
+      toast.success('Paiement modifié avec succès');
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la modification');
     }
   };
 
@@ -81,7 +105,6 @@ const PaymentsManagement: React.FC = () => {
       PENDING: 'bg-yellow-100 text-yellow-800',
       COMPLETED: 'bg-green-100 text-green-800',
       FAILED: 'bg-red-100 text-red-800',
-      CANCELLED: 'bg-gray-100 text-gray-800',
       REFUNDED: 'bg-blue-100 text-blue-800',
     };
 
@@ -89,7 +112,6 @@ const PaymentsManagement: React.FC = () => {
       PENDING: 'En attente',
       COMPLETED: 'Terminé',
       FAILED: 'Échoué',
-      CANCELLED: 'Annulé',
       REFUNDED: 'Remboursé',
     };
 
@@ -265,7 +287,6 @@ const PaymentsManagement: React.FC = () => {
                 <SelectItem value="PENDING">En attente</SelectItem>
                 <SelectItem value="COMPLETED">Terminé</SelectItem>
                 <SelectItem value="FAILED">Échoué</SelectItem>
-                <SelectItem value="CANCELLED">Annulé</SelectItem>
                 <SelectItem value="REFUNDED">Remboursé</SelectItem>
               </SelectContent>
             </Select>
@@ -285,10 +306,6 @@ const PaymentsManagement: React.FC = () => {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <CardTitle className="text-lg sm:text-xl">Liste des paiements ({payments.length})</CardTitle>
-            <Button variant="outline" size="sm" className="w-full sm:w-auto">
-              <Download className="w-4 h-4 mr-2" />
-              Exporter
-            </Button>
           </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
@@ -317,8 +334,10 @@ const PaymentsManagement: React.FC = () => {
                     <TableCell className="font-mono text-xs sm:text-sm whitespace-nowrap">{payment.reference}</TableCell>
                     <TableCell className="min-w-[150px]">
                       <div>
-                        <p className="font-medium text-sm">{payment.studentName}</p>
-                        <p className="text-xs text-gray-500">{payment.studentMatricule}</p>
+                        <p className="font-medium text-sm">{payment.studentName || 'Non disponible'}</p>
+                        <p className="text-xs text-gray-500">
+                          {payment.studentMatricule || (payment.studentId ? `ID: ${payment.studentId}` : '-')}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell className="min-w-[120px]">
@@ -333,19 +352,23 @@ const PaymentsManagement: React.FC = () => {
                     <TableCell className="text-sm whitespace-nowrap">{new Date(payment.createdAt).toLocaleDateString('fr-FR')}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleViewDetails(payment)}
+                          title="Voir les détails"
+                        >
                           <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <Edit className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0"
-                          onClick={() => handleDeletePayment(payment.id)}
+                          onClick={() => handleEditPayment(payment)}
+                          title="Modifier"
                         >
-                          <Trash2 className="w-4 h-4 text-red-600" />
+                          <Edit className="w-4 h-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -357,6 +380,183 @@ const PaymentsManagement: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog: Voir les détails */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Détails du paiement</DialogTitle>
+          </DialogHeader>
+          {selectedPayment && (
+            <div className="space-y-4">
+              {/* Informations principales */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Référence</p>
+                  <p className="font-mono text-sm">{selectedPayment.reference}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Statut</p>
+                  <div>{getStatusBadge(selectedPayment.status)}</div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Étudiant</p>
+                  <p className="text-sm">{selectedPayment.studentName || 'Non disponible'}</p>
+                  {selectedPayment.studentMatricule ? (
+                    <p className="text-xs text-gray-500">{selectedPayment.studentMatricule}</p>
+                  ) : selectedPayment.studentId ? (
+                    <p className="text-xs text-gray-500">ID: {selectedPayment.studentId}</p>
+                  ) : null}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Type de transaction</p>
+                  <div className="flex items-center gap-2">
+                    {getTypeIcon(selectedPayment.transactionType)}
+                    <span className="text-sm">{getTypeLabel(selectedPayment.transactionType)}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Montant</p>
+                  <p className="text-lg font-bold">{selectedPayment.amount.toLocaleString()} HTG</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Année académique</p>
+                  <p className="text-sm">{selectedPayment.academicYear}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Date de création</p>
+                  <p className="text-sm">{new Date(selectedPayment.createdAt).toLocaleString('fr-FR')}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Date de mise à jour</p>
+                  <p className="text-sm">{new Date(selectedPayment.updatedAt).toLocaleString('fr-FR')}</p>
+                </div>
+              </div>
+
+              {/* Informations spécifiques selon le type */}
+              {selectedPayment.transactionType === 'CHECK' && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-2">Informations du chèque</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedPayment.checkNumber && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Numéro de chèque</p>
+                        <p className="text-sm">{selectedPayment.checkNumber}</p>
+                      </div>
+                    )}
+                    {selectedPayment.employeeId && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">ID Employé</p>
+                        <p className="text-sm">{selectedPayment.employeeId}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedPayment.transactionType === 'BANK_DEPOSIT' && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-2">Informations du dépôt bancaire</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedPayment.bankReceiptNumber && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Numéro de reçu</p>
+                        <p className="text-sm">{selectedPayment.bankReceiptNumber}</p>
+                      </div>
+                    )}
+                    {selectedPayment.bankReceiptUrl && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Reçu bancaire</p>
+                        <a href={selectedPayment.bankReceiptUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                          Voir le document
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedPayment.description && (
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-gray-500">Description</p>
+                  <p className="text-sm">{selectedPayment.description}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
+                  Fermer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Modifier le paiement */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Modifier le paiement</DialogTitle>
+          </DialogHeader>
+          {selectedPayment && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Référence:</strong> {selectedPayment.reference}
+                </p>
+                <p className="text-sm text-blue-800">
+                  <strong>Étudiant:</strong> {selectedPayment.studentName || 'Non disponible'} {selectedPayment.studentMatricule && `(${selectedPayment.studentMatricule})`}
+                </p>
+                {selectedPayment.studentId && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    ID: {selectedPayment.studentId}
+                  </p>
+                )}
+              </div>
+
+              {/* Formulaire de modification */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Statut *</label>
+                  <Select value={editStatus} onValueChange={(value) => setEditStatus(value as PaymentStatus)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PENDING">En attente</SelectItem>
+                      <SelectItem value="COMPLETED">Terminé</SelectItem>
+                      <SelectItem value="FAILED">Échoué</SelectItem>
+                      <SelectItem value="REFUNDED">Remboursé</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Statuts acceptés : En attente, Terminé, Échoué, Remboursé
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Description (optionnel)</label>
+                  <Input
+                    placeholder="Ajouter une description..."
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={handleSavePayment} disabled={loading}>
+                  {loading ? 'Enregistrement...' : 'Enregistrer'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

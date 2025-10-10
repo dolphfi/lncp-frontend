@@ -21,7 +21,8 @@ import { SearchableSelect, type Option } from '../ui/searchable-select';
 import { manualPaymentSchema, type ManualPaymentFormData } from '../../schemas/paymentSchema';
 import { usePaymentStore } from '../../stores/paymentStore';
 import { useStudentStore } from '../../stores/studentStore';
-import { DollarSign, CreditCard, Users } from 'lucide-react';
+import { useEmployeeStore } from '../../stores/employeeStore';
+import { DollarSign, CreditCard, Users, Briefcase } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 interface ManualPaymentFormProps {
@@ -41,11 +42,19 @@ const ManualPaymentForm: React.FC<ManualPaymentFormProps> = ({
   const fetchStudents = useStudentStore((state) => state.fetchStudents);
   const studentsLoading = useStudentStore((state) => state.loading);
 
+  // Charger les employés
+  const allEmployees = useEmployeeStore((state) => state.allEmployees);
+  const fetchEmployees = useEmployeeStore((state) => state.fetchEmployees);
+  const employeesLoading = useEmployeeStore((state) => state.loading);
+
   useEffect(() => {
     if (allStudents.length === 0) {
       fetchStudents();
     }
-  }, [allStudents.length, fetchStudents]);
+    if (allEmployees.length === 0) {
+      fetchEmployees();
+    }
+  }, [allStudents.length, fetchStudents, allEmployees.length, fetchEmployees]);
 
   // Transformer les étudiants en options pour le SearchableSelect
   const studentOptions: Option[] = useMemo(() => {
@@ -55,6 +64,15 @@ const ManualPaymentForm: React.FC<ManualPaymentFormProps> = ({
       description: `${student.studentId} • ${student.grade || 'N/A'}`,
     }));
   }, [allStudents]);
+
+  // Transformer les employés en options pour le SearchableSelect
+  const employeeOptions: Option[] = useMemo(() => {
+    return allEmployees.map((employee) => ({
+      value: employee.id,
+      label: `${employee.firstName} ${employee.lastName}`,
+      description: `${employee.employeeId} • ${employee.type}`,
+    }));
+  }, [allEmployees]);
 
   const {
     register,
@@ -72,6 +90,7 @@ const ManualPaymentForm: React.FC<ManualPaymentFormProps> = ({
 
   const transactionType = watch('transactionType');
   const selectedMatricule = watch('studentMatricule');
+  const selectedEmployeeId = watch('employeeId');
 
   const onSubmit = async (data: ManualPaymentFormData) => {
     try {
@@ -99,18 +118,8 @@ const ManualPaymentForm: React.FC<ManualPaymentFormProps> = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="CASH">
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
-                Espèces
-              </div>
-            </SelectItem>
-            <SelectItem value="CHECK">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4" />
-                Chèque
-              </div>
-            </SelectItem>
+            <SelectItem value="CASH">💵 Espèces</SelectItem>
+            <SelectItem value="CHECK">📝 Chèque</SelectItem>
           </SelectContent>
         </Select>
         {errors.transactionType && (
@@ -178,12 +187,33 @@ const ManualPaymentForm: React.FC<ManualPaymentFormProps> = ({
         <>
           <div className="space-y-2">
             <Label htmlFor="employeeId">
-              ID de l'employé <span className="text-red-500">*</span>
+              Employé <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="employeeId"
-              {...register('employeeId')}
-              placeholder="c4d02240-cf37-4d6f-aaac-1e2561c20412"
+            <SearchableSelect
+              options={employeeOptions}
+              value={selectedEmployeeId}
+              onValueChange={(value) => setValue('employeeId', value as string)}
+              placeholder="Rechercher un employé..."
+              searchPlaceholder="Rechercher par nom, prénom, ID..."
+              emptyText="Aucun employé trouvé"
+              loading={employeesLoading}
+              clearable
+              renderOption={(option) => (
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-gray-400" />
+                    <span className="font-medium">{option.label}</span>
+                  </div>
+                  <span className="text-xs text-gray-500 ml-6">{option.description}</span>
+                </div>
+              )}
+              renderValue={(option) => (
+                <div className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-gray-400" />
+                  <span>{option.label}</span>
+                  <span className="text-xs text-gray-500">({option.description?.split(' • ')[0]})</span>
+                </div>
+              )}
             />
             {errors.employeeId && (
               <p className="text-sm text-red-500">{errors.employeeId.message}</p>

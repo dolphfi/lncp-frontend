@@ -6,8 +6,8 @@
 // Types de transaction
 export type TransactionType = 'CASH' | 'CHECK' | 'BANK_DEPOSIT' | 'STRIPE' | 'PAYPAL' | 'BOUSANM';
 
-// Statuts de paiement
-export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
+// Statuts de paiement (selon l'API backend)
+export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 
 // Fournisseurs de paiement en ligne
 export type OnlinePaymentProvider = 'STRIPE' | 'PAYPAL' | 'BOUSANM';
