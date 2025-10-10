@@ -30,7 +30,8 @@ import {
     Lock,
     Key,
     CheckCircle,
-    X
+    X,
+    Archive
 } from 'lucide-react';
 
 import {Button} from '../../ui/button';
@@ -66,7 +67,10 @@ import {Switch} from '../../ui/switch';
 import {Textarea} from '../../ui/textarea';
 import {useClassroomStore} from '../../../stores/classroomStore';
 import {useAcademicYearStore} from '../../../stores/academicYearStore';
+import {useSettingStore} from '../../../stores/settingStore';
 import {toast} from 'react-toastify';
+import type { SettingKey, SettingsGroup } from '../../../types/setting';
+import ArchivesTab from './ArchivesTab';
 
 // Types pour les données d'administration
 interface SystemUser {
@@ -343,28 +347,35 @@ const AdminPanel: React.FC = () => { // États locaux
         }
     };
 
-    return (<div className="container mx-auto px-4 py-6"> {/* En-tête */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    return (<div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6"> {/* En-tête */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                     Panel d'Administration
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                     Gestion complète du système et des utilisateurs
                 </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Button variant="outline"
-                    onClick={loadAdminData}>
-                    <RefreshCw className="h-4 w-4 mr-2"/>
-                    Actualiser
+                    onClick={loadAdminData}
+                    className="flex-1 sm:flex-none text-xs sm:text-sm">
+                    <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
+                    <span className="hidden sm:inline">Actualiser</span>
+                    <span className="sm:hidden">Refresh</span>
                 </Button>
                 <Button onClick={
-                    () => setShowConfigDialog(true)
-                }>
-                    <Settings className="h-4 w-4 mr-2"/>
-                    Configuration
+                    () => {
+                        setActiveTab('settings');
+                        // Le dialog sera ouvert par le composant SettingsTab via un état partagé
+                    }
+                }
+                    className="flex-1 sm:flex-none text-xs sm:text-sm">
+                    <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
+                    <span className="hidden sm:inline">Configuration</span>
+                    <span className="sm:hidden">Config</span>
                 </Button>
             </div>
         </div>
@@ -372,20 +383,43 @@ const AdminPanel: React.FC = () => { // États locaux
         {/* Onglets principaux */}
         <Tabs value={activeTab}
             onValueChange={setActiveTab}
-            className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-                <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-                <TabsTrigger value="academic-years">Années Académiques</TabsTrigger>
-                <TabsTrigger value="classes">Classes</TabsTrigger>
-                <TabsTrigger value="logs">Logs système</TabsTrigger>
-                <TabsTrigger value="backup">Sauvegardes</TabsTrigger>
-                <TabsTrigger value="security">Sécurité</TabsTrigger>
+            className="space-y-4 sm:space-y-6">
+            {/* Menu mobile - Select dropdown */}
+            <div className="lg:hidden">
+                <Select value={activeTab} onValueChange={setActiveTab}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="overview">📋 Vue d'ensemble</SelectItem>
+                        <SelectItem value="users">👥 Utilisateurs</SelectItem>
+                        <SelectItem value="academic-years">📅 Années Académiques</SelectItem>
+                        <SelectItem value="classes">🏫 Classes</SelectItem>
+                        <SelectItem value="archives">📦 Archives</SelectItem>
+                        <SelectItem value="settings">⚙️ Paramètres</SelectItem>
+                        <SelectItem value="logs">📝 Logs système</SelectItem>
+                        <SelectItem value="backup">💾 Sauvegardes</SelectItem>
+                        <SelectItem value="security">🔒 Sécurité</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            
+            {/* Menu desktop - Tabs */}
+            <TabsList className="hidden lg:grid w-full grid-cols-9 h-auto">
+                <TabsTrigger value="overview" className="text-xs xl:text-sm py-2">Vue d'ensemble</TabsTrigger>
+                <TabsTrigger value="users" className="text-xs xl:text-sm py-2">Utilisateurs</TabsTrigger>
+                <TabsTrigger value="academic-years" className="text-xs xl:text-sm py-2">Années Acad.</TabsTrigger>
+                <TabsTrigger value="classes" className="text-xs xl:text-sm py-2">Classes</TabsTrigger>
+                <TabsTrigger value="archives" className="text-xs xl:text-sm py-2">Archives</TabsTrigger>
+                <TabsTrigger value="settings" className="text-xs xl:text-sm py-2">Paramètres</TabsTrigger>
+                <TabsTrigger value="logs" className="text-xs xl:text-sm py-2">Logs</TabsTrigger>
+                <TabsTrigger value="backup" className="text-xs xl:text-sm py-2">Sauvegardes</TabsTrigger>
+                <TabsTrigger value="security" className="text-xs xl:text-sm py-2">Sécurité</TabsTrigger>
             </TabsList>
 
             {/* Vue d'ensemble */}
-            <TabsContent value="overview" className="space-y-6"> {/* Statistiques système */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <TabsContent value="overview" className="space-y-4 sm:space-y-6"> {/* Statistiques système */}
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Utilisateurs Actifs</CardTitle>
@@ -455,7 +489,7 @@ const AdminPanel: React.FC = () => { // États locaux
                 </div>
 
                 {/* Configuration rapide */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"> {/* Building icon removed as per edit hint */}
@@ -527,19 +561,20 @@ const AdminPanel: React.FC = () => { // États locaux
             </TabsContent>
 
             {/* Gestion des utilisateurs */}
-            <TabsContent value="users" className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Gestion des Utilisateurs</h2>
+            <TabsContent value="users" className="space-y-4 sm:space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h2 className="text-lg sm:text-xl font-semibold">Gestion des Utilisateurs</h2>
                     <Button onClick={
                         () => setShowUserDialog(true)
-                    }>
+                    }
+                        className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2"/>
                         Nouvel Utilisateur
                     </Button>
                 </div>
 
                 <Card>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -598,14 +633,23 @@ const AdminPanel: React.FC = () => { // États locaux
                 <AcademicYearTab />
             </TabsContent>
 
+            {/* Gestion des archives */}
+            <TabsContent value="archives" className="space-y-4 sm:space-y-6">
+                <ArchivesTab />
+            </TabsContent>
+
+            {/* Gestion des paramètres */}
+            <TabsContent value="settings" className="space-y-6">
+                <SettingsTab />
+            </TabsContent>
 
             {/* Logs système */}
-            <TabsContent value="logs" className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Logs Système</h2>
-                    <div className="flex gap-2">
+            <TabsContent value="logs" className="space-y-4 sm:space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h2 className="text-lg sm:text-xl font-semibold">Logs Système</h2>
+                    <div className="flex gap-2 w-full sm:w-auto">
                         <Select>
-                            <SelectTrigger className="w-32">
+                            <SelectTrigger className="w-32 text-xs sm:text-sm">
                                 <SelectValue placeholder="Niveau"/>
                             </SelectTrigger>
                             <SelectContent>
@@ -616,15 +660,16 @@ const AdminPanel: React.FC = () => { // États locaux
                                 <SelectItem value="critical">Critique</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button variant="outline">
-                            <Download className="h-4 w-4 mr-2"/>
-                            Exporter
+                        <Button variant="outline" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                            <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
+                            <span className="hidden sm:inline">Exporter</span>
+                            <span className="sm:hidden">Export</span>
                         </Button>
                     </div>
                 </div>
 
                 <Card>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -662,25 +707,27 @@ const AdminPanel: React.FC = () => { // États locaux
             </TabsContent>
 
             {/* Sauvegardes */}
-            <TabsContent value="backup" className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Gestion des Sauvegardes</h2>
-                    <div className="flex gap-2">
+            <TabsContent value="backup" className="space-y-4 sm:space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h2 className="text-lg sm:text-xl font-semibold">Gestion des Sauvegardes</h2>
+                    <div className="flex gap-2 w-full sm:w-auto">
                         <Button onClick={
                             () => setShowBackupDialog(true)
-                        }>
-                            <Database className="h-4 w-4 mr-2"/>
-                            Nouvelle Sauvegarde
+                        }
+                            className="flex-1 sm:flex-none text-xs sm:text-sm">
+                            <Database className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
+                            <span className="hidden sm:inline">Nouvelle Sauvegarde</span>
+                            <span className="sm:hidden">Nouvelle</span>
                         </Button>
-                        <Button variant="outline">
-                            <Upload className="h-4 w-4 mr-2"/>
+                        <Button variant="outline" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                            <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
                             Restaurer
                         </Button>
                     </div>
                 </div>
 
                 <Card>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -736,8 +783,8 @@ const AdminPanel: React.FC = () => { // États locaux
             </TabsContent>
 
             {/* Sécurité */}
-            <TabsContent value="security" className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
+            <TabsContent value="security" className="space-y-4 sm:space-y-6">
+                <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -2206,6 +2253,509 @@ const ClassroomsTab: React.FC = () => {
             </DialogContent>
         </Dialog>
     </div>);
+};
+
+// ---- Tab component: Settings ----
+const SettingsTab: React.FC = () => {
+    const {
+        allSettings,
+        settings,
+        loading,
+        error,
+        stats,
+        fetchSettings,
+        createSetting,
+        updateSettingById,
+        deleteSetting,
+        uploadLogo,
+        uploadHeader,
+        setFilters,
+        clearFilters,
+    } = useSettingStore();
+
+    const [showAddDialog, setShowAddDialog] = useState(false);
+    const [showEditDialog, setShowEditDialog] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [selectedSetting, setSelectedSetting] = useState<any>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedGroup, setSelectedGroup] = useState<string>('');
+    const [selectedKey, setSelectedKey] = useState<string>('');
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+    // Form states
+    const [formData, setFormData] = useState({
+        key: '',
+        value: '',
+        label: '',
+        description: '',
+        group: 'GENERAL' as any,
+    });
+
+    const [editFormData, setEditFormData] = useState({
+        value: '',
+        label: '',
+        description: '',
+        group: 'GENERAL' as any,
+    });
+
+
+    // Charger les données au montage
+    useEffect(() => {
+        fetchSettings();
+    }, [fetchSettings]);
+
+    // Appliquer les filtres
+    useEffect(() => {
+        setFilters({
+            search: searchQuery,
+            group: selectedGroup as any,
+        });
+    }, [searchQuery, selectedGroup, setFilters]);
+
+    // Gérer la sélection d'une clé prédéfinie
+    const handleKeyChange = (key: string) => {
+        // Réinitialiser le fichier uploadé
+        setUploadFile(null);
+        
+        if (key === '_CUSTOM_') {
+            // Mode personnalisé : réinitialiser le formulaire
+            setSelectedKey('');
+            setFormData({ key: '', value: '', label: '', description: '', group: 'GENERAL' });
+        } else {
+            // Clé prédéfinie : remplir automatiquement
+            setSelectedKey(key);
+            const { SETTING_KEY_LABELS, SETTING_KEY_DESCRIPTIONS, SETTING_KEY_GROUPS } = require('../../../types/setting');
+            setFormData({
+                key,
+                value: '',
+                label: SETTING_KEY_LABELS[key] || '',
+                description: SETTING_KEY_DESCRIPTIONS[key] || '',
+                group: SETTING_KEY_GROUPS[key] || 'GENERAL',
+            });
+        }
+    };
+
+    // Créer un paramètre
+    const handleCreateSetting = async () => {
+        try {
+            // Vérifier si c'est un upload de fichier
+            if (formData.key === 'SCHOOL_LOGO_URL' && uploadFile) {
+                await uploadLogo(uploadFile, formData.label, formData.description);
+            } else if (formData.key === 'SCHOOL_ENTETE_URL' && uploadFile) {
+                await uploadHeader(uploadFile, formData.label, formData.description);
+            } else {
+                // Paramètre normal
+                await createSetting(formData);
+            }
+            
+            setShowAddDialog(false);
+            setFormData({ key: '', value: '', label: '', description: '', group: 'GENERAL' });
+            setSelectedKey('');
+            setUploadFile(null);
+            toast.success('Paramètre créé avec succès');
+        } catch (error: any) {
+            toast.error(error.message || 'Erreur lors de la création');
+        }
+    };
+
+    // Modifier un paramètre
+    const handleEditSetting = async () => {
+        if (!selectedSetting) return;
+        try {
+            await updateSettingById(selectedSetting.id, editFormData);
+            setShowEditDialog(false);
+            setSelectedSetting(null);
+            toast.success('Paramètre mis à jour avec succès');
+        } catch (error: any) {
+            toast.error(error.message || 'Erreur lors de la mise à jour');
+        }
+    };
+
+    // Supprimer un paramètre
+    const handleDeleteSetting = async () => {
+        if (!selectedSetting) return;
+        try {
+            await deleteSetting(selectedSetting.id);
+            setShowDeleteDialog(false);
+            setSelectedSetting(null);
+            toast.success('Paramètre supprimé avec succès');
+        } catch (error: any) {
+            toast.error(error.message || 'Erreur lors de la suppression');
+        }
+    };
+
+
+    const getGroupBadge = (group: string) => {
+        switch (group) {
+            case 'GENERAL':
+                return <Badge className="bg-blue-100 text-blue-800">Général</Badge>;
+            case 'FINANCIER':
+                return <Badge className="bg-green-100 text-green-800">Financier</Badge>;
+            case 'COMMUNICATION':
+                return <Badge className="bg-purple-100 text-purple-800">Communication</Badge>;
+            case 'ACADEMIQUE':
+                return <Badge className="bg-orange-100 text-orange-800">Académique</Badge>;
+            default:
+                return <Badge variant="outline">{group}</Badge>;
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* En-tête */}
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-xl font-semibold">Gestion des Paramètres</h2>
+                    <p className="text-sm text-gray-500">
+                        Configuration système de l'institution • {stats.total} paramètre(s)
+                    </p>
+                </div>
+                <Button onClick={() => setShowAddDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouveau Paramètre
+                </Button>
+            </div>
+
+            {/* Statistiques */}
+            <div className="grid gap-4 md:grid-cols-4">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Total</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.total}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Général</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.byGroup.GENERAL}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Financier</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.byGroup.FINANCIER}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Académique</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.byGroup.ACADEMIQUE}</div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Filtres */}
+            <div className="flex gap-4">
+                <div className="flex-1">
+                    <Input
+                        placeholder="Rechercher par clé, libellé..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="max-w-sm"
+                    />
+                </div>
+                <Select value={selectedGroup || '_ALL_'} onValueChange={(value) => setSelectedGroup(value === '_ALL_' ? '' : value)}>
+                    <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Tous les groupes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="_ALL_">📋 Tous les groupes</SelectItem>
+                        <SelectItem value="GENERAL">🏫 Général</SelectItem>
+                        <SelectItem value="FINANCIER">💰 Financier</SelectItem>
+                        <SelectItem value="COMMUNICATION">📧 Communication</SelectItem>
+                        <SelectItem value="ACADEMIQUE">📚 Académique</SelectItem>
+                    </SelectContent>
+                </Select>
+                {(searchQuery || selectedGroup) && (
+                    <Button variant="outline" onClick={() => {
+                        setSearchQuery('');
+                        setSelectedGroup('');
+                        clearFilters();
+                    }}>
+                        Réinitialiser
+                    </Button>
+                )}
+            </div>
+
+            {/* Tableau */}
+            <Card>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Clé</TableHead>
+                                <TableHead>Libellé</TableHead>
+                                <TableHead>Valeur</TableHead>
+                                <TableHead>Groupe</TableHead>
+                                <TableHead>Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-8">
+                                        Chargement...
+                                    </TableCell>
+                                </TableRow>
+                            ) : settings.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                                        Aucun paramètre trouvé
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                settings.map((setting) => (
+                                    <TableRow key={setting.id}>
+                                        <TableCell className="font-mono text-sm">{setting.key}</TableCell>
+                                        <TableCell>{setting.label}</TableCell>
+                                        <TableCell className="max-w-xs truncate">{setting.value}</TableCell>
+                                        <TableCell>{getGroupBadge(setting.group)}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSelectedSetting(setting);
+                                                        setEditFormData({
+                                                            value: setting.value,
+                                                            label: setting.label,
+                                                            description: setting.description || '',
+                                                            group: setting.group,
+                                                        });
+                                                        setShowEditDialog(true);
+                                                    }}
+                                                >
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSelectedSetting(setting);
+                                                        setShowDeleteDialog(true);
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            {/* Dialog: Ajouter un paramètre */}
+            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Nouveau Paramètre</DialogTitle>
+                        <DialogDescription>
+                            Sélectionnez une clé prédéfinie ou créez une clé personnalisée
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div>
+                            <Label>Clé prédéfinie</Label>
+                            <Select value={selectedKey || '_CUSTOM_'} onValueChange={handleKeyChange}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner une clé..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="_CUSTOM_">✏️ Clé personnalisée</SelectItem>
+                                    <SelectItem value="SCHOOL_NAME">🏫 Nom de l'école</SelectItem>
+                                    <SelectItem value="SCHOOL_ACRONYM">🔤 Acronyme</SelectItem>
+                                    <SelectItem value="SCHOOL_ADDRESS">📍 Adresse</SelectItem>
+                                    <SelectItem value="SCHOOL_PHONE">📞 Téléphone</SelectItem>
+                                    <SelectItem value="SCHOOL_EMAIL">✉️ Email</SelectItem>
+                                    <SelectItem value="SCHOOL_LOGO_URL">🖼️ Logo URL</SelectItem>
+                                    <SelectItem value="SCHOOL_ENTETE_URL">📄 En-tête URL</SelectItem>
+                                    <SelectItem value="CURRENT_ACADEMIC_YEAR">📅 Année académique</SelectItem>
+                                    <SelectItem value="MOYENNE_PASSAGE">📊 Moyenne de passage</SelectItem>
+                                    <SelectItem value="MOYENNE_REPECHAGE">📈 Moyenne repêchage</SelectItem>
+                                    <SelectItem value="INSTITUTION_FEE">💰 Frais d'inscription</SelectItem>
+                                    <SelectItem value="PAYPAL_HTG_TO_USD_RATE">💱 Taux HTG/USD</SelectItem>
+                                    <SelectItem value="DEFAULT_EMAIL_SENDER">📧 Email expéditeur</SelectItem>
+                                    <SelectItem value="SMS_GATEWAY_API_KEY">📱 Clé API SMS</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label>Clé *</Label>
+                            <Input
+                                placeholder="SCHOOL_NAME"
+                                value={formData.key}
+                                onChange={(e) => setFormData({ ...formData, key: e.target.value.toUpperCase() })}
+                                disabled={!!selectedKey}
+                            />
+                        </div>
+                        <div>
+                            <Label>Libellé *</Label>
+                            <Input
+                                placeholder="Nom de l'école"
+                                value={formData.label}
+                                onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <Label>Valeur *</Label>
+                            {(formData.key === 'SCHOOL_LOGO_URL' || formData.key === 'SCHOOL_ENTETE_URL') ? (
+                                <div className="space-y-2">
+                                    <Input
+                                        type="file"
+                                        accept="image/jpeg,image/jpg,image/png,image/gif"
+                                        onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                                    />
+                                    <p className="text-xs text-gray-500">
+                                        Formats acceptés : JPG, PNG, GIF • Taille max : 5MB
+                                    </p>
+                                    {uploadFile && (
+                                        <p className="text-xs text-green-600">
+                                            ✓ Fichier sélectionné : {uploadFile.name}
+                                        </p>
+                                    )}
+                                </div>
+                            ) : (
+                                <Input
+                                    placeholder="Lycée National..."
+                                    value={formData.value}
+                                    onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                                />
+                            )}
+                        </div>
+                        <div>
+                            <Label>Description</Label>
+                            <Textarea
+                                placeholder="Description du paramètre"
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <Label>Groupe *</Label>
+                            <Select
+                                value={formData.group}
+                                onValueChange={(value) => setFormData({ ...formData, group: value as any })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="GENERAL">Général</SelectItem>
+                                    <SelectItem value="FINANCIER">Financier</SelectItem>
+                                    <SelectItem value="COMMUNICATION">Communication</SelectItem>
+                                    <SelectItem value="ACADEMIQUE">Académique</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => {
+                                setShowAddDialog(false);
+                                setUploadFile(null);
+                            }}>
+                                Annuler
+                            </Button>
+                            <Button 
+                                onClick={handleCreateSetting}
+                                disabled={
+                                    !formData.key || 
+                                    !formData.label || 
+                                    ((formData.key === 'SCHOOL_LOGO_URL' || formData.key === 'SCHOOL_ENTETE_URL') ? !uploadFile : !formData.value)
+                                }
+                            >
+                                Créer
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialog: Modifier un paramètre */}
+            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Modifier le Paramètre</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div>
+                            <Label>Clé</Label>
+                            <Input value={selectedSetting?.key || ''} disabled />
+                        </div>
+                        <div>
+                            <Label>Libellé</Label>
+                            <Input
+                                value={editFormData.label}
+                                onChange={(e) => setEditFormData({ ...editFormData, label: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <Label>Valeur</Label>
+                            <Input
+                                value={editFormData.value}
+                                onChange={(e) => setEditFormData({ ...editFormData, value: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <Label>Description</Label>
+                            <Textarea
+                                value={editFormData.description}
+                                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <Label>Groupe</Label>
+                            <Select
+                                value={editFormData.group}
+                                onValueChange={(value) => setEditFormData({ ...editFormData, group: value as any })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="GENERAL">Général</SelectItem>
+                                    <SelectItem value="FINANCIER">Financier</SelectItem>
+                                    <SelectItem value="COMMUNICATION">Communication</SelectItem>
+                                    <SelectItem value="ACADEMIQUE">Académique</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Annuler</Button>
+                            <Button onClick={handleEditSetting}>Mettre à jour</Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialog: Supprimer */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Supprimer le Paramètre</DialogTitle>
+                        <DialogDescription>
+                            Voulez-vous vraiment supprimer le paramètre "{selectedSetting?.key}" ?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Annuler</Button>
+                        <Button variant="destructive" onClick={handleDeleteSetting}>Supprimer</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+        </div>
+    );
 };
 
 export default AdminPanel;
