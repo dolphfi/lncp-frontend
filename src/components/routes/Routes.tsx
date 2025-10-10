@@ -55,13 +55,14 @@ function AppRoutes() {
         <Route path="/my-profile"
             element={<PrivateRoute><Profile/></PrivateRoute>}/>
 
+        {/* Route profil étudiant sans sidebar (pour STUDENT et PARENT) */}
+        <Route path='/student-profile'
+            element={<PrivateRoute><StudentProfilePage/></PrivateRoute>}/>
+
       {/* Routes privées avec sidebar (pour ADMIN, TEACHER, etc.) */}
         <Route element={
             <PrivateRoute><DashboardLayout/></PrivateRoute>
         }>
-
-            <Route path='/student-profile'
-                element={<StudentProfilePage/>}/>
 
             <Route path="/dashboard"
                 element={<MainDashboard/>}/>

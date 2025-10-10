@@ -25,14 +25,17 @@ import {
   Download,
   Copy,
   QrCode,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 // IMPORTANT: Installer la dépendance si elle n'est pas déjà présente:
 // npm i react-easy-crop
 import Cropper from "react-easy-crop";
 
 const Profile: React.FC = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const isStudentOrParent = user?.role === 'STUDENT' || user?.role === 'PARENT';
   const [me, setMe] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -245,12 +248,22 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <section className="relative overflow-hidden min-h-screen bg-gray-50">
+    <section className="relative min-h-screen bg-gray-50">
       {/* Header pour STUDENT et PARENT */}
       {isStudentOrParent && <DashboardHeader />}
       
       <div className={`px-4 ${isStudentOrParent ? 'py-6 pb-24 md:pb-8' : 'py-6 md:py-8'}`}>
         <div className="max-w-5xl mx-auto">
+          {/* Bouton retour pour STUDENT et PARENT - Masqué en mobile */}
+          {isStudentOrParent && (
+            <button
+              onClick={() => navigate('/dashboard-overview')}
+              className="mb-4 hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-200 text-blue-900 hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm font-medium"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Retour au tableau de bord
+            </button>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {/* Carte profil */}
             <div className="md:col-span-1">

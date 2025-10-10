@@ -56,7 +56,7 @@ const Profile: React.FC = () => {
     confirm: false,
   });
   const [passwordSaving, setPasswordSaving] = useState(false);
-  
+
   // 2FA modal states
   const [show2FAModal, setShow2FAModal] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -71,7 +71,7 @@ const Profile: React.FC = () => {
     "WXYZ-9012-ABCD-3456",
     "EFGH-7890-IJKL-1234",
   ]);
-  
+
   // Avatar + Crop states
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [cropping, setCropping] = useState(false);
@@ -153,7 +153,11 @@ const Profile: React.FC = () => {
   const handle2FAToggle = (enabled: boolean) => {
     if (enabled) {
       // Générer un QR code (simulé ici avec une URL placeholder)
-      setQrCodeUrl("https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/LNCP:" + (me?.email || user?.email) + "?secret=JBSWY3DPEHPK3PXP&issuer=LNCP");
+      setQrCodeUrl(
+        "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/LNCP:" +
+          (me?.email || user?.email) +
+          "?secret=JBSWY3DPEHPK3PXP&issuer=LNCP"
+      );
       setShow2FAModal(true);
     } else {
       setTwoFactorEnabled(false);
@@ -322,7 +326,7 @@ const Profile: React.FC = () => {
                   </div>
 
                   {/* Contact Info */}
-             
+
                   {/* Statistiques utilisateur */}
                   <div className="mt-6 space-y-3">
                     <h4 className="text-xs font-semibold text-blue-900/80 flex items-center gap-1">
@@ -411,7 +415,7 @@ const Profile: React.FC = () => {
                   <h3 className="text-xs font-medium text-blue-900 mb-4 flex items-center">
                     <Shield className="w-3 h-3 mr-2" /> Paramètres
                   </h3>
-                  
+
                   <div className="space-y-3">
                     {/* Notifications */}
                     <div className="flex items-center justify-between p-3 rounded-xl bg-white/50 border border-gray-200/80 hover:bg-white/70 transition-all duration-200">
@@ -424,7 +428,11 @@ const Profile: React.FC = () => {
                         </span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" defaultChecked />
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          defaultChecked
+                        />
                         <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
@@ -440,9 +448,9 @@ const Profile: React.FC = () => {
                         </span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          className="sr-only peer" 
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
                           checked={twoFactorEnabled}
                           onChange={(e) => handle2FAToggle(e.target.checked)}
                         />
@@ -461,7 +469,11 @@ const Profile: React.FC = () => {
                         </span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" defaultChecked />
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          defaultChecked
+                        />
                         <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
@@ -481,8 +493,18 @@ const Profile: React.FC = () => {
                         </span>
                       </div>
                       <div className="text-gray-400">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
                         </svg>
                       </div>
                     </button>
@@ -931,11 +953,7 @@ const Profile: React.FC = () => {
               {/* QR Code Section */}
               <div className="text-center">
                 <div className="inline-block p-2 bg-white border border-gray-200 rounded-lg">
-                  <img
-                    src={qrCodeUrl}
-                    alt="QR Code"
-                    className="w-32 h-32"
-                  />
+                  <img src={qrCodeUrl} alt="QR Code" className="w-32 h-32" />
                 </div>
                 <p className="text-[10px] text-gray-500 mt-2">
                   Scannez avec votre app d'authentification
