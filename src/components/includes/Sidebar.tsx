@@ -1,11 +1,9 @@
 import * as React from "react"
 import {
-  BarChart,
   BookOpen,
   Calendar,
   EllipsisVertical,
   Fence,
-  FileText,
   Gauge,
   GraduationCap,
   LayoutDashboard,
@@ -197,6 +195,7 @@ const AppSidebar = () => {
     authService.getMe().then((me) => {
       if (cancelled) return
       const name = [me.firstName, me.lastName].filter(Boolean).join(" ") || me.email
+      setDisplayName(name)
       setDisplayRole(me.role)
       if (me.avatarUrl) setDisplayAvatar(me.avatarUrl)
     }).catch((error) => console.error('Error fetching user profile:', error))
@@ -207,10 +206,6 @@ const AppSidebar = () => {
   React.useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail || {};
-      if (detail.firstName || detail.lastName) {
-        const name = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || displayName
-        setDisplayName(name)
-      }
       const name = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || displayName
       setDisplayName(name)
       if (detail.role) setDisplayRole(detail.role)
@@ -291,7 +286,7 @@ const AppSidebar = () => {
             subItems: [
               { to: "/students", label: "Liste" },
               { to: "/badges", label: "Badges" },
-              { to: "/presence", label: "Présence" },
+              { to: "/attendances", label: "Présence" },
               { to: "/re_registration", label: "Réinscription" },
             ],
           },

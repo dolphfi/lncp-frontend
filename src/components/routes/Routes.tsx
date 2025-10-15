@@ -28,6 +28,9 @@ import MySchedule from '../pages/schedules/MySchedule';
 import ParentStudentDashboard from '../pages/dashboard/ParentStudentDashboard';
 import PaymentsManagement from '../pages/payments/PaymentsManagement';
 import StudentBalanceView from '../pages/payments/StudentBalanceView';
+import { RegistrationsManagement } from 'components/pages/dashboard/RegistrationsManagement';
+import { AttendancesManagement } from 'components/pages/dashboard/AttendancesManagement';
+import { BadgesManagement } from 'components/pages/dashboard/BadgesManagement';
 
 
 function AppRoutes() {
@@ -84,7 +87,12 @@ function AppRoutes() {
             <Route path="/profile" element={<Profile/>} />
             <Route path="/admin_panel"
                 element={<RoleRoute requiredFeature="admin"><AdminPanel/></RoleRoute>}/>
-            
+            <Route path="/registrations"
+                element={<RoleRoute requiredFeature="admin"><RegistrationsManagement/></RoleRoute>}/>
+            <Route path="/attendances"
+                element={<RoleRoute requiredFeature="admin"><AttendancesManagement/></RoleRoute>}/>
+            <Route path="/badges"
+                element={<RoleRoute requiredFeature="admin"><BadgesManagement/></RoleRoute>}/>
             {/* Routes de gestion des paiements */}
             <Route path="/payments"
                 element={<RoleRoute requiredFeature="payments"><PaymentsManagement/></RoleRoute>}/>
