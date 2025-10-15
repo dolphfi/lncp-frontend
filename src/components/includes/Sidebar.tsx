@@ -259,9 +259,9 @@ const AppSidebar = () => {
         groups.push({
           title: "Mon Espace",
           items: [
-            { 
-              to: "/student-profile", 
-              label: "Mes Élèves", 
+            {
+              to: "/student-profile",
+              label: "Mes Élèves",
               icon: GraduationCap,
               subItems: childrenSubItems.length > 0 ? childrenSubItems : undefined,
             },
@@ -290,18 +290,18 @@ const AppSidebar = () => {
             icon: GraduationCap,
             subItems: [
               { to: "/students", label: "Liste" },
-              { to: "/archives", label: "Archives" },
               { to: "/badges", label: "Badges" },
+              { to: "/presence", label: "Présence" },
+              { to: "/re_registration", label: "Réinscription" },
             ],
           },
           {
             to: "/registrations",
-            label: "Inscription",
+            label: "Admission",
             icon: UserPlus,
             subItems: [
               { to: "/registrations", label: "Liste" },
               { to: "/concours", label: "Concours" },
-              { to: "/re_registration", label: "Réinscription" },
             ],
           },
         ],
@@ -321,7 +321,6 @@ const AppSidebar = () => {
             subItems: [
               { to: "/courses", label: "Liste des cours" },
               { to: "/schedules", label: "Gestion Horaires" },
-              { to: "/enrollments", label: "Inscriptions" },
             ],
           }] : []),
           // Mon Horaire - accessible aux enseignants et suppléants avec academic.read
@@ -452,7 +451,7 @@ const AppSidebar = () => {
                 {displayAvatar ? (
                   <AvatarImage src={displayAvatar} />
                 ) : null}
-                <AvatarFallback>{(displayName || "U").slice(0,2).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{(displayName || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               {state === "expanded" && (
                 <div className="flex flex-col min-w-0 flex-1">
