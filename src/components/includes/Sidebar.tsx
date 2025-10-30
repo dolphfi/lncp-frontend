@@ -1,11 +1,9 @@
 import * as React from "react"
 import {
-  BarChart,
   BookOpen,
   Calendar,
   EllipsisVertical,
   Fence,
-  FileText,
   Gauge,
   GraduationCap,
   LayoutDashboard,
@@ -197,6 +195,7 @@ const AppSidebar = () => {
     authService.getMe().then((me) => {
       if (cancelled) return
       const name = [me.firstName, me.lastName].filter(Boolean).join(" ") || me.email
+      setDisplayName(name)
       setDisplayRole(me.role)
       if (me.avatarUrl) setDisplayAvatar(me.avatarUrl)
     }).catch((error) => console.error('Error fetching user profile:', error))
@@ -207,10 +206,6 @@ const AppSidebar = () => {
   React.useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail || {};
-      if (detail.firstName || detail.lastName) {
-        const name = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || displayName
-        setDisplayName(name)
-      }
       const name = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || displayName
       setDisplayName(name)
       if (detail.role) setDisplayRole(detail.role)
@@ -259,9 +254,9 @@ const AppSidebar = () => {
         groups.push({
           title: "Mon Espace",
           items: [
-            { 
-              to: "/student-profile", 
-              label: "Mes Élèves", 
+            {
+              to: "/student-profile",
+              label: "Mes Élèves",
               icon: GraduationCap,
               subItems: childrenSubItems.length > 0 ? childrenSubItems : undefined,
             },
@@ -290,18 +285,18 @@ const AppSidebar = () => {
             icon: GraduationCap,
             subItems: [
               { to: "/students", label: "Liste" },
-              { to: "/archives", label: "Archives" },
               { to: "/badges", label: "Badges" },
+              { to: "/attendances", label: "Présence" },
+              { to: "/re_registration", label: "Réinscription" },
             ],
           },
           {
             to: "/registrations",
-            label: "Inscription",
+            label: "Admission",
             icon: UserPlus,
             subItems: [
               { to: "/registrations", label: "Liste" },
               { to: "/concours", label: "Concours" },
-              { to: "/re_registration", label: "Réinscription" },
             ],
           },
         ],
@@ -321,7 +316,6 @@ const AppSidebar = () => {
             subItems: [
               { to: "/courses", label: "Liste des cours" },
               { to: "/schedules", label: "Gestion Horaires" },
-              { to: "/enrollments", label: "Inscriptions" },
             ],
           }] : []),
           // Mon Horaire - accessible aux enseignants et suppléants avec academic.read
@@ -452,7 +446,7 @@ const AppSidebar = () => {
                 {displayAvatar ? (
                   <AvatarImage src={displayAvatar} />
                 ) : null}
-                <AvatarFallback>{(displayName || "U").slice(0,2).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{(displayName || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               {state === "expanded" && (
                 <div className="flex flex-col min-w-0 flex-1">
