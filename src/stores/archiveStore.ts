@@ -16,6 +16,9 @@ import type {
   ArchiveDataType,
   CreateArchiveDto,
   RestoreArchiveDto,
+  ArchiveYearResponse,
+  ArchiveProcessStatus,
+  StudentArchiveHistory,
 } from '../types/archive';
 import * as archiveService from '../services/archives/archiveService';
 
@@ -45,10 +48,15 @@ interface ArchiveState {
   
   // Actions - Gestion des archives
   createArchive: (data: CreateArchiveDto) => Promise<void>;
+  archiveAcademicYear: (yearId: string) => Promise<ArchiveYearResponse>;
   restoreArchive: (data: RestoreArchiveDto) => Promise<void>;
   deleteArchive: (yearId: string) => Promise<void>;
   downloadArchive: (yearId: string) => Promise<void>;
   exportData: (yearId: string, dataType: ArchiveDataType, format: 'pdf' | 'excel' | 'csv') => Promise<void>;
+  
+  // Actions - Nouveaux endpoints
+  getArchiveStatus: () => Promise<ArchiveProcessStatus>;
+  getStudentHistory: (matricule: string) => Promise<StudentArchiveHistory>;
   
   // Actions - État local
   setSelectedYear: (year: ArchivedYear | null) => void;
@@ -97,9 +105,23 @@ export const useArchiveStore = create<ArchiveState>()(
         try {
           const years = await archiveService.getAllArchivedYears();
           set({ archivedYears: years, loading: false });
+          
+          // Log pour le debug
+          console.log(`✅ [Store Archives] ${years.length} archive(s) chargée(s)`);
         } catch (error: any) {
-          set({ error: error.message, loading: false });
-          throw error;
+          // Améliorer le message d'erreur pour les erreurs d'authentification
+          let errorMessage = error.message;
+          if (error.response?.status === 401) {
+            errorMessage = 'Unauthorized - Accès refusé. Vérifiez vos permissions.';
+          }
+          
+          console.error('❌ [Store Archives] Erreur:', errorMessage);
+          set({ error: errorMessage, loading: false });
+          
+          // Ne pas lancer l'erreur si c'est juste qu'il n'y a pas d'archives
+          if (!errorMessage.includes('Impossible de charger')) {
+            throw error;
+          }
         }
       },
 
@@ -159,6 +181,23 @@ export const useArchiveStore = create<ArchiveState>()(
             state.archivedYears.unshift(newArchive);
             state.loading = false;
           });
+        } catch (error: any) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
+      /**
+       * Archive une année académique spécifique
+       */
+      archiveAcademicYear: async (yearId: string) => {
+        set({ loading: true, error: null });
+        try {
+          const response = await archiveService.archiveAcademicYear(yearId);
+          set({ loading: false });
+          // Rafraîchir la liste des archives après l'archivage
+          await get().fetchArchivedYears();
+          return response;
         } catch (error: any) {
           set({ error: error.message, loading: false });
           throw error;
@@ -254,6 +293,34 @@ export const useArchiveStore = create<ArchiveState>()(
           window.URL.revokeObjectURL(url);
           
           set({ loading: false });
+        } catch (error: any) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
+      /**
+       * Obtient le statut du processus d'archivage
+       */
+      getArchiveStatus: async () => {
+        try {
+          const status = await archiveService.getArchiveStatus();
+          return status;
+        } catch (error: any) {
+          console.error('Erreur lors de la récupération du statut:', error);
+          throw error;
+        }
+      },
+
+      /**
+       * Obtient l'historique complet d'un étudiant
+       */
+      getStudentHistory: async (matricule: string) => {
+        set({ loading: true, error: null });
+        try {
+          const history = await archiveService.getStudentArchiveHistory(matricule);
+          set({ loading: false });
+          return history;
         } catch (error: any) {
           set({ error: error.message, loading: false });
           throw error;
