@@ -71,11 +71,25 @@ export const Re_registrationManagement: React.FC = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showBulkDialog, setShowBulkDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [selectedReRegistration, setSelectedReRegistration] = useState<ReRegistration | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [confirmationNotes, setConfirmationNotes] = useState('');
+
+  // État du formulaire de réinscription en masse
+  const [bulkFormData, setBulkFormData] = useState({
+    currentGrade: '',
+    newGrade: '',
+    academicYear: '2024-2025',
+    registrationType: 'grade_promotion' as ReRegistrationType,
+    notes: '',
+    fees: {
+      amount: 0,
+      currency: 'HTG'
+    }
+  });
 
   // État du formulaire d'ajout
   const [formData, setFormData] = useState({
@@ -364,9 +378,14 @@ export const Re_registrationManagement: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestion des Réinscriptions</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Gérez les demandes de réinscription des élèves</p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)} disabled={loading}>
-          <Plus className="h-4 w-4 mr-2" />Nouvelle réinscription
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowAddDialog(true)} disabled={loading}>
+            <Plus className="h-4 w-4 mr-2" />Nouvelle réinscription
+          </Button>
+          <Button onClick={() => setShowBulkDialog(true)} disabled={loading} variant="outline">
+            <GraduationCap className="h-4 w-4 mr-2" />Réinscrire une classe
+          </Button>
+        </div>
       </div>
       
       {error && (
@@ -471,13 +490,13 @@ export const Re_registrationManagement: React.FC = () => {
       
       {/* Dialog de confirmation */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Confirmer la réinscription</DialogTitle>
             <DialogDescription>Confirmez-vous cette demande de réinscription ?</DialogDescription>
           </DialogHeader>
           {selectedReRegistration && (
-            <div className="space-y-4">
+            <div className="space-y-4 pr-2">
               <div className="p-4 bg-green-50 rounded-lg">
                 <p><strong>Élève :</strong> {selectedReRegistration.student.firstName} {selectedReRegistration.student.lastName}</p>
                 <p><strong>Classe :</strong> {selectedReRegistration.currentGrade} → {selectedReRegistration.newGrade}</p>
@@ -510,13 +529,13 @@ export const Re_registrationManagement: React.FC = () => {
       
       {/* Dialog de rejet */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Rejeter la réinscription</DialogTitle>
             <DialogDescription>Veuillez indiquer la raison du rejet de cette demande.</DialogDescription>
           </DialogHeader>
           {selectedReRegistration && (
-            <div className="space-y-4">
+            <div className="space-y-4 pr-2">
               <div className="p-4 bg-red-50 rounded-lg">
                 <p><strong>Élève :</strong> {selectedReRegistration.student.firstName} {selectedReRegistration.student.lastName}</p>
                 <p><strong>Classe :</strong> {selectedReRegistration.currentGrade} → {selectedReRegistration.newGrade}</p>
@@ -553,12 +572,12 @@ export const Re_registrationManagement: React.FC = () => {
       
       {/* Dialog de visualisation */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Détails de la réinscription</DialogTitle>
           </DialogHeader>
           {selectedReRegistration && (
-            <div className="space-y-6">
+            <div className="space-y-6 pr-2">
               {/* En-tête avec informations principales */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
@@ -673,6 +692,456 @@ export const Re_registrationManagement: React.FC = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog d'ajout de réinscription */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Nouvelle réinscription</DialogTitle>
+            <DialogDescription>
+              Créer une nouvelle demande de réinscription pour un élève
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleSubmit} className="space-y-6 pr-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="student-id">Élève *</Label>
+                <Select
+                  value={formData.studentId}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, studentId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un élève" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Jean Dupont - NSI</SelectItem>
+                    <SelectItem value="2">Marie Martin - NSII</SelectItem>
+                    <SelectItem value="3">Pierre Durand - NSIII</SelectItem>
+                    <SelectItem value="4">Sophie Laurent - NSIV</SelectItem>
+                    <SelectItem value="5">Antoine Moreau - Philo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="new-grade">Nouvelle classe *</Label>
+                <Select
+                  value={formData.newGrade}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, newGrade: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner la nouvelle classe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NSI">NSI</SelectItem>
+                    <SelectItem value="NSII">NSII</SelectItem>
+                    <SelectItem value="NSIII">NSIII</SelectItem>
+                    <SelectItem value="NSIV">NSIV</SelectItem>
+                    <SelectItem value="Philo">Philo</SelectItem>
+                    <SelectItem value="Rhéto">Rhéto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="academic-year">Année scolaire</Label>
+                <Select
+                  value={formData.academicYear}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, academicYear: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academicYears.map((year) => (
+                      <SelectItem key={year.id} value={year.year}>
+                        {year.year} {year.isActive && '(Active)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="registration-type">Type de réinscription</Label>
+                <Select
+                  value={formData.registrationType}
+                  onValueChange={(value: ReRegistrationType) => setFormData(prev => ({ ...prev, registrationType: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="grade_promotion">Promotion</SelectItem>
+                    <SelectItem value="grade_repeat">Redoublement</SelectItem>
+                    <SelectItem value="same_grade">Même classe</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fees-amount">Montant des frais (HTG)</Label>
+                <Input
+                  id="fees-amount"
+                  type="number"
+                  value={formData.fees.amount}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    fees: { ...prev.fees, amount: parseInt(e.target.value) || 0 }
+                  }))}
+                  placeholder="Ex: 15000"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="fees-currency">Devise</Label>
+                <Select
+                  value={formData.fees.currency}
+                  onValueChange={(value) => setFormData(prev => ({ 
+                    ...prev, 
+                    fees: { ...prev.fees, currency: value }
+                  }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HTG">HTG</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="new-room">Nouvelle salle (optionnel)</Label>
+              <Select
+                value={formData.newRoomId}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, newRoomId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une salle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Salle A1</SelectItem>
+                  <SelectItem value="2">Salle A2</SelectItem>
+                  <SelectItem value="3">Salle B1</SelectItem>
+                  <SelectItem value="4">Salle B2</SelectItem>
+                  <SelectItem value="5">Salle C1</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (optionnel)</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Notes sur cette réinscription..."
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-3">
+              <Label>Documents requis</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="report-card"
+                    checked={formData.documents.reportCard}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      documents: { ...prev.documents, reportCard: e.target.checked }
+                    }))}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="report-card" className="text-sm font-normal">
+                    Bulletin scolaire
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="parent-auth"
+                    checked={formData.documents.parentAuthorization}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      documents: { ...prev.documents, parentAuthorization: e.target.checked }
+                    }))}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="parent-auth" className="text-sm font-normal">
+                    Autorisation parentale
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="medical-cert"
+                    checked={formData.documents.medicalCertificate}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      documents: { ...prev.documents, medicalCertificate: e.target.checked }
+                    }))}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="medical-cert" className="text-sm font-normal">
+                    Certificat médical
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="photos"
+                    checked={formData.documents.photos}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      documents: { ...prev.documents, photos: e.target.checked }
+                    }))}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="photos" className="text-sm font-normal">
+                    Photos d'identité
+                  </Label>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={() => {
+                  setShowAddDialog(false);
+                  setFormData({
+                    studentId: '',
+                    academicYear: '2024-2025',
+                    newGrade: '',
+                    newRoomId: '',
+                    registrationType: 'grade_promotion',
+                    notes: '',
+                    fees: {
+                      amount: 0,
+                      currency: 'HTG'
+                    },
+                    documents: {
+                      reportCard: false,
+                      parentAuthorization: false,
+                      medicalCertificate: false,
+                      photos: false
+                    }
+                  });
+                }}
+              >
+                Annuler
+              </Button>
+              <Button 
+                type="submit"
+                disabled={!formData.studentId || !formData.newGrade}
+              >
+                Créer la réinscription
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog de réinscription en masse */}
+      <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Réinscrire une classe</DialogTitle>
+            <DialogDescription>
+              Créer des demandes de réinscription pour tous les élèves d'une classe
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 pr-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="current-grade">Classe actuelle *</Label>
+                <Select
+                  value={bulkFormData.currentGrade}
+                  onValueChange={(value) => setBulkFormData(prev => ({ ...prev, currentGrade: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner la classe actuelle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NSI">NSI</SelectItem>
+                    <SelectItem value="NSII">NSII</SelectItem>
+                    <SelectItem value="NSIII">NSIII</SelectItem>
+                    <SelectItem value="NSIV">NSIV</SelectItem>
+                    <SelectItem value="Philo">Philo</SelectItem>
+                    <SelectItem value="Rhéto">Rhéto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="new-grade">Nouvelle classe *</Label>
+                <Select
+                  value={bulkFormData.newGrade}
+                  onValueChange={(value) => setBulkFormData(prev => ({ ...prev, newGrade: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner la nouvelle classe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NSI">NSI</SelectItem>
+                    <SelectItem value="NSII">NSII</SelectItem>
+                    <SelectItem value="NSIII">NSIII</SelectItem>
+                    <SelectItem value="NSIV">NSIV</SelectItem>
+                    <SelectItem value="Philo">Philo</SelectItem>
+                    <SelectItem value="Rhéto">Rhéto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bulk-academic-year">Année scolaire</Label>
+                <Select
+                  value={bulkFormData.academicYear}
+                  onValueChange={(value) => setBulkFormData(prev => ({ ...prev, academicYear: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academicYears.map((year) => (
+                      <SelectItem key={year.id} value={year.year}>
+                        {year.year} {year.isActive && '(Active)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="bulk-registration-type">Type de réinscription</Label>
+                <Select
+                  value={bulkFormData.registrationType}
+                  onValueChange={(value: ReRegistrationType) => setBulkFormData(prev => ({ ...prev, registrationType: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="grade_promotion">Promotion</SelectItem>
+                    <SelectItem value="grade_repeat">Redoublement</SelectItem>
+                    <SelectItem value="same_grade">Même classe</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bulk-fees-amount">Montant des frais (HTG)</Label>
+                <Input
+                  id="bulk-fees-amount"
+                  type="number"
+                  value={bulkFormData.fees.amount}
+                  onChange={(e) => setBulkFormData(prev => ({ 
+                    ...prev, 
+                    fees: { ...prev.fees, amount: parseInt(e.target.value) || 0 }
+                  }))}
+                  placeholder="Ex: 15000"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="bulk-fees-currency">Devise</Label>
+                <Select
+                  value={bulkFormData.fees.currency}
+                  onValueChange={(value) => setBulkFormData(prev => ({ 
+                    ...prev, 
+                    fees: { ...prev.fees, currency: value }
+                  }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HTG">HTG</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="bulk-notes">Notes (optionnel)</Label>
+              <Textarea
+                id="bulk-notes"
+                value={bulkFormData.notes}
+                onChange={(e) => setBulkFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Notes générales pour toutes les réinscriptions..."
+                rows={3}
+              />
+            </div>
+            
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-semibold mb-1">Information :</p>
+                    <p className="text-xs">
+                      Cette action créera une demande de réinscription pour chaque élève de la classe sélectionnée.
+                      Tous les élèves auront les mêmes paramètres (frais, type, notes).
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowBulkDialog(false);
+                  setBulkFormData({
+                    currentGrade: '',
+                    newGrade: '',
+                    academicYear: '2024-2025',
+                    registrationType: 'grade_promotion',
+                    notes: '',
+                    fees: {
+                      amount: 0,
+                      currency: 'HTG'
+                    }
+                  });
+                }}
+              >
+                Annuler
+              </Button>
+              <Button 
+                onClick={() => {
+                  // TODO: Implémenter la logique de réinscription en masse
+                  console.log('Réinscription en masse:', bulkFormData);
+                  setShowBulkDialog(false);
+                }}
+                disabled={!bulkFormData.currentGrade || !bulkFormData.newGrade}
+              >
+                Créer les réinscriptions
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
