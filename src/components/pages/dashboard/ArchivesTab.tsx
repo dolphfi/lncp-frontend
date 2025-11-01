@@ -30,6 +30,7 @@ import {
   Clock,
   Search,
   Activity,
+  Zap,
 } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
@@ -70,7 +71,7 @@ const ArchivesTab: React.FC = () => {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [yearToDelete, setYearToDelete] = useState<ArchivedYear | null>(null);
-  
+
   // Nouveaux états pour les nouvelles fonctionnalités
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
@@ -165,7 +166,7 @@ const ArchivesTab: React.FC = () => {
    */
   const handleExport = async (format: 'pdf' | 'excel' | 'csv') => {
     if (!selectedYear) return;
-    
+
     try {
       await exportData(selectedYear.id, activeDataType, format);
       toast.success(`Export ${format.toUpperCase()} réussi`);
@@ -231,7 +232,7 @@ const ArchivesTab: React.FC = () => {
       await fetchArchiveStats();
     } catch (error: any) {
       const errorMessage = error.message || 'Erreur lors de l\'archivage';
-      
+
       // Message spécifique si l'année n'existe pas
       if (errorMessage.includes('not found') || errorMessage.includes('introuvable')) {
         toast.error(
@@ -257,7 +258,7 @@ const ArchivesTab: React.FC = () => {
       const status = await getArchiveStatus();
       setArchiveStatus(status);
       setShowStatusDialog(true);
-      
+
       if (status.isRunning) {
         toast.info(`Archivage en cours pour ${status.currentYear} - ${status.progress}%`);
       } else {
@@ -409,10 +410,10 @@ const ArchivesTab: React.FC = () => {
           className="w-full"
           variant="default"
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Créer une archive
+          <Zap className="h-4 w-4 mr-2" />
+          Forcer l'archivage
         </Button>
-        
+
         <Button
           onClick={handleCheckStatus}
           className="w-full"
@@ -421,7 +422,7 @@ const ArchivesTab: React.FC = () => {
           <Activity className="h-4 w-4 mr-2" />
           Statut d'archivage
         </Button>
-        
+
         <Button
           onClick={() => setShowHistoryDialog(true)}
           className="w-full"
@@ -430,7 +431,7 @@ const ArchivesTab: React.FC = () => {
           <Search className="h-4 w-4 mr-2" />
           Historique étudiant
         </Button>
-        
+
         <Button
           variant="outline"
           onClick={() => {
@@ -770,7 +771,7 @@ const ArchivesTab: React.FC = () => {
               Archiver une année académique complète (étudiants, paiements, notes, etc.)
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="year">Sélectionner l'année académique à archiver</Label>
@@ -800,7 +801,7 @@ const ArchivesTab: React.FC = () => {
                 Sélectionnez l'année académique que vous souhaitez archiver
               </p>
             </div>
-            
+
             <Card className="bg-amber-50 border-amber-200">
               <CardContent className="pt-4">
                 <div className="flex items-start gap-2">
@@ -808,14 +809,14 @@ const ArchivesTab: React.FC = () => {
                   <div className="text-sm text-amber-800">
                     <p className="font-semibold mb-1">⚠️ Attention :</p>
                     <p className="text-xs">
-                      L'archivage est une opération <strong>irréversible</strong>. 
+                      L'archivage est une opération <strong>irréversible</strong>.
                       Toutes les données de cette année seront déplacées vers les archives.
                     </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="pt-4">
                 <div className="flex items-start gap-2">
@@ -837,8 +838,8 @@ const ArchivesTab: React.FC = () => {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setShowCreateDialog(false);
                 setNewArchiveYear('');
@@ -876,7 +877,7 @@ const ArchivesTab: React.FC = () => {
               Statut du processus d'archivage
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {archiveStatus ? (
               <>
@@ -899,7 +900,7 @@ const ArchivesTab: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     {archiveStatus.isRunning && (
                       <div className="mt-4 space-y-2">
                         {archiveStatus.progress !== undefined && archiveStatus.progress < 100 && (
@@ -916,13 +917,13 @@ const ArchivesTab: React.FC = () => {
                             </div>
                           </div>
                         )}
-                        
+
                         {archiveStatus.startedAt && (
                           <p className="text-xs text-gray-500">
                             Démarré le: {new Date(archiveStatus.startedAt).toLocaleString('fr-FR')}
                           </p>
                         )}
-                        
+
                         {archiveStatus.estimatedTimeRemaining && (
                           <p className="text-xs text-gray-500">
                             Temps restant estimé: {Math.ceil(archiveStatus.estimatedTimeRemaining / 60)}min
@@ -930,7 +931,7 @@ const ArchivesTab: React.FC = () => {
                         )}
                       </div>
                     )}
-                    
+
                     {!archiveStatus.isRunning && archiveStatus.currentYear && archiveStatus.progress === 100 && (
                       <div className="mt-4 space-y-2">
                         <div className="flex items-center gap-2 text-green-600">
@@ -946,7 +947,7 @@ const ArchivesTab: React.FC = () => {
                     )}
                   </CardContent>
                 </Card>
-                
+
                 {!archiveStatus.isRunning && (
                   <Card className="bg-gray-50 border-gray-200">
                     <CardContent className="pt-4">
@@ -955,7 +956,7 @@ const ArchivesTab: React.FC = () => {
                         <div className="text-sm text-gray-600">
                           <p className="font-medium mb-1">Système d'archivage disponible</p>
                           <p className="text-xs">
-                            Le système est prêt à archiver de nouvelles années académiques. 
+                            Le système est prêt à archiver de nouvelles années académiques.
                             Utilisez le bouton "Créer une archive" pour démarrer un archivage.
                           </p>
                         </div>
@@ -995,7 +996,7 @@ const ArchivesTab: React.FC = () => {
               Rechercher l'historique complet d'un étudiant à travers toutes les archives
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="flex gap-2">
               <div className="flex-1">
@@ -1050,7 +1051,7 @@ const ArchivesTab: React.FC = () => {
                             Bulletins ({year.reportCards?.length || 0})
                           </TabsTrigger>
                         </TabsList>
-                        
+
                         <TabsContent value="grades">
                           {year.grades && year.grades.length > 0 ? (
                             <div className="max-h-60 overflow-auto border rounded-lg p-2">
@@ -1062,7 +1063,7 @@ const ArchivesTab: React.FC = () => {
                             <p className="text-center text-gray-500 py-4">Aucune note</p>
                           )}
                         </TabsContent>
-                        
+
                         <TabsContent value="payments">
                           {year.payments && year.payments.length > 0 ? (
                             <div className="max-h-60 overflow-auto border rounded-lg p-2">
@@ -1074,7 +1075,7 @@ const ArchivesTab: React.FC = () => {
                             <p className="text-center text-gray-500 py-4">Aucun paiement</p>
                           )}
                         </TabsContent>
-                        
+
                         <TabsContent value="attendance">
                           {year.attendance && year.attendance.length > 0 ? (
                             <div className="max-h-60 overflow-auto border rounded-lg p-2">
@@ -1086,7 +1087,7 @@ const ArchivesTab: React.FC = () => {
                             <p className="text-center text-gray-500 py-4">Aucune présence</p>
                           )}
                         </TabsContent>
-                        
+
                         <TabsContent value="reportCards">
                           {year.reportCards && year.reportCards.length > 0 ? (
                             <div className="max-h-60 overflow-auto border rounded-lg p-2">
@@ -1116,7 +1117,7 @@ const ArchivesTab: React.FC = () => {
           </div>
 
           <div className="flex justify-end">
-            <Button 
+            <Button
               onClick={() => {
                 setShowHistoryDialog(false);
                 setStudentMatricule('');
