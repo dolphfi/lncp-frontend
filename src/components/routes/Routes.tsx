@@ -1,4 +1,4 @@
-import {Route, Routes} from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import Login from '../auth/Login';
 import ForgotPassword from '../auth/ForgotPassword';
 import ResetPassword from '../auth/ResetPassword';
@@ -7,10 +7,10 @@ import Results from '../pages/sites/Results';
 import SiteLayout from '../layouts/SiteLayout';
 import DashboardLayout from '../layouts/DashboardLayout';
 import MainDashboard from '../pages/dashboard/MainDashboard';
-import {StudentsManagement} from '../pages/dashboard/StudentsManagement';
-import {EmployeesManagement} from '../pages/dashboard/EmployeesManagement';
+import { StudentsManagement } from '../pages/dashboard/StudentsManagement';
+import { EmployeesManagement } from '../pages/dashboard/EmployeesManagement';
 import AdminPanel from '../pages/dashboard/AdminPanel';
-import {CoursesManagement} from '../pages/dashboard/CoursesManagement';
+import { CoursesManagement } from '../pages/dashboard/CoursesManagement';
 import StudentProfilePage from '../pages/dashboard/StudentProfile';
 import Profile from '../pages/dashboard/Profile';
 import IndividualBulletin from '../pages/bulletins/IndividualBulletin';
@@ -31,109 +31,114 @@ import StudentBalanceView from '../pages/payments/StudentBalanceView';
 import { RegistrationsManagement } from 'components/pages/dashboard/RegistrationsManagement';
 import { AttendancesManagement } from 'components/pages/dashboard/AttendancesManagement';
 import { BadgesManagement } from 'components/pages/dashboard/BadgesManagement';
-
+import { TestManagement } from 'components/pages/dashboard/TestManagement';
+import { Re_registrationManagement } from '../pages/dashboard/Re_registrationManagement';
 
 function AppRoutes() {
     return (<Routes> {/* Routes avec Navbar et Footer */}
-        <Route element={<SiteLayout/>}>
+        <Route element={<SiteLayout />}>
             <Route path="/"
-                element={<MainLayout/>}/>
+                element={<MainLayout />} />
         </Route>
 
         {/* Routes Public sans Navbar et Footer */}
 
 
         <Route path="/login"
-            element={<Login/>}/>
+            element={<Login />} />
         <Route path="/api-test"
-            element={<ApiTest/>}/>
+            element={<ApiTest />} />
         <Route path="/env-debug"
-            element={<EnvDebug/>}/>
+            element={<EnvDebug />} />
 
 
         <Route path="/results"
-            element={<Results/>}/>
+            element={<Results />} />
 
         {/* Routes sans sidebar pour STUDENT et PARENT */}
         <Route path="/dashboard-overview"
-            element={<PrivateRoute><ParentStudentDashboard/></PrivateRoute>}/>
+            element={<PrivateRoute><ParentStudentDashboard /></PrivateRoute>} />
         <Route path="/my-profile"
-            element={<PrivateRoute><Profile/></PrivateRoute>}/>
+            element={<PrivateRoute><Profile /></PrivateRoute>} />
 
         {/* Route profil étudiant sans sidebar (pour STUDENT et PARENT) */}
         <Route path='/student-profile'
-            element={<PrivateRoute><StudentProfilePage/></PrivateRoute>}/>
+            element={<PrivateRoute><StudentProfilePage /></PrivateRoute>} />
 
-      {/* Routes privées avec sidebar (pour ADMIN, TEACHER, etc.) */}
+        {/* Routes privées avec sidebar (pour ADMIN, TEACHER, etc.) */}
         <Route element={
-            <PrivateRoute><DashboardLayout/></PrivateRoute>
+            <PrivateRoute><DashboardLayout /></PrivateRoute>
         }>
 
             <Route path="/dashboard"
-                element={<MainDashboard/>}/>
-            
+                element={<MainDashboard />} />
+
             {/* Route par défaut pour rediriger vers le bon endroit selon le rôle */}
-            <Route index element={<MainDashboard/>} />
+            <Route index element={<MainDashboard />} />
             <Route path="/students"
-                element={<RoleRoute requiredFeature="students"><StudentsManagement/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="students"><StudentsManagement /></RoleRoute>} />
             <Route path="/courses"
-                element={<RoleRoute requiredFeature="courses"><CoursesManagement/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="courses"><CoursesManagement /></RoleRoute>} />
             <Route path="/schedules"
-                element={<RoleRoute requiredFeature="courses"><ScheduleManagement/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="courses"><ScheduleManagement /></RoleRoute>} />
             <Route path="/schedules/my-schedule"
-                element={<RoleRoute requiredFeature="academic"><MySchedule/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="academic"><MySchedule /></RoleRoute>} />
             <Route path="/employee"
-                element={<RoleRoute requiredFeature="employees"><EmployeesManagement/></RoleRoute>}/>
-            <Route path="/profile" element={<Profile/>} />
+                element={<RoleRoute requiredFeature="employees"><EmployeesManagement /></RoleRoute>} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/admin_panel"
-                element={<RoleRoute requiredFeature="admin"><AdminPanel/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="admin"><AdminPanel /></RoleRoute>} />
             <Route path="/registrations"
-                element={<RoleRoute requiredFeature="admin"><RegistrationsManagement/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="admin"><RegistrationsManagement /></RoleRoute>} />
             <Route path="/attendances"
-                element={<RoleRoute requiredFeature="admin"><AttendancesManagement/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="admin"><AttendancesManagement /></RoleRoute>} />
             <Route path="/badges"
-                element={<RoleRoute requiredFeature="admin"><BadgesManagement/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="admin"><BadgesManagement /></RoleRoute>} />
+            <Route path="/test"
+                element={<RoleRoute requiredFeature="admin"><TestManagement /></RoleRoute>} />
+            <Route path="/re_registration"
+                element={<RoleRoute requiredFeature="admin"><Re_registrationManagement /></RoleRoute>} />
             {/* Routes de gestion des paiements */}
             <Route path="/payments"
-                element={<RoleRoute requiredFeature="payments"><PaymentsManagement/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="payments"><PaymentsManagement /></RoleRoute>} />
             <Route path="/payments/balance"
-                element={<RoleRoute requiredFeature="payments"><StudentBalanceView/></RoleRoute>}/>
+                element={<RoleRoute requiredFeature="payments"><StudentBalanceView /></RoleRoute>} />
         </Route>
 
         {/* Routes du système académique */}
         <Route path="/academic"
-            element={<DashboardLayout/>}>
+            element={<DashboardLayout />}>
             <Route index
-                element={<AcademicDashboard/>}/>
+                element={<AcademicDashboard />} />
             <Route path="dashboard"
-                element={<AcademicDashboard/>}/> {/* Gestion des notes */}
+                element={<AcademicDashboard />} /> {/* Gestion des notes */}
             <Route path="notes">
                 <Route index
-                    element={<RoleRoute requiredFeature="notes"><NotesList/></RoleRoute>}/>
+                    element={<RoleRoute requiredFeature="notes"><NotesList /></RoleRoute>} />
                 <Route path="entry"
-                    element={<RoleRoute requiredFeature="notes"><NoteEntry/></RoleRoute>}/>
+                    element={<RoleRoute requiredFeature="notes"><NoteEntry /></RoleRoute>} />
                 <Route path="list"
-                    element={<RoleRoute requiredFeature="notes"><NotesList/></RoleRoute>}/>
+                    element={<RoleRoute requiredFeature="notes"><NotesList /></RoleRoute>} />
             </Route>
 
             {/* Bulletins */}
             <Route path="bulletins">
                 <Route index
-                    element={<RoleRoute requiredFeature="academic"><IndividualBulletin/></RoleRoute>}/>
+                    element={<RoleRoute requiredFeature="academic"><IndividualBulletin /></RoleRoute>} />
                 <Route path="individual"
-                    element={<RoleRoute requiredFeature="academic"><IndividualBulletin/></RoleRoute>}/>
+                    element={<RoleRoute requiredFeature="academic"><IndividualBulletin /></RoleRoute>} />
                 <Route path="collective"
-                    element={<RoleRoute requiredFeature="academic"><CollectiveBulletin/></RoleRoute>}/>
+                    element={<RoleRoute requiredFeature="academic"><CollectiveBulletin /></RoleRoute>} />
             </Route>
 
             {/* Statistiques */}
             <Route path="statistics">
                 <Route index
-                    element={<RoleRoute requiredFeature="academic"><TopLaureates/></RoleRoute>}/>
+                    element={<RoleRoute requiredFeature="academic"><TopLaureates /></RoleRoute>} />
                 <Route path="laureates"
-                    element={<RoleRoute requiredFeature="academic"><TopLaureates/></RoleRoute>}/>
+                    element={<RoleRoute requiredFeature="academic"><TopLaureates /></RoleRoute>} />
                 <Route path="classes"
-                    element={<RoleRoute requiredFeature="academic"><AcademicDashboard/></RoleRoute>}/>
+                    element={<RoleRoute requiredFeature="academic"><AcademicDashboard /></RoleRoute>} />
             </Route>
         </Route>
 

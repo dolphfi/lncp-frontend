@@ -296,7 +296,7 @@ const AppSidebar = () => {
             icon: UserPlus,
             subItems: [
               { to: "/registrations", label: "Liste" },
-              { to: "/concours", label: "Concours" },
+              { to: "/test", label: "Concours" },
             ],
           },
         ],
@@ -349,7 +349,7 @@ const AppSidebar = () => {
         title: "Gestion Ressources",
         items: [
           {
-            to: "/ressource",
+            to: "/employee",
             label: "Ressources Humaines",
             icon: UserRoundCog,
             subItems: [
@@ -367,7 +367,7 @@ const AppSidebar = () => {
               ],
             },
             {
-              to: "/ress",
+              to: "/payments",
               label: "Ressources Financière",
               icon: Wallet,
               subItems: [
@@ -385,13 +385,13 @@ const AppSidebar = () => {
         title: "Autre",
         items: [
           {
-            to: "/settings",
+            to: "/admin_panel",
             label: "Paramètres",
             icon: Settings,
-            subItems: [
-              { to: "/admin_panel", label: "Panel Admin" },
-              { to: "/users", label: "Utilisateurs" },
-            ],
+            // subItems: [
+            //   { to: "/admin_panel", label: "Panel Admin" },
+            //   { to: "/users", label: "Utilisateurs" },
+            // ],
           },
         ],
       })
