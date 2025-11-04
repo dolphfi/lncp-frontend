@@ -7,11 +7,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Eye, 
-  Edit,
-  Trash2, 
+import {
+  Eye,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -19,38 +16,35 @@ import {
   GraduationCap,
   CreditCard,
   FileText,
-  Calendar,
-  TrendingUp
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
-import { 
-  DataTable, 
-  Column, 
-  RowAction 
+import {
+  DataTable,
+  Column,
+  RowAction
 } from '../../ui/data-table';
 import { Badge } from '../../ui/badge';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
 } from '../../ui/card';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
 } from '../../ui/dialog';
-import { 
-  Alert, 
-  AlertDescription 
+import {
+  Alert,
+  AlertDescription
 } from '../../ui/alert';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -60,17 +54,16 @@ import {
 import { Textarea } from '../../ui/textarea';
 
 import { useReRegistrationStore } from '../../../stores/re_registrationStore';
-import { ReRegistration, ReRegistrationStatus, ReRegistrationType } from '../../../types/re_registration';
+import { ReRegistration, ReRegistrationDecision, ReRegistrationStatus } from '../../../types/re_registration';
 
 // =====================================================
 // COMPOSANT PRINCIPAL DE GESTION DES RÉINSCRIPTIONS
 // =====================================================
 export const Re_registrationManagement: React.FC = () => {
-  
+
   // État local
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
-  const [showAddDialog, setShowAddDialog] = useState(false);
   const [showBulkDialog, setShowBulkDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -83,7 +76,7 @@ export const Re_registrationManagement: React.FC = () => {
     currentGrade: '',
     newGrade: '',
     academicYear: '2024-2025',
-    registrationType: 'grade_promotion' as ReRegistrationType,
+    registrationDecision: 'grade_promotion' as ReRegistrationDecision,
     notes: '',
     fees: {
       amount: 0,
@@ -91,25 +84,6 @@ export const Re_registrationManagement: React.FC = () => {
     }
   });
 
-  // État du formulaire d'ajout
-  const [formData, setFormData] = useState({
-    studentId: '',
-    academicYear: '2024-2025',
-    newGrade: '',
-    newRoomId: '',
-    registrationType: 'grade_promotion' as ReRegistrationType,
-    notes: '',
-    fees: {
-      amount: 0,
-      currency: 'HTG'
-    },
-    documents: {
-      reportCard: false,
-      parentAuthorization: false,
-      medicalCertificate: false,
-      photos: false
-    }
-  });
 
   // Store
   const {
@@ -120,9 +94,7 @@ export const Re_registrationManagement: React.FC = () => {
     pagination,
     stats,
     academicYears,
-    gradeFees,
     fetchReRegistrations,
-    createReRegistration,
     deleteReRegistration,
     confirmReRegistration,
     rejectReRegistration,
@@ -160,30 +132,19 @@ export const Re_registrationManagement: React.FC = () => {
       key: 'currentGrade',
       label: 'Classe actuelle',
       sortable: true,
-      width: '120px',
+      width: '200px',
       render: (currentGrade: string) => (
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="outline" className="text-xs whitespace-nowrap">
           {currentGrade}
         </Badge>
       )
     },
     {
-      key: 'newGrade',
-      label: 'Nouvelle classe',
+      key: 'registrationDecision',
+      label: 'Decision',
       sortable: true,
       width: '120px',
-      render: (newGrade: string) => (
-        <Badge variant="secondary" className="text-xs">
-          {newGrade}
-        </Badge>
-      )
-    },
-    {
-      key: 'registrationType',
-      label: 'Type',
-      sortable: true,
-      width: '120px',
-      render: (type: ReRegistrationType) => {
+      render: (type: ReRegistrationDecision) => {
         const typeLabels = {
           same_grade: 'Même classe',
           grade_promotion: 'Promotion',
@@ -194,7 +155,7 @@ export const Re_registrationManagement: React.FC = () => {
           grade_promotion: 'secondary',
           grade_repeat: 'outline'
         } as const;
-        
+
         return (
           <Badge variant={typeColors[type]} className="text-xs">
             {typeLabels[type]}
@@ -214,10 +175,10 @@ export const Re_registrationManagement: React.FC = () => {
           rejected: { label: 'Rejetée', variant: 'destructive' as const, icon: XCircle },
           cancelled: { label: 'Annulée', variant: 'outline' as const, icon: XCircle }
         };
-        
+
         const config = statusConfig[status];
         const Icon = config.icon;
-        
+
         return (
           <Badge variant={config.variant} className="text-xs flex items-center gap-1">
             <Icon className="h-3 w-3" />
@@ -227,24 +188,10 @@ export const Re_registrationManagement: React.FC = () => {
       }
     },
     {
-      key: 'fees',
-      label: 'Frais',
-      sortable: true,
-      width: '120px',
-      render: (fees: any) => (
-        <div className="text-sm">
-          <p className="font-medium">{fees.amount.toLocaleString()} {fees.currency}</p>
-          <p className={`text-xs ${fees.isPaid ? 'text-green-600' : 'text-red-600'}`}>
-            {fees.isPaid ? 'Payé' : 'Impayé'}
-          </p>
-        </div>
-      )
-    },
-    {
       key: 'registrationDate',
       label: 'Date demande',
       sortable: true,
-      width: '120px',
+      width: '200px',
       render: (date: string) => (
         <span className="text-sm text-gray-600 dark:text-gray-400">
           {new Date(date).toLocaleDateString('fr-FR')}
@@ -258,38 +205,30 @@ export const Re_registrationManagement: React.FC = () => {
     {
       label: "Voir",
       icon: <Eye className="h-4 w-4" />,
-      onClick: (reRegistration) => { 
-        setSelectedReRegistration(reRegistration); 
-        setShowViewDialog(true); 
+      onClick: (reRegistration) => {
+        setSelectedReRegistration(reRegistration);
+        setShowViewDialog(true);
       }
     },
     {
       label: "Confirmer",
       icon: <CheckCircle className="h-4 w-4" />,
-      onClick: (reRegistration: ReRegistration) => { 
+      onClick: (reRegistration: ReRegistration) => {
         if (reRegistration.status === 'pending') {
-          setSelectedReRegistration(reRegistration); 
-          setShowConfirmDialog(true); 
+          setSelectedReRegistration(reRegistration);
+          setShowConfirmDialog(true);
         }
-      }
+      },
+      variant: "success"
     },
     {
       label: "Rejeter",
       icon: <XCircle className="h-4 w-4" />,
-      onClick: (reRegistration: ReRegistration) => { 
+      onClick: (reRegistration: ReRegistration) => {
         if (reRegistration.status === 'pending') {
-          setSelectedReRegistration(reRegistration); 
-          setShowRejectDialog(true); 
+          setSelectedReRegistration(reRegistration);
+          setShowRejectDialog(true);
         }
-      },
-      variant: "destructive"
-    },
-    {
-      label: "Supprimer",
-      icon: <Trash2 className="h-4 w-4" />,
-      onClick: (reRegistration) => { 
-        setSelectedReRegistration(reRegistration); 
-        setShowDeleteDialog(true); 
       },
       variant: "destructive"
     }
@@ -334,42 +273,13 @@ export const Re_registrationManagement: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await createReRegistration(formData);
-      setShowAddDialog(false);
-      // Réinitialiser le formulaire
-      setFormData({
-        studentId: '',
-        academicYear: '2024-2025',
-        newGrade: '',
-        newRoomId: '',
-        registrationType: 'grade_promotion',
-        notes: '',
-        fees: {
-          amount: 0,
-          currency: 'HTG'
-        },
-        documents: {
-          reportCard: false,
-          parentAuthorization: false,
-          medicalCertificate: false,
-          photos: false
-        }
-      });
-      console.log('Réinscription créée avec succès');
-    } catch (error) {
-      console.error('Erreur lors de la création');
-    }
-  };
 
   // Effet pour charger les données
   useEffect(() => {
     fetchReRegistrations();
     fetchAcademicYears();
     fetchGradeFees();
-  }, []);
+  }, [fetchReRegistrations, fetchAcademicYears, fetchGradeFees]);
 
   return (
     <div className="space-y-6">
@@ -378,23 +288,18 @@ export const Re_registrationManagement: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestion des Réinscriptions</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Gérez les demandes de réinscription des élèves</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowAddDialog(true)} disabled={loading}>
-            <Plus className="h-4 w-4 mr-2" />Nouvelle réinscription
-          </Button>
-          <Button onClick={() => setShowBulkDialog(true)} disabled={loading} variant="outline">
-            <GraduationCap className="h-4 w-4 mr-2" />Réinscrire une classe
-          </Button>
-        </div>
+        <Button onClick={() => setShowBulkDialog(true)} disabled={loading}>
+          <GraduationCap className="h-4 w-4 mr-2" />Réinscrire une classe
+        </Button>
       </div>
-      
+
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error.message}<Button variant="link" size="sm" onClick={clearError} className="ml-2 h-auto p-0">Fermer</Button></AlertDescription>
         </Alert>
       )}
-      
+
       {/* Statistiques */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -409,7 +314,7 @@ export const Re_registrationManagement: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
@@ -421,7 +326,7 @@ export const Re_registrationManagement: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
@@ -433,7 +338,7 @@ export const Re_registrationManagement: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
@@ -447,7 +352,7 @@ export const Re_registrationManagement: React.FC = () => {
           </Card>
         </div>
       )}
-      
+
       <DataTable
         data={reRegistrations}
         columns={columns}
@@ -460,7 +365,7 @@ export const Re_registrationManagement: React.FC = () => {
         title="Liste des réinscriptions"
         description={`${pagination.total} réinscriptions`}
       />
-      
+
       {/* Dialog de suppression */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
@@ -487,7 +392,7 @@ export const Re_registrationManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog de confirmation */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent className="max-h-[80vh] overflow-y-auto">
@@ -502,7 +407,7 @@ export const Re_registrationManagement: React.FC = () => {
                 <p><strong>Classe :</strong> {selectedReRegistration.currentGrade} → {selectedReRegistration.newGrade}</p>
                 <p><strong>Frais :</strong> {selectedReRegistration.fees.amount.toLocaleString()} {selectedReRegistration.fees.currency}</p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="confirmation-notes">Notes (optionnel)</Label>
                 <Textarea
@@ -513,7 +418,7 @@ export const Re_registrationManagement: React.FC = () => {
                   rows={3}
                 />
               </div>
-              
+
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => { setShowConfirmDialog(false); setConfirmationNotes(''); }}>
                   Annuler
@@ -526,7 +431,7 @@ export const Re_registrationManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog de rejet */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent className="max-h-[80vh] overflow-y-auto">
@@ -540,7 +445,7 @@ export const Re_registrationManagement: React.FC = () => {
                 <p><strong>Élève :</strong> {selectedReRegistration.student.firstName} {selectedReRegistration.student.lastName}</p>
                 <p><strong>Classe :</strong> {selectedReRegistration.currentGrade} → {selectedReRegistration.newGrade}</p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="rejection-reason">Raison du rejet *</Label>
                 <Textarea
@@ -552,14 +457,14 @@ export const Re_registrationManagement: React.FC = () => {
                   required
                 />
               </div>
-              
+
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => { setShowRejectDialog(false); setRejectionReason(''); }}>
                   Annuler
                 </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={handleRejectReRegistration} 
+                <Button
+                  variant="destructive"
+                  onClick={handleRejectReRegistration}
                   disabled={loadingAction === 'reject' || !rejectionReason.trim()}
                 >
                   {loadingAction === 'reject' ? 'Rejet...' : 'Rejeter'}
@@ -569,7 +474,7 @@ export const Re_registrationManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog de visualisation */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -591,11 +496,10 @@ export const Re_registrationManagement: React.FC = () => {
                     <p><strong>Nom :</strong> {selectedReRegistration.student.firstName} {selectedReRegistration.student.lastName}</p>
                     <p><strong>Matricule :</strong> {selectedReRegistration.student.studentId}</p>
                     <p><strong>Classe actuelle :</strong> {selectedReRegistration.currentGrade}</p>
-                    <p><strong>Nouvelle classe :</strong> {selectedReRegistration.newGrade}</p>
-                    <p><strong>Type :</strong> {selectedReRegistration.registrationType}</p>
+                    <p><strong>Decision :</strong> {selectedReRegistration.registrationDecision}</p>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -605,7 +509,7 @@ export const Re_registrationManagement: React.FC = () => {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <p><strong>Montant :</strong> {selectedReRegistration.fees.amount.toLocaleString()} {selectedReRegistration.fees.currency}</p>
-                    <p><strong>Statut paiement :</strong> 
+                    <p><strong>Statut paiement :</strong>
                       <Badge variant={selectedReRegistration.fees.isPaid ? 'default' : 'destructive'} className="ml-2">
                         {selectedReRegistration.fees.isPaid ? 'Payé' : 'Impayé'}
                       </Badge>
@@ -619,7 +523,7 @@ export const Re_registrationManagement: React.FC = () => {
                   </CardContent>
                 </Card>
               </div>
-              
+
               {/* Documents requis */}
               <Card>
                 <CardHeader className="pb-3">
@@ -631,29 +535,29 @@ export const Re_registrationManagement: React.FC = () => {
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="flex items-center gap-2">
-                      {selectedReRegistration.documents.reportCard ? 
-                        <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                      {selectedReRegistration.documents.reportCard ?
+                        <CheckCircle className="h-4 w-4 text-green-500" /> :
                         <XCircle className="h-4 w-4 text-red-500" />
                       }
                       <span className="text-sm">Bulletin</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {selectedReRegistration.documents.parentAuthorization ? 
-                        <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                      {selectedReRegistration.documents.parentAuthorization ?
+                        <CheckCircle className="h-4 w-4 text-green-500" /> :
                         <XCircle className="h-4 w-4 text-red-500" />
                       }
                       <span className="text-sm">Autorisation</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {selectedReRegistration.documents.medicalCertificate ? 
-                        <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                      {selectedReRegistration.documents.medicalCertificate ?
+                        <CheckCircle className="h-4 w-4 text-green-500" /> :
                         <XCircle className="h-4 w-4 text-red-500" />
                       }
                       <span className="text-sm">Certificat médical</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {selectedReRegistration.documents.photos ? 
-                        <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                      {selectedReRegistration.documents.photos ?
+                        <CheckCircle className="h-4 w-4 text-green-500" /> :
                         <XCircle className="h-4 w-4 text-red-500" />
                       }
                       <span className="text-sm">Photos</span>
@@ -661,7 +565,7 @@ export const Re_registrationManagement: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-              
+
               {/* Notes et dates */}
               {(selectedReRegistration.notes || selectedReRegistration.rejectionReason) && (
                 <Card>
@@ -684,7 +588,7 @@ export const Re_registrationManagement: React.FC = () => {
                   </CardContent>
                 </Card>
               )}
-              
+
               <div className="flex justify-end">
                 <Button onClick={() => setShowViewDialog(false)}>
                   Fermer
@@ -694,270 +598,7 @@ export const Re_registrationManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-      
-      {/* Dialog d'ajout de réinscription */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Nouvelle réinscription</DialogTitle>
-            <DialogDescription>
-              Créer une nouvelle demande de réinscription pour un élève
-            </DialogDescription>
-          </DialogHeader>
-          
-          <form onSubmit={handleSubmit} className="space-y-6 pr-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="student-id">Élève *</Label>
-                <Select
-                  value={formData.studentId}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, studentId: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un élève" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Jean Dupont - NSI</SelectItem>
-                    <SelectItem value="2">Marie Martin - NSII</SelectItem>
-                    <SelectItem value="3">Pierre Durand - NSIII</SelectItem>
-                    <SelectItem value="4">Sophie Laurent - NSIV</SelectItem>
-                    <SelectItem value="5">Antoine Moreau - Philo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="new-grade">Nouvelle classe *</Label>
-                <Select
-                  value={formData.newGrade}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, newGrade: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner la nouvelle classe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NSI">NSI</SelectItem>
-                    <SelectItem value="NSII">NSII</SelectItem>
-                    <SelectItem value="NSIII">NSIII</SelectItem>
-                    <SelectItem value="NSIV">NSIV</SelectItem>
-                    <SelectItem value="Philo">Philo</SelectItem>
-                    <SelectItem value="Rhéto">Rhéto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="academic-year">Année scolaire</Label>
-                <Select
-                  value={formData.academicYear}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, academicYear: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {academicYears.map((year) => (
-                      <SelectItem key={year.id} value={year.year}>
-                        {year.year} {year.isActive && '(Active)'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="registration-type">Type de réinscription</Label>
-                <Select
-                  value={formData.registrationType}
-                  onValueChange={(value: ReRegistrationType) => setFormData(prev => ({ ...prev, registrationType: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grade_promotion">Promotion</SelectItem>
-                    <SelectItem value="grade_repeat">Redoublement</SelectItem>
-                    <SelectItem value="same_grade">Même classe</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="fees-amount">Montant des frais (HTG)</Label>
-                <Input
-                  id="fees-amount"
-                  type="number"
-                  value={formData.fees.amount}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    fees: { ...prev.fees, amount: parseInt(e.target.value) || 0 }
-                  }))}
-                  placeholder="Ex: 15000"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="fees-currency">Devise</Label>
-                <Select
-                  value={formData.fees.currency}
-                  onValueChange={(value) => setFormData(prev => ({ 
-                    ...prev, 
-                    fees: { ...prev.fees, currency: value }
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="HTG">HTG</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="new-room">Nouvelle salle (optionnel)</Label>
-              <Select
-                value={formData.newRoomId}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, newRoomId: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une salle" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Salle A1</SelectItem>
-                  <SelectItem value="2">Salle A2</SelectItem>
-                  <SelectItem value="3">Salle B1</SelectItem>
-                  <SelectItem value="4">Salle B2</SelectItem>
-                  <SelectItem value="5">Salle C1</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes (optionnel)</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Notes sur cette réinscription..."
-                rows={3}
-              />
-            </div>
-            
-            <div className="space-y-3">
-              <Label>Documents requis</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="report-card"
-                    checked={formData.documents.reportCard}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      documents: { ...prev.documents, reportCard: e.target.checked }
-                    }))}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="report-card" className="text-sm font-normal">
-                    Bulletin scolaire
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="parent-auth"
-                    checked={formData.documents.parentAuthorization}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      documents: { ...prev.documents, parentAuthorization: e.target.checked }
-                    }))}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="parent-auth" className="text-sm font-normal">
-                    Autorisation parentale
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="medical-cert"
-                    checked={formData.documents.medicalCertificate}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      documents: { ...prev.documents, medicalCertificate: e.target.checked }
-                    }))}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="medical-cert" className="text-sm font-normal">
-                    Certificat médical
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="photos"
-                    checked={formData.documents.photos}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      documents: { ...prev.documents, photos: e.target.checked }
-                    }))}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="photos" className="text-sm font-normal">
-                    Photos d'identité
-                  </Label>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-2">
-              <Button 
-                type="button"
-                variant="outline" 
-                onClick={() => {
-                  setShowAddDialog(false);
-                  setFormData({
-                    studentId: '',
-                    academicYear: '2024-2025',
-                    newGrade: '',
-                    newRoomId: '',
-                    registrationType: 'grade_promotion',
-                    notes: '',
-                    fees: {
-                      amount: 0,
-                      currency: 'HTG'
-                    },
-                    documents: {
-                      reportCard: false,
-                      parentAuthorization: false,
-                      medicalCertificate: false,
-                      photos: false
-                    }
-                  });
-                }}
-              >
-                Annuler
-              </Button>
-              <Button 
-                type="submit"
-                disabled={!formData.studentId || !formData.newGrade}
-              >
-                Créer la réinscription
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-      
+
       {/* Dialog de réinscription en masse */}
       <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -967,7 +608,7 @@ export const Re_registrationManagement: React.FC = () => {
               Créer des demandes de réinscription pour tous les élèves d'une classe
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6 pr-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -989,7 +630,7 @@ export const Re_registrationManagement: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="new-grade">Nouvelle classe *</Label>
                 <Select
@@ -1010,7 +651,7 @@ export const Re_registrationManagement: React.FC = () => {
                 </Select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="bulk-academic-year">Année scolaire</Label>
@@ -1030,12 +671,12 @@ export const Re_registrationManagement: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="bulk-registration-type">Type de réinscription</Label>
                 <Select
-                  value={bulkFormData.registrationType}
-                  onValueChange={(value: ReRegistrationType) => setBulkFormData(prev => ({ ...prev, registrationType: value }))}
+                  value={bulkFormData.registrationDecision}
+                  onValueChange={(value: ReRegistrationDecision) => setBulkFormData(prev => ({ ...prev, registrationDecision: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1048,7 +689,7 @@ export const Re_registrationManagement: React.FC = () => {
                 </Select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="bulk-fees-amount">Montant des frais (HTG)</Label>
@@ -1056,20 +697,20 @@ export const Re_registrationManagement: React.FC = () => {
                   id="bulk-fees-amount"
                   type="number"
                   value={bulkFormData.fees.amount}
-                  onChange={(e) => setBulkFormData(prev => ({ 
-                    ...prev, 
+                  onChange={(e) => setBulkFormData(prev => ({
+                    ...prev,
                     fees: { ...prev.fees, amount: parseInt(e.target.value) || 0 }
                   }))}
                   placeholder="Ex: 15000"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="bulk-fees-currency">Devise</Label>
                 <Select
                   value={bulkFormData.fees.currency}
-                  onValueChange={(value) => setBulkFormData(prev => ({ 
-                    ...prev, 
+                  onValueChange={(value) => setBulkFormData(prev => ({
+                    ...prev,
                     fees: { ...prev.fees, currency: value }
                   }))}
                 >
@@ -1083,7 +724,7 @@ export const Re_registrationManagement: React.FC = () => {
                 </Select>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="bulk-notes">Notes (optionnel)</Label>
               <Textarea
@@ -1094,7 +735,7 @@ export const Re_registrationManagement: React.FC = () => {
                 rows={3}
               />
             </div>
-            
+
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="pt-4">
                 <div className="flex items-start gap-2">
@@ -1109,17 +750,17 @@ export const Re_registrationManagement: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             <div className="flex justify-end gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setShowBulkDialog(false);
                   setBulkFormData({
                     currentGrade: '',
                     newGrade: '',
                     academicYear: '2024-2025',
-                    registrationType: 'grade_promotion',
+                    registrationDecision: 'grade_promotion',
                     notes: '',
                     fees: {
                       amount: 0,
@@ -1130,7 +771,7 @@ export const Re_registrationManagement: React.FC = () => {
               >
                 Annuler
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   // TODO: Implémenter la logique de réinscription en masse
                   console.log('Réinscription en masse:', bulkFormData);

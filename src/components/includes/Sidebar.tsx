@@ -388,10 +388,10 @@ const AppSidebar = () => {
             to: "/admin_panel",
             label: "Paramètres",
             icon: Settings,
-            // subItems: [
-            //   { to: "/admin_panel", label: "Panel Admin" },
-            //   { to: "/users", label: "Utilisateurs" },
-            // ],
+            subItems: [
+              { to: "/admin_panel", label: "Panel Admin" },
+              { to: "/monitoring", label: "Surveillance" },
+            ],
           },
         ],
       })
