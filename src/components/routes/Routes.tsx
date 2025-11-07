@@ -40,11 +40,11 @@ function AppRoutes() {
         <Route element={<SiteLayout />}>
             <Route path="/"
                 element={<MainLayout />} />
+            <Route index
+                element={<MainLayout />} />
         </Route>
 
         {/* Routes Public sans Navbar et Footer */}
-
-
         <Route path="/login"
             element={<Login />} />
         <Route path="/api-test"

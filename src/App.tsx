@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 
 import AppRoutes from "./components/routes/Routes";
+import AppInitializer from "./components/utils/AppInitializer";
 import 'react-toastify/dist/ReactToastify.css';
 
 
@@ -12,7 +13,9 @@ function App() {
 
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <AppInitializer>
+        <AppRoutes />
+      </AppInitializer>
 < ToastContainer
 position = "top-right"
 autoClose = {

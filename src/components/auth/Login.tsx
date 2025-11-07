@@ -33,16 +33,17 @@ remember_me : false,
   const [showPassword, setShowPassword] = useState(false);
 const [isSubmitting, setIsSubmitting] = useState(false);
 
-// Rediriger si déjà authentifié
+// Vérifier si l'utilisateur est déjà authentifié au chargement de la page
 useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isSubmitting) {
+        // L'utilisateur est déjà connecté, rediriger vers le dashboard approprié
         if (user?.role === 'PARENT' || user?.role === 'STUDENT') {
             navigate('/dashboard-overview', { replace: true });
         } else {
             navigate('/dashboard', { replace: true });
         }
     }
-}, [isAuthenticated, user, navigate]);
+}, []); // Exécuter seulement au montage du composant
 
 // Nettoyer les erreurs au démontage
 useEffect(() => {
