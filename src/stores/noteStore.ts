@@ -148,11 +148,11 @@ export const useNoteStore = create<NoteState>()(
           if (userRole === 'TEACHER') {
             // Pour les professeurs: utiliser pendingNotes du dashboard
             console.log('📚 Chargement notes pendantes (TEACHER)');
-            notesData = await noteService.getPendingNotes();
+            notesData = await noteService.getDashboardPendingNotes();
           } else {
             // Pour les autres rôles: utiliser /notes/all-notes
             console.log('📚 Chargement toutes les notes (ADMIN/DIRECTOR/etc)');
-            notesData = await noteService.getAllNotes();
+            notesData = await noteService.getAllNotesLegacy();
           }
           
           console.log(`✅ ${notesData.length} notes chargées`);

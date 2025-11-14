@@ -21,7 +21,7 @@ import EnvDebug from '../utils/EnvDebug';
 import PrivateRoute from '../utils/PrivateRoute';
 import AcademicDashboard from '../pages/dashboard/AcademicDashboard';
 import RoleRoute from '../utils/RoleRoute';
-import NotesList from 'components/pages/notes/NotesList';
+import NotesListWrapper from 'components/pages/notes/NotesListWrapper';
 import NoteEntry from 'components/pages/notes/NoteEntry';
 import ScheduleManagement from '../pages/schedules/ScheduleManagement';
 import MySchedule from '../pages/schedules/MySchedule';
@@ -114,11 +114,11 @@ function AppRoutes() {
                 element={<AcademicDashboard />} /> {/* Gestion des notes */}
             <Route path="notes">
                 <Route index
-                    element={<RoleRoute requiredFeature="notes"><NotesList /></RoleRoute>} />
+                    element={<RoleRoute requiredFeature="notes"><NotesListWrapper /></RoleRoute>} />
                 <Route path="entry"
                     element={<RoleRoute requiredFeature="notes"><NoteEntry /></RoleRoute>} />
                 <Route path="list"
-                    element={<RoleRoute requiredFeature="notes"><NotesList /></RoleRoute>} />
+                    element={<RoleRoute requiredFeature="notes"><NotesListWrapper /></RoleRoute>} />
             </Route>
 
             {/* Bulletins */}

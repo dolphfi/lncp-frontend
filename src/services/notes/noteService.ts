@@ -331,15 +331,16 @@ class NoteService {
   }
 
   /**
-   * Récupérer toutes les notes depuis l'endpoint /notes/all-notes
+   * Récupérer toutes les notes depuis l'endpoint /notes/all-notes (sans pagination)
    * Utilisé pour ADMIN, SUPER_ADMIN, DIRECTOR, CENSORED, etc.
+   * @deprecated Utiliser getAllNotesAdmin avec pagination pour l'interface admin
    */
-  async getAllNotes(): Promise<any[]> {
+  async getAllNotesLegacy(): Promise<any[]> {
     try {
-      console.log('🌐 Appel API getAllNotes');
+      console.log('🌐 Appel API getAllNotesLegacy');
       const response = await api.get<any>('/notes/all-notes');
       
-      console.log('📊 Réponse brute getAllNotes:', response.data);
+      console.log('📊 Réponse brute getAllNotesLegacy:', response.data);
       
       // L'API retourne directement un tableau ou un objet avec data
       const apiNotesData = Array.isArray(response.data) ? response.data : (response.data?.data || []);
@@ -352,7 +353,7 @@ class NoteService {
       console.log(`✅ ${convertedNotes.length} entrées de notes après conversion`);
       return convertedNotes;
     } catch (error) {
-      console.error('❌ Erreur getAllNotes:', error);
+      console.error('❌ Erreur getAllNotesLegacy:', error);
       throw error;
     }
   }
@@ -415,12 +416,13 @@ class NoteService {
   }
 
   /**
-   * Récupérer les notes en attente depuis le dashboard (TEACHER)
+   * Récupérer les notes en attente depuis le dashboard (TEACHER uniquement)
    * Endpoint: GET /dashboard - champ pendingNotes
+   * Utilisé par les professeurs pour voir leurs notes en attente de validation
    */
-  async getPendingNotes(): Promise<any[]> {
+  async getDashboardPendingNotes(): Promise<any[]> {
     try {
-      console.log('🌐 Appel API getPendingNotes (dashboard)');
+      console.log('🌐 Appel API getDashboardPendingNotes (dashboard)');
       const response = await api.get<any>('/dashboard');
       
       console.log('📊 Réponse dashboard:', response.data);
@@ -436,7 +438,7 @@ class NoteService {
       console.log(`✅ ${convertedNotes.length} entrées de notes après conversion`);
       return convertedNotes;
     } catch (error) {
-      console.error('❌ Erreur getPendingNotes:', error);
+      console.error('❌ Erreur getDashboardPendingNotes:', error);
       throw error;
     }
   }
@@ -951,6 +953,71 @@ class NoteService {
 
     const response = await api.get<any>(`/notes/statistics/class/${classe}/`);
     return response.data;
+  }
+
+  // ========== ENDPOINTS ADMIN ==========
+
+  /**
+   * Récupérer toutes les notes validées (Admin uniquement)
+   * GET /notes/all-notes
+   * @param page - Numéro de page (default: 1)
+   * @param limit - Nombre d'éléments par page (default: 10)
+   */
+  async getAllNotes(page: number = 1, limit: number = 10): Promise<any> {
+    try {
+      const response = await api.get<any>('/notes/all-notes', {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération de toutes les notes:', error);
+      throw new Error(error.response?.data?.message || 'Impossible de récupérer les notes validées');
+    }
+  }
+
+  /**
+   * Récupérer toutes les notes en attente de validation (Admin uniquement)
+   * GET /notes/pending
+   */
+  async getPendingNotes(): Promise<any> {
+    try {
+      const response = await api.get<any>('/notes/pending');
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération des notes en attente:', error);
+      throw new Error(error.response?.data?.message || 'Impossible de récupérer les notes en attente');
+    }
+  }
+
+  /**
+   * Valider une note en attente (Admin/Censeur/Secrétaire uniquement)
+   * PATCH /notes/validate/{id}
+   * @param id - ID de la note en attente
+   */
+  async validateNote(id: string): Promise<any> {
+    try {
+      const response = await api.patch<any>(`/notes/validate/${id}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Erreur lors de la validation de la note ${id}:`, error);
+      throw new Error(error.response?.data?.message || 'Impossible de valider la note');
+    }
+  }
+
+  /**
+   * Rejeter une note en attente avec une raison (Admin/Censeur/Secrétaire uniquement)
+   * PATCH /notes/reject/{id}
+   * @param id - ID de la note en attente
+   * @param reason - Raison du rejet (le professeur sera notifié par email)
+   */
+  async rejectNote(id: string, reason: string): Promise<any> {
+    try {
+      const response = await api.patch<any>(`/notes/reject/${id}`, { reason });
+      return response.data;
+    } catch (error: any) {
+      console.error(`Erreur lors du rejet de la note ${id}:`, error);
+      throw new Error(error.response?.data?.message || 'Impossible de rejeter la note');
+    }
   }
 }
 
