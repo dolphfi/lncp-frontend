@@ -16,7 +16,7 @@ import { Student } from './student';
 export type ReRegistrationStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
 
 // Type de réinscription
-export type ReRegistrationType = 'same_grade' | 'grade_promotion' | 'grade_repeat';
+export type ReRegistrationDecision = 'same_grade' | 'grade_promotion' | 'grade_repeat';
 
 // Type principal pour une réinscription
 export interface ReRegistration {
@@ -29,7 +29,7 @@ export interface ReRegistration {
   currentRoomId?: string;               // ID de la salle actuelle
   newRoomId?: string;                   // ID de la nouvelle salle
   newRoomName?: string;                 // Nom de la nouvelle salle
-  registrationType: ReRegistrationType; // Type de réinscription
+  registrationDecision: ReRegistrationDecision; // Type de réinscription
   status: ReRegistrationStatus;         // Statut de la réinscription
   registrationDate: string;             // Date de demande de réinscription
   confirmationDate?: string;            // Date de confirmation (si confirmée)
@@ -60,7 +60,7 @@ export interface CreateReRegistrationDto {
   academicYear: string;
   newGrade: string;
   newRoomId?: string;
-  registrationType: ReRegistrationType;
+  registrationDecision: ReRegistrationDecision;
   notes?: string;
   fees: {
     amount: number;
@@ -79,7 +79,7 @@ export interface UpdateReRegistrationDto {
   id: string;
   newGrade?: string;
   newRoomId?: string;
-  registrationType?: ReRegistrationType;
+  registrationDecision?: ReRegistrationDecision;
   status?: ReRegistrationStatus;
   rejectionReason?: string;
   notes?: string;
@@ -103,7 +103,7 @@ export interface ReRegistrationFilters {
   search?: string;                      // Recherche par nom d'élève
   academicYear?: string;                // Filtrer par année scolaire
   status?: ReRegistrationStatus;        // Filtrer par statut
-  registrationType?: ReRegistrationType; // Filtrer par type
+  registrationDecision?: ReRegistrationDecision; // Filtrer par type
   currentGrade?: string;                // Filtrer par classe actuelle
   newGrade?: string;                    // Filtrer par nouvelle classe
   isPaid?: boolean;                     // Filtrer par statut de paiement

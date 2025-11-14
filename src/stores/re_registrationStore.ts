@@ -10,9 +10,9 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 
-import { 
-  ReRegistration, 
-  ReRegistrationFilters, 
+import {
+  ReRegistration,
+  ReRegistrationFilters,
   ReRegistrationPaginationOptions,
   ReRegistrationStats,
   ReRegistrationApiError,
@@ -93,7 +93,7 @@ const mockReRegistrations: ReRegistration[] = [
     currentRoomId: 'room-1',
     newRoomId: 'room-2',
     newRoomName: 'Salle B',
-    registrationType: 'grade_promotion',
+    registrationDecision: 'grade_promotion',
     status: 'confirmed',
     registrationDate: '2024-06-15T10:00:00Z',
     confirmationDate: '2024-06-20T14:30:00Z',
@@ -147,7 +147,7 @@ const mockReRegistrations: ReRegistration[] = [
     currentRoomId: 'room-2',
     newRoomId: 'room-3',
     newRoomName: 'Salle C',
-    registrationType: 'grade_promotion',
+    registrationDecision: 'grade_promotion',
     status: 'pending',
     registrationDate: '2024-07-01T11:30:00Z',
     fees: {
@@ -198,7 +198,7 @@ const mockReRegistrations: ReRegistration[] = [
     currentRoomId: 'room-3',
     newRoomId: 'room-3',
     newRoomName: 'Salle C',
-    registrationType: 'grade_repeat',
+    registrationDecision: 'grade_repeat',
     status: 'rejected',
     registrationDate: '2024-06-30T16:00:00Z',
     rejectionReason: 'Résultats insuffisants pour passer en classe supérieure',
@@ -230,19 +230,19 @@ interface ReRegistrationStore {
   loading: boolean;
   error: ReRegistrationApiError | null;
   loadingAction: 'create' | 'update' | 'delete' | 'confirm' | 'reject' | null;
-  
+
   // Données de référence
   academicYears: AcademicYear[];
   gradeFees: GradeFees[];
-  
+
   // Filtres et pagination
   filters: ReRegistrationFilters;
   pagination: ReRegistrationPaginationOptions;
   sortOptions: { field: string; order: 'asc' | 'desc' };
-  
+
   // Statistiques
   stats: ReRegistrationStats | null;
-  
+
   // Actions principales
   fetchReRegistrations: () => Promise<void>;
   createReRegistration: (data: CreateReRegistrationDto) => Promise<void>;
@@ -250,17 +250,17 @@ interface ReRegistrationStore {
   deleteReRegistration: (id: string) => Promise<void>;
   confirmReRegistration: (id: string, notes?: string) => Promise<void>;
   rejectReRegistration: (id: string, reason: string) => Promise<void>;
-  
+
   // Actions de données de référence
   fetchAcademicYears: () => Promise<void>;
   fetchGradeFees: () => Promise<void>;
-  
+
   // Actions de filtrage et tri
   setFilters: (filters: Partial<ReRegistrationFilters>) => void;
   clearFilters: () => void;
   setSort: (field: string, order: 'asc' | 'desc') => void;
   changePage: (page: number) => void;
-  
+
   // Actions utilitaires
   clearError: () => void;
   calculateStats: () => void;
@@ -280,11 +280,11 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
       loading: false,
       error: null,
       loadingAction: null,
-      
+
       // Données de référence
       academicYears: [],
       gradeFees: [],
-      
+
       // Filtres et pagination
       filters: {},
       pagination: {
@@ -294,24 +294,24 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
         totalPages: 0
       },
       sortOptions: { field: 'registrationDate', order: 'desc' },
-      
+
       // Statistiques
       stats: null,
-      
+
       // =====================================================
       // ACTIONS PRINCIPALES
       // =====================================================
-      
+
       fetchReRegistrations: async () => {
         set((state) => {
           state.loading = true;
           state.error = null;
         });
-        
+
         try {
           // Simulation d'un appel API
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           set((state) => {
             state.allReRegistrations = mockReRegistrations;
             state.reRegistrations = mockReRegistrations;
@@ -319,10 +319,10 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
             state.pagination.totalPages = Math.ceil(mockReRegistrations.length / state.pagination.limit);
             state.loading = false;
           });
-          
+
           // Calculer les statistiques
           get().calculateStats();
-          
+
         } catch (error) {
           set((state) => {
             state.error = {
@@ -333,17 +333,17 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
           });
         }
       },
-      
+
       createReRegistration: async (data: CreateReRegistrationDto) => {
         set((state) => {
           state.loadingAction = 'create';
           state.error = null;
         });
-        
+
         try {
           // Simulation d'un appel API
           await new Promise(resolve => setTimeout(resolve, 1500));
-          
+
           const newReRegistration: ReRegistration = {
             id: `re-reg-${Date.now()}`,
             ...data,
@@ -359,7 +359,7 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
-          
+
           set((state) => {
             state.allReRegistrations.push(newReRegistration);
             state.reRegistrations.push(newReRegistration);
@@ -367,9 +367,9 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
             state.pagination.totalPages = Math.ceil(state.pagination.total / state.pagination.limit);
             state.loadingAction = null;
           });
-          
+
           get().calculateStats();
-          
+
         } catch (error) {
           set((state) => {
             state.error = {
@@ -380,17 +380,17 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
           });
         }
       },
-      
+
       updateReRegistration: async (data: UpdateReRegistrationDto) => {
         set((state) => {
           state.loadingAction = 'update';
           state.error = null;
         });
-        
+
         try {
           // Simulation d'un appel API
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           set((state) => {
             const index = state.allReRegistrations.findIndex(r => r.id === data.id);
             if (index !== -1) {
@@ -398,7 +398,6 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
               const existingReRegistration = state.allReRegistrations[index];
               if (data.newGrade) existingReRegistration.newGrade = data.newGrade;
               if (data.newRoomId) existingReRegistration.newRoomId = data.newRoomId;
-              if (data.registrationType) existingReRegistration.registrationType = data.registrationType;
               if (data.status) existingReRegistration.status = data.status;
               if (data.rejectionReason) existingReRegistration.rejectionReason = data.rejectionReason;
               if (data.notes) existingReRegistration.notes = data.notes;
@@ -416,7 +415,7 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
                 if (data.documents.photos !== undefined) existingReRegistration.documents.photos = data.documents.photos;
               }
               existingReRegistration.updatedAt = new Date().toISOString();
-              
+
               const currentIndex = state.reRegistrations.findIndex(r => r.id === data.id);
               if (currentIndex !== -1) {
                 state.reRegistrations[currentIndex] = existingReRegistration;
@@ -424,9 +423,9 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
             }
             state.loadingAction = null;
           });
-          
+
           get().calculateStats();
-          
+
         } catch (error) {
           set((state) => {
             state.error = {
@@ -437,17 +436,17 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
           });
         }
       },
-      
+
       deleteReRegistration: async (id: string) => {
         set((state) => {
           state.loadingAction = 'delete';
           state.error = null;
         });
-        
+
         try {
           // Simulation d'un appel API
           await new Promise(resolve => setTimeout(resolve, 800));
-          
+
           set((state) => {
             state.allReRegistrations = state.allReRegistrations.filter(r => r.id !== id);
             state.reRegistrations = state.reRegistrations.filter(r => r.id !== id);
@@ -455,9 +454,9 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
             state.pagination.totalPages = Math.ceil(state.pagination.total / state.pagination.limit);
             state.loadingAction = null;
           });
-          
+
           get().calculateStats();
-          
+
         } catch (error) {
           set((state) => {
             state.error = {
@@ -468,17 +467,17 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
           });
         }
       },
-      
+
       confirmReRegistration: async (id: string, notes?: string) => {
         set((state) => {
           state.loadingAction = 'confirm';
           state.error = null;
         });
-        
+
         try {
           // Simulation d'un appel API
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           set((state) => {
             const index = state.allReRegistrations.findIndex(r => r.id === id);
             if (index !== -1) {
@@ -488,7 +487,7 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
                 state.allReRegistrations[index].notes = notes;
               }
               state.allReRegistrations[index].updatedAt = new Date().toISOString();
-              
+
               const currentIndex = state.reRegistrations.findIndex(r => r.id === id);
               if (currentIndex !== -1) {
                 state.reRegistrations[currentIndex] = state.allReRegistrations[index];
@@ -496,9 +495,9 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
             }
             state.loadingAction = null;
           });
-          
+
           get().calculateStats();
-          
+
         } catch (error) {
           set((state) => {
             state.error = {
@@ -509,24 +508,24 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
           });
         }
       },
-      
+
       rejectReRegistration: async (id: string, reason: string) => {
         set((state) => {
           state.loadingAction = 'reject';
           state.error = null;
         });
-        
+
         try {
           // Simulation d'un appel API
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           set((state) => {
             const index = state.allReRegistrations.findIndex(r => r.id === id);
             if (index !== -1) {
               state.allReRegistrations[index].status = 'rejected';
               state.allReRegistrations[index].rejectionReason = reason;
               state.allReRegistrations[index].updatedAt = new Date().toISOString();
-              
+
               const currentIndex = state.reRegistrations.findIndex(r => r.id === id);
               if (currentIndex !== -1) {
                 state.reRegistrations[currentIndex] = state.allReRegistrations[index];
@@ -534,9 +533,9 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
             }
             state.loadingAction = null;
           });
-          
+
           get().calculateStats();
-          
+
         } catch (error) {
           set((state) => {
             state.error = {
@@ -547,20 +546,20 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
           });
         }
       },
-      
+
       // =====================================================
       // ACTIONS DE DONNÉES DE RÉFÉRENCE
       // =====================================================
-      
+
       fetchAcademicYears: async () => {
         try {
           // Simulation d'un appel API
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           set((state) => {
             state.academicYears = mockAcademicYears;
           });
-          
+
         } catch (error) {
           set((state) => {
             state.error = {
@@ -570,16 +569,16 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
           });
         }
       },
-      
+
       fetchGradeFees: async () => {
         try {
           // Simulation d'un appel API
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           set((state) => {
             state.gradeFees = mockGradeFees;
           });
-          
+
         } catch (error) {
           set((state) => {
             state.error = {
@@ -589,21 +588,21 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
           });
         }
       },
-      
+
       // =====================================================
       // ACTIONS DE FILTRAGE ET TRI
       // =====================================================
-      
+
       setFilters: (newFilters: Partial<ReRegistrationFilters>) => {
         set((state) => {
           state.filters = { ...state.filters, ...newFilters };
           state.pagination.page = 1; // Reset à la première page
         });
-        
+
         // Appliquer les filtres
         // TODO: Implémenter la logique de filtrage
       },
-      
+
       clearFilters: () => {
         set((state) => {
           state.filters = {};
@@ -611,38 +610,38 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
           state.reRegistrations = state.allReRegistrations;
         });
       },
-      
+
       setSort: (field: string, order: 'asc' | 'desc') => {
         set((state) => {
           state.sortOptions = { field, order };
         });
-        
+
         // Appliquer le tri
         // TODO: Implémenter la logique de tri
       },
-      
+
       changePage: (page: number) => {
         set((state) => {
           state.pagination.page = page;
         });
-        
+
         // Recharger les données pour la nouvelle page
         // TODO: Implémenter la pagination côté serveur
       },
-      
+
       // =====================================================
       // ACTIONS UTILITAIRES
       // =====================================================
-      
+
       clearError: () => {
         set((state) => {
           state.error = null;
         });
       },
-      
+
       calculateStats: () => {
         const { allReRegistrations } = get();
-        
+
         const stats: ReRegistrationStats = {
           total: allReRegistrations.length,
           pending: allReRegistrations.filter(r => r.status === 'pending').length,
@@ -653,9 +652,9 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
           paidFees: allReRegistrations.filter(r => r.fees.isPaid).reduce((sum, r) => sum + r.fees.amount, 0),
           unpaidFees: allReRegistrations.filter(r => !r.fees.isPaid).reduce((sum, r) => sum + r.fees.amount, 0),
           byRegistrationType: {
-            same_grade: allReRegistrations.filter(r => r.registrationType === 'same_grade').length,
-            grade_promotion: allReRegistrations.filter(r => r.registrationType === 'grade_promotion').length,
-            grade_repeat: allReRegistrations.filter(r => r.registrationType === 'grade_repeat').length
+            same_grade: allReRegistrations.filter(r => r.registrationDecision === 'same_grade').length,
+            grade_promotion: allReRegistrations.filter(r => r.registrationDecision === 'grade_promotion').length,
+            grade_repeat: allReRegistrations.filter(r => r.registrationDecision === 'grade_repeat').length
           },
           byGrade: allReRegistrations.reduce((acc, r) => {
             acc[r.newGrade] = (acc[r.newGrade] || 0) + 1;
@@ -668,16 +667,16 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
             photos: Math.round((allReRegistrations.filter(r => r.documents.photos).length / allReRegistrations.length) * 100)
           }
         };
-        
+
         set((state) => {
           state.stats = stats;
         });
       },
-      
+
       getReRegistrationById: (id: string) => {
         return get().allReRegistrations.find(r => r.id === id);
       },
-      
+
       getReRegistrationsByStudent: (studentId: string) => {
         return get().allReRegistrations.filter(r => r.studentId === studentId);
       }
@@ -690,13 +689,13 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
 // =====================================================
 
 // Sélecteur pour les réinscriptions en attente
-export const selectPendingReRegistrations = (state: ReRegistrationStore) => 
+export const selectPendingReRegistrations = (state: ReRegistrationStore) =>
   state.reRegistrations.filter(r => r.status === 'pending');
 
 // Sélecteur pour les réinscriptions confirmées
-export const selectConfirmedReRegistrations = (state: ReRegistrationStore) => 
+export const selectConfirmedReRegistrations = (state: ReRegistrationStore) =>
   state.reRegistrations.filter(r => r.status === 'confirmed');
 
 // Sélecteur pour les réinscriptions avec paiement en attente
-export const selectUnpaidReRegistrations = (state: ReRegistrationStore) => 
+export const selectUnpaidReRegistrations = (state: ReRegistrationStore) =>
   state.reRegistrations.filter(r => !r.fees.isPaid && r.status === 'confirmed');

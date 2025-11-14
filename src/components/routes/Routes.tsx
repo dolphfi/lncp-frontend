@@ -33,17 +33,18 @@ import { AttendancesManagement } from 'components/pages/dashboard/AttendancesMan
 import { BadgesManagement } from 'components/pages/dashboard/BadgesManagement';
 import { TestManagement } from 'components/pages/dashboard/TestManagement';
 import { Re_registrationManagement } from '../pages/dashboard/Re_registrationManagement';
+import { Monitoring } from '../pages/dashboard/Monitoring';
 
 function AppRoutes() {
     return (<Routes> {/* Routes avec Navbar et Footer */}
         <Route element={<SiteLayout />}>
             <Route path="/"
                 element={<MainLayout />} />
+            <Route index
+                element={<MainLayout />} />
         </Route>
 
         {/* Routes Public sans Navbar et Footer */}
-
-
         <Route path="/login"
             element={<Login />} />
         <Route path="/api-test"
@@ -98,6 +99,8 @@ function AppRoutes() {
                 element={<RoleRoute requiredFeature="admin"><TestManagement /></RoleRoute>} />
             <Route path="/re_registration"
                 element={<RoleRoute requiredFeature="admin"><Re_registrationManagement /></RoleRoute>} />
+            <Route path="/monitoring"
+                element={<RoleRoute requiredFeature="admin"><Monitoring /></RoleRoute>} />
             {/* Routes de gestion des paiements */}
             <Route path="/payments"
                 element={<RoleRoute requiredFeature="payments"><PaymentsManagement /></RoleRoute>} />
