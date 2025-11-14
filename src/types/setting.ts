@@ -183,3 +183,28 @@ export const SETTING_GROUP_OPTIONS = [
   { label: 'Communication', value: 'COMMUNICATION' },
   { label: 'Académique', value: 'ACADEMIQUE' },
 ] as const;
+
+// =====================================================
+// TYPES POUR LE MODE MAINTENANCE
+// =====================================================
+
+// Réponse pour activer/désactiver le mode maintenance
+export interface MaintenanceResponse {
+  success: boolean;
+  message: string;
+  maintenanceMode: boolean;
+}
+
+// Réponse pour le statut du mode maintenance
+export interface MaintenanceStatusResponse {
+  maintenanceMode: boolean;
+  lastUpdated?: string;
+  message: string;
+}
+
+// Réponse pour le statut public du mode maintenance
+export interface MaintenancePublicStatusResponse {
+  maintenanceMode: boolean;
+  message: string;
+  allowedRoles: string[];
+}

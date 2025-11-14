@@ -21,8 +21,8 @@ export const timeSlotSchema = z.object({
   endTime: z.string()
     .regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/, 'Format d\'heure invalide (HH:mm:ss)'),
   courseId: z.string().optional(),
-  type: z.enum(['COURSE', 'BREAK'], {
-    errorMap: () => ({ message: 'Le type doit être COURSE ou BREAK' })
+  type: z.enum(['COURSE', 'BREAK', 'LUNCH', 'STUDY'], {
+    errorMap: () => ({ message: 'Le type doit être COURSE, BREAK, LUNCH ou STUDY' })
   })
 }).refine(
   (data) => {
@@ -30,7 +30,7 @@ export const timeSlotSchema = z.object({
     if (data.type === 'COURSE') {
       return data.courseId && data.courseId.length > 0;
     }
-    // Si le type est BREAK, le courseId n'est pas requis
+    // Pour BREAK, LUNCH et STUDY, le courseId n'est pas requis
     return true;
   },
   {
@@ -196,7 +196,7 @@ export type PresetTimeSlot = {
   label: string;
   startTime: string;
   endTime: string;
-  type: 'COURSE' | 'BREAK';
+  type: 'COURSE' | 'BREAK' | 'LUNCH' | 'STUDY';
 };
 
 export const PRESET_TIME_SLOTS = {

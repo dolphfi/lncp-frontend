@@ -77,10 +77,14 @@ export const MobileScheduleView: React.FC<MobileScheduleViewProps> = ({
                     <div className="text-sm font-semibold mb-2 truncate">
                       {slot.courseName || 'Cours'}
                     </div>
-                    {slot.teacherName && (
+                    {(slot.classroomName || slot.roomName) && (
                       <div className="text-xs opacity-90 flex items-center gap-1.5 truncate">
                         <Users className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{slot.teacherName}</span>
+                        <span className="truncate">
+                          {slot.classroomName && slot.roomName
+                            ? `${slot.classroomName} • ${slot.roomName}`
+                            : slot.classroomName || slot.roomName}
+                        </span>
                       </div>
                     )}
                   </div>

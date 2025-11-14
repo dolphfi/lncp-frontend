@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -23,8 +23,11 @@ import {
   AlertTriangle,
   Search,
   XCircle,
+  Loader2,
 } from "lucide-react";
 import { useStudentSelectionStore } from "../../../stores/studentSelectionStore";
+import { useDashboardStore } from "../../../stores/dashboardStore";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import {
   Select,
@@ -34,253 +37,34 @@ import {
   SelectValue,
 } from "../../ui/select";
 import { Input } from "../../ui/input";
-import type { ChildData } from "../../../types/studentProfile";
+import type { ChildData } from "../../../types/dashboard";
 
 const ParentStudentDashboard: React.FC = () => {
-  const { parentData, setSelectedStudent } = useStudentSelectionStore();
+  const { parentData, setSelectedStudent, setParentData } = useStudentSelectionStore();
+  const { fetchDashboard, getParentDashboard, loading, error } = useDashboardStore();
   const navigate = useNavigate();
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Données fictives si parentData n'est pas disponible
-  const mockChildren = [
-    {
-      studentInfo: {
-        id: "23690c10-c976-4a19-94ad-c85dcdc1fbc2",
-        firstName: "Willa",
-        lastName: "Hamilton",
-        matricule: "LNCP-WH-2025-0003",
-        classroom: "NSI",
-        room: "Salle XY",
-        dateOfBirth: "2009-11-10",
-        age: 16,
-        lieuDeNaissance: "Corrupti ratione qu",
-        communeDeNaissance: "Consequat Voluptate",
-        sexe: "Femme",
-        handicap: "Non",
-        avatarUrl:
-          "https://res.cloudinary.com/dsx2ogi7w/image/upload/v1757822724/students/ku7hrepcmssp22kjgu0b.png",
-        vacation: "Après-midi (PM)",
-      },
-      notes: [
-        {
-          id: "1",
-          course: {
-            id: "1",
-            code: "MATH-101",
-            titre: "Mathématiques",
-            categorie: "Sciences",
-          },
-          trimestre_1: "85",
-          trimestre_2: "88",
-          trimestre_3: "90",
-          anneeAcademique: {
-            id: "1",
-            label: "2024-2025",
-          },
-        },
-        {
-          id: "2",
-          course: {
-            id: "2",
-            code: "PHYS-101",
-            titre: "Physique",
-            categorie: "Sciences",
-          },
-          trimestre_1: "78",
-          trimestre_2: "82",
-          trimestre_3: null,
-          anneeAcademique: {
-            id: "1",
-            label: "2024-2025",
-          },
-        },
-      ],
-      paymentRequired: true,
-      paymentMessage: "Frais scolaires non payés - Solde restant: $5,000",
-      payments: [
-        {
-          id: "1",
-          amount: 2500,
-          transactionType: "Frais de scolarité",
-          status: "Complété",
-          academicYear: "2024-2025",
-          reference: "PAY-001",
-          createdAt: "2024-09-15",
-        },
-      ],
-      attendances: [
-        {
-          id: "1",
-          timestamp: "2025-01-05T08:00:00Z",
-          type: "Entrée",
-          status: "Présent",
-          reason: "",
-          isJustified: true,
-        },
-        {
-          id: "2",
-          timestamp: "2025-01-06T08:00:00Z",
-          type: "Entrée",
-          status: "Absent",
-          reason: "Maladie",
-          isJustified: true,
-        },
-        {
-          id: "3",
-          timestamp: "2025-01-07T08:00:00Z",
-          type: "Entrée",
-          status: "Présent",
-          reason: "",
-          isJustified: true,
-        },
-        {
-          id: "4",
-          timestamp: "2025-01-08T08:00:00Z",
-          type: "Entrée",
-          status: "Retard",
-          reason: "Transport",
-          isJustified: false,
-        },
-      ],
-      schedule: [],
-    },
-    {
-      studentInfo: {
-        id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-        firstName: "Jean",
-        lastName: "Dupont",
-        matricule: "LNCP-JD-2025-0012",
-        classroom: "NSIII",
-        room: "Salle A",
-        dateOfBirth: "2008-03-15",
-        age: 17,
-        lieuDeNaissance: "Port-au-Prince",
-        communeDeNaissance: "Delmas",
-        sexe: "Homme",
-        handicap: "Non",
-        avatarUrl: null,
-        vacation: "Matin (AM)",
-      },
-      notes: [
-        {
-          id: "3",
-          course: {
-            id: "3",
-            code: "HIST-101",
-            titre: "Histoire",
-            categorie: "Sciences Humaines",
-          },
-          trimestre_1: "92",
-          trimestre_2: "95",
-          trimestre_3: "93",
-          anneeAcademique: {
-            id: "1",
-            label: "2024-2025",
-          },
-        },
-        {
-          id: "4",
-          course: {
-            id: "4",
-            code: "FR-101",
-            titre: "Français",
-            categorie: "Langues",
-          },
-          trimestre_1: "88",
-          trimestre_2: "90",
-          trimestre_3: "91",
-          anneeAcademique: {
-            id: "1",
-            label: "2024-2025",
-          },
-        },
-        {
-          id: "5",
-          course: {
-            id: "5",
-            code: "ENG-101",
-            titre: "Anglais",
-            categorie: "Langues",
-          },
-          trimestre_1: "85",
-          trimestre_2: "87",
-          trimestre_3: null,
-          anneeAcademique: {
-            id: "1",
-            label: "2024-2025",
-          },
-        },
-      ],
-      paymentRequired: false,
-      paymentMessage: "",
-      payments: [
-        {
-          id: "2",
-          amount: 15000,
-          transactionType: "Frais de scolarité",
-          status: "Complété",
-          academicYear: "2024-2025",
-          reference: "PAY-002",
-          createdAt: "2024-09-01",
-        },
-        {
-          id: "3",
-          amount: 3000,
-          transactionType: "Frais supplémentaires",
-          status: "Complété",
-          academicYear: "2024-2025",
-          reference: "PAY-003",
-          createdAt: "2024-10-15",
-        },
-      ],
-      attendances: [
-        {
-          id: "5",
-          timestamp: "2025-01-05T07:30:00Z",
-          type: "Entrée",
-          status: "Présent",
-          reason: "",
-          isJustified: true,
-        },
-        {
-          id: "6",
-          timestamp: "2025-01-06T07:30:00Z",
-          type: "Entrée",
-          status: "Présent",
-          reason: "",
-          isJustified: true,
-        },
-        {
-          id: "7",
-          timestamp: "2025-01-07T07:30:00Z",
-          type: "Entrée",
-          status: "Présent",
-          reason: "",
-          isJustified: true,
-        },
-        {
-          id: "8",
-          timestamp: "2025-01-08T07:30:00Z",
-          type: "Entrée",
-          status: "Présent",
-          reason: "",
-          isJustified: true,
-        },
-        {
-          id: "9",
-          timestamp: "2025-01-09T07:30:00Z",
-          type: "Entrée",
-          status: "Présent",
-          reason: "",
-          isJustified: true,
-        },
-      ],
-      schedule: [],
-    },
-  ];
+  // Charger les données du dashboard au montage
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        await fetchDashboard();
+        const dashboardData = getParentDashboard();
+        if (dashboardData) {
+          setParentData(dashboardData);
+        }
+      } catch (err: any) {
+        toast.error(err.message || "Erreur lors du chargement des données");
+      }
+    };
 
-  const children: ChildData[] = parentData?.children || mockChildren;
+    loadDashboardData();
+  }, [fetchDashboard, getParentDashboard, setParentData]);
+
+  // Utiliser uniquement les données du backend
+  const children: ChildData[] = parentData?.children || [];
 
   // Filtrer les élèves selon la recherche
   const filteredChildren = children.filter((child: ChildData) =>
@@ -290,14 +74,14 @@ const ParentStudentDashboard: React.FC = () => {
   );
 
   // Sélectionner le premier élève par défaut
-  React.useEffect(() => {
+  useEffect(() => {
     if (children.length > 0 && !selectedStudentId) {
       setSelectedStudentId(children[0].studentInfo.id);
     }
   }, [children, selectedStudentId]);
 
   // Sélectionner automatiquement le premier élève filtré lors de la recherche
-  React.useEffect(() => {
+  useEffect(() => {
     if (searchQuery && filteredChildren.length > 0) {
       setSelectedStudentId(filteredChildren[0].studentInfo.id);
       const child = filteredChildren[0];
@@ -330,16 +114,63 @@ const ParentStudentDashboard: React.FC = () => {
     }
   };
 
-  // Données de simulation
-  const stats = {
-    totalRevenue: 56389.5,
-    subscriptions: children.length,
-    totalAbsences: 12,
-    averageGrade: 85.4,
-    presentPercentage: 92,
-    lateCount: 3,
-  };
+  // Calculer les statistiques à partir des données réelles
+  const stats = useMemo(() => {
+    // Total des revenus (somme des paiements complétés)
+    const totalRevenue = children.reduce((sum, child) => {
+      const childPayments = child.payments
+        .filter((p) => p.status === "COMPLETED")
+        .reduce((pSum, p) => pSum + p.amount, 0);
+      return sum + childPayments;
+    }, 0);
 
+    // Total des absences
+    const totalAbsences = children.reduce((sum, child) => {
+      return sum + child.attendances.filter((a) => a.status === "Absent").length;
+    }, 0);
+
+    // Compter les retards
+    const lateCount = children.reduce((sum, child) => {
+      return sum + child.attendances.filter((a) => a.status === "Retard").length;
+    }, 0);
+
+    // Calculer la moyenne générale
+    let totalNotes = 0;
+    let noteCount = 0;
+    children.forEach((child) => {
+      child.notes.forEach((note) => {
+        [note.trimestre_1, note.trimestre_2, note.trimestre_3].forEach((t) => {
+          if (t !== null) {
+            totalNotes += parseFloat(t);
+            noteCount++;
+          }
+        });
+      });
+    });
+    const averageGrade = noteCount > 0 ? totalNotes / noteCount : 0;
+
+    // Pourcentage de présences
+    const totalAttendances = children.reduce(
+      (sum, child) => sum + child.attendances.length,
+      0
+    );
+    const presentCount = children.reduce((sum, child) => {
+      return sum + child.attendances.filter((a) => a.status === "Présent").length;
+    }, 0);
+    const presentPercentage =
+      totalAttendances > 0 ? (presentCount / totalAttendances) * 100 : 0;
+
+    return {
+      totalRevenue,
+      subscriptions: children.length,
+      totalAbsences,
+      averageGrade: parseFloat(averageGrade.toFixed(2)),
+      presentPercentage: parseFloat(presentPercentage.toFixed(0)),
+      lateCount,
+    };
+  }, [children]);
+
+  // Graphique de vue d'ensemble (simulation pour l'instant)
   const overviewData = [
     { name: "Jan", total: 4000 },
     { name: "Fev", total: 3000 },
@@ -349,39 +180,64 @@ const ParentStudentDashboard: React.FC = () => {
     { name: "Juin", total: 7500 },
   ];
 
-  const recentPayments = [
-    {
-      name: "Jean Dupont",
-      email: "jean.dupont@email.com",
-      amount: 2500,
-      avatar: "/avatars/01.png",
-    },
-    {
-      name: "Marie Claire",
-      email: "marie.claire@email.com",
-      amount: 1500,
-      avatar: "/avatars/02.png",
-    },
-  ];
+  // Paiements récents (à partir des données réelles)
+  const recentPayments = useMemo(() => {
+    const allPayments: Array<{
+      name: string;
+      email: string;
+      amount: number;
+      avatar: string | null;
+      date: string;
+    }> = [];
+
+    children.forEach((child) => {
+      child.payments
+        .filter((p) => p.status === "COMPLETED")
+        .forEach((payment) => {
+          allPayments.push({
+            name: `${child.studentInfo.firstName} ${child.studentInfo.lastName}`,
+            email: `${child.studentInfo.firstName.toLowerCase()}.${child.studentInfo.lastName.toLowerCase()}@example.com`,
+            amount: payment.amount,
+            avatar: child.studentInfo.avatarUrl,
+            date: payment.createdAt,
+          });
+        });
+    });
+
+    // Trier par date et prendre les 5 plus récents
+    return allPayments
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [children]);
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header avec profil utilisateur */}
       <DashboardHeader />
 
-      {/* Contenu principal - Centré avec padding bottom pour mobile */}
-      <div className="flex justify-center px-4 py-8 pb-24 md:pb-8">
-        <div className="w-full max-w-5xl space-y-6">
-          {/* Liste des Élèves avec Tabs */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Liste des Élèves */}
-            <div className="lg:col-span-2 rounded-xl bg-white border border-gray-200 p-6">
-              <h3 className="text-sm font-semibold text-blue-900 mb-4 flex items-center gap-2">
-                <GraduationCap className="w-5 h-5" />
-                Mes Élèves
-              </h3>
+      {/* Afficher le loader pendant le chargement */}
+      {loading ? (
+        <div className="flex items-center justify-center py-24">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">Chargement des données...</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Contenu principal - Centré avec padding bottom pour mobile */}
+          <div className="flex justify-center px-4 py-8 pb-24 md:pb-8">
+            <div className="w-full max-w-5xl space-y-6">
+              {/* Liste des Élèves avec Tabs */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Liste des Élèves */}
+                <div className="lg:col-span-2 rounded-xl bg-white border border-gray-200 p-6">
+                  <h3 className="text-sm font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5" />
+                    Mes Élèves
+                  </h3>
 
-              {children.length > 0 ? (
+                  {children.length > 0 ? (
                 <div className="space-y-4">
                   {/* Select avec recherche */}
                   <div className="space-y-3">
@@ -437,36 +293,44 @@ const ParentStudentDashboard: React.FC = () => {
               <h3 className="text-sm font-semibold text-blue-900 mb-4">
                 Paiements Récents
               </h3>
-              <p className="text-xs text-blue-900/60 mb-4">
-                Vous avez {recentPayments.length} paiements ce mois-ci.
-              </p>
+              {recentPayments.length > 0 ? (
+                <>
+                  <p className="text-xs text-blue-900/60 mb-4">
+                    Vous avez {recentPayments.length} paiement(s) récent(s).
+                  </p>
 
-              <div className="space-y-4">
-                {recentPayments.map((payment, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10 border-2 border-gray-200">
-                      <AvatarImage src={payment.avatar} alt="Avatar" />
-                      <AvatarFallback className="bg-blue-100 text-blue-700 font-semibold">
-                        {payment.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-blue-900 truncate">
-                        {payment.name}
-                      </p>
-                      <p className="text-xs text-blue-900/60 truncate">
-                        {payment.email}
-                      </p>
-                    </div>
-                    <div className="text-sm font-bold text-green-600">
-                      +${payment.amount.toLocaleString()}
-                    </div>
+                  <div className="space-y-4">
+                    {recentPayments.map((payment, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 border-2 border-gray-200">
+                          <AvatarImage src={payment.avatar || undefined} alt="Avatar" />
+                          <AvatarFallback className="bg-blue-100 text-blue-700 font-semibold">
+                            {payment.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-blue-900 truncate">
+                            {payment.name}
+                          </p>
+                          <p className="text-xs text-blue-900/60 truncate">
+                            {new Date(payment.date).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <div className="text-sm font-bold text-green-600">
+                          +{payment.amount.toLocaleString()} G
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-blue-900/60">Aucun paiement récent</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -716,6 +580,8 @@ const ParentStudentDashboard: React.FC = () => {
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

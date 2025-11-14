@@ -15,8 +15,8 @@ export const addStudentSchema = z.object({
       const age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
       const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
-      return actualAge >= 5 && actualAge <= 25;
-    }, "L'âge doit être compris entre 5 et 25 ans"),
+      return actualAge >= 5;
+    }, "L'étudiant doit avoir au moins 5 ans"),
 
   // Photo de profil
   avatar: z.instanceof(File).optional(),

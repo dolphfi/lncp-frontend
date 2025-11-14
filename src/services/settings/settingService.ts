@@ -14,6 +14,9 @@ import {
   SettingsResponse,
   CreateSettingDto,
   UpdateSettingDto,
+  MaintenanceResponse,
+  MaintenanceStatusResponse,
+  MaintenancePublicStatusResponse,
 } from '../../types/setting';
 
 const API_URL = API_CONFIG.BASE_URL;
@@ -200,6 +203,55 @@ export const uploadHeader = async (
 };
 
 /**
+ * POST /settings/maintenance/enable
+ * Activer le mode maintenance (SUPER_ADMIN uniquement)
+ */
+export const enableMaintenance = async (): Promise<MaintenanceResponse> => {
+  const response = await axios.post(
+    `${API_URL}/settings/maintenance/enable`,
+    {},
+    getAuthHeaders()
+  );
+  return response.data;
+};
+
+/**
+ * POST /settings/maintenance/disable
+ * Désactiver le mode maintenance (SUPER_ADMIN uniquement)
+ */
+export const disableMaintenance = async (): Promise<MaintenanceResponse> => {
+  const response = await axios.post(
+    `${API_URL}/settings/maintenance/disable`,
+    {},
+    getAuthHeaders()
+  );
+  return response.data;
+};
+
+/**
+ * GET /settings/maintenance/status
+ * Vérifier le statut du mode maintenance (SUPER_ADMIN ou ADMIN)
+ */
+export const getMaintenanceStatus = async (): Promise<MaintenanceStatusResponse> => {
+  const response = await axios.get(
+    `${API_URL}/settings/maintenance/status`,
+    getAuthHeaders()
+  );
+  return response.data;
+};
+
+/**
+ * GET /settings/maintenance/public-status
+ * Vérifier le statut public du mode maintenance (sans authentification)
+ */
+export const getMaintenancePublicStatus = async (): Promise<MaintenancePublicStatusResponse> => {
+  const response = await axios.get(
+    `${API_URL}/settings/maintenance/public-status`
+  );
+  return response.data;
+};
+
+/**
  * Export de tous les services
  */
 export const settingService = {
@@ -213,4 +265,8 @@ export const settingService = {
   deleteSetting,
   uploadLogo,
   uploadHeader,
+  enableMaintenance,
+  disableMaintenance,
+  getMaintenanceStatus,
+  getMaintenancePublicStatus,
 };

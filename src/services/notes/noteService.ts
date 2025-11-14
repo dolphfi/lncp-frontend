@@ -432,13 +432,48 @@ class NoteService {
       
       console.log(`📝 Reçu ${apiPendingNotes.length} notes en attente de l'API`);
       
-      // Convertir vers le format frontend (spécifique pour pendingNotes)
+      // Convertir vers le format frontend
       const convertedNotes = this.convertPendingNotesToFrontend(apiPendingNotes);
       
       console.log(`✅ ${convertedNotes.length} entrées de notes après conversion`);
       return convertedNotes;
     } catch (error) {
       console.error('❌ Erreur getDashboardPendingNotes:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Récupérer TOUTES les notes du professeur depuis le dashboard (TEACHER uniquement)
+   * Endpoint: GET /dashboard - champs pendingNotes + approvedNotes
+   * Retourne toutes les notes (en attente ET validées) pour la consultation
+   */
+  async getDashboardAllTeacherNotes(): Promise<any[]> {
+    try {
+      console.log('🌐 Appel API getDashboardAllTeacherNotes (dashboard)');
+      const response = await api.get<any>('/dashboard');
+      
+      console.log('📊 Réponse dashboard:', response.data);
+      
+      // Extraire pendingNotes et approvedNotes du dashboard
+      const apiPendingNotes = response.data?.pendingNotes || [];
+      const apiApprovedNotes = response.data?.approvedNotes || [];
+      
+      console.log(`📝 Reçu ${apiPendingNotes.length} notes en attente et ${apiApprovedNotes.length} notes validées`);
+      
+      // Convertir les notes en attente
+      const convertedPending = this.convertPendingNotesToFrontend(apiPendingNotes);
+      
+      // Convertir les notes validées (même format que pending)
+      const convertedApproved = this.convertPendingNotesToFrontend(apiApprovedNotes);
+      
+      // Fusionner toutes les notes
+      const allNotes = [...convertedPending, ...convertedApproved];
+      
+      console.log(`✅ Total ${allNotes.length} notes après conversion (${convertedPending.length} en attente, ${convertedApproved.length} validées)`);
+      return allNotes;
+    } catch (error) {
+      console.error('❌ Erreur getDashboardAllTeacherNotes:', error);
       throw error;
     }
   }

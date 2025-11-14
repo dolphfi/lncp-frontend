@@ -60,10 +60,12 @@ export interface TimeSlot {
   startTime: string;        // Format: "HH:mm:ss" (ex: "08:00:00")
   endTime: string;          // Format: "HH:mm:ss" (ex: "09:00:00")
   courseId?: string;        // ID du cours (optionnel pour les pauses)
-  type: 'COURSE' | 'BREAK'; // Type de créneau
+  type: 'COURSE' | 'BREAK' | 'LUNCH' | 'STUDY'; // Type de créneau
   teacherId?: string;       // ID du professeur (optionnel)
   courseName?: string;      // Nom du cours (pour affichage)
   teacherName?: string;     // Nom du professeur (pour affichage)
+  classroomName?: string;   // Nom de la classe (pour affichage)
+  roomName?: string;        // Nom de la salle (pour affichage)
   // Champs du backend (pour compatibilité)
   course?: {
     id: string;
@@ -257,6 +259,10 @@ export const convertScheduleFromApi = (apiSchedule: ScheduleApiResponse): Schedu
       ? `${slot.course.employees[0].firstName} ${slot.course.employees[0].lastName}`
       : slot.teacherName || '';
 
+    // Extraire le nom de la classe et de la salle
+    const classroomName = slot.course?.classroom?.name || '';
+    const roomName = apiSchedule.room?.name || '';
+
     return {
       id: slot.id,
       startTime: slot.startTime,
@@ -266,6 +272,8 @@ export const convertScheduleFromApi = (apiSchedule: ScheduleApiResponse): Schedu
       courseName: slot.course?.titre || slot.courseName,
       teacherId: slot.course?.employees?.[0]?.id || slot.teacherId,
       teacherName: teacherName,
+      classroomName: classroomName,  // Nom de la classe (ex: "NSI")
+      roomName: roomName,             // Nom de la salle (ex: "Salle A")
       course: slot.course // Garder l'objet course pour compatibilité
     };
   });

@@ -9,15 +9,15 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { createApiError, type ApiError } from '../utils/errorHandler';
 
-import { 
-  Employee, 
-  CreateEmployeeDto, 
-  UpdateEmployeeDto, 
-  EmployeeFilters, 
-  EmployeePaginationOptions,
+import type {
+  Employee,
+  EmployeeApiResponse,
+  EmployeeFilters,
   EmployeeStats,
-  EmployeeApiError,
+  CreateEmployeeDto,
+  UpdateEmployeeDto,
   AssignCoursesDto,
   EmployeeType,
   EmployeeStatus
@@ -38,8 +38,7 @@ import { employeeService } from '../services/employees/employeeService';
 import { 
   convertEmployeeFromApi, 
   convertEmployeeToApi,
-  CreateEmployeeApiPayload,
-  EmployeeApiResponse
+  CreateEmployeeApiPayload
 } from '../types/employee';
 
 // =====================================================
@@ -50,12 +49,17 @@ interface EmployeeStore {
   employees: Employee[];
   allEmployees: Employee[]; // Toutes les données pour le filtrage local
   loading: boolean;
-  error: EmployeeApiError | null;
+  error: ApiError | null;
   loadingAction: 'create' | 'update' | 'delete' | 'assign' | null;
   
   // Filtres et pagination
   filters: EmployeeFilters;
-  pagination: EmployeePaginationOptions;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
   sortOptions: {
     field: keyof Employee;
     order: 'asc' | 'desc';

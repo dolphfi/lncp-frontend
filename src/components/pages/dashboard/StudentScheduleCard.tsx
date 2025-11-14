@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import type { Schedule, TimeSlot } from "../../../types/studentProfile";
+import type { Schedule, TimeSlot } from "../../../types/dashboard";
 
 interface StudentScheduleCardProps {
   schedule: Schedule[];
@@ -76,6 +76,19 @@ const StudentScheduleCard: React.FC<StudentScheduleCardProps> = ({
                   >
                     {hourSlots.map((slot, index) => {
                       const color = getCourseColor(index);
+                      // Récupérer le premier professeur assigné au cours
+                      const teacher = slot.course?.employees?.[0];
+                      const teacherName = teacher
+                        ? `${teacher.firstName} ${teacher.lastName}`
+                        : null;
+                      
+                      // Récupérer la classe et la salle du cours
+                      const className = slot.course?.classroom?.name;
+                      
+                      // Trouver la salle pour ce jour
+                      const daySchedule = schedule.find((s) => s.dayOfWeek === day);
+                      const roomName = daySchedule?.room?.name;
+                      
                       return (
                         <div
                           key={slot.id}
@@ -88,6 +101,18 @@ const StudentScheduleCard: React.FC<StudentScheduleCardProps> = ({
                             {slot.startTime.slice(0, 5)} -{" "}
                             {slot.endTime.slice(0, 5)}
                           </p>
+                          {teacherName && (
+                            <p className="text-[9px] font-bold text-gray-500 truncate mt-0.5">
+                              {teacherName}
+                            </p>
+                          )}
+                          {(className || roomName) && (
+                            <p className="text-[9px] font-bold text-gray-500 truncate mt-0.5">
+                              {className && roomName
+                                ? `${className} • ${roomName}`
+                                : className || roomName}
+                            </p>
+                          )}
                         </div>
                       );
                     })}

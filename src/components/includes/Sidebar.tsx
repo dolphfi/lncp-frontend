@@ -318,6 +318,12 @@ const AppSidebar = () => {
               { to: "/schedules", label: "Gestion Horaires" },
             ],
           }] : []),
+          // Mes Cours - accessible uniquement aux enseignants
+          ...((canAccessNotes && user?.role === 'TEACHER') ? [{
+            to: "/my-courses",
+            label: "Mes Cours",
+            icon: BookOpen,
+          }] : []),
           // Mon Horaire - accessible aux enseignants et suppléants avec academic.read
           ...((canAccessNotes && (user?.role === 'TEACHER' || user?.role === 'SUPPLEANT')) ? [{
             to: "/schedules/my-schedule",

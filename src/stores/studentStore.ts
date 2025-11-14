@@ -9,6 +9,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { createApiError } from '../utils/errorHandler';
 
 import { 
   Student, 
@@ -313,11 +314,7 @@ export const useStudentStore = create<StudentStore>()(
         } catch (error) {
           set(state => {
             state.loading = false;
-            state.error = {
-              message: 'Erreur lors du chargement des élèves',
-              code: 'FETCH_ERROR',
-              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
-            };
+            state.error = createApiError(error, 'Erreur lors du chargement des élèves', 'FETCH_ERROR');
           });
         }
       },
@@ -351,11 +348,7 @@ export const useStudentStore = create<StudentStore>()(
           return created;
         } catch (error) {
           set(state => {
-            state.error = {
-              message: 'Erreur lors de la création du responsable',
-              code: 'RESPONSABLE_CREATE_ERROR',
-              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
-            };
+            state.error = createApiError(error, 'Erreur lors de la création du responsable', 'RESPONSABLE_CREATE_ERROR');
           });
           throw error;
         }
@@ -377,11 +370,7 @@ export const useStudentStore = create<StudentStore>()(
         } catch (error) {
           set(state => {
             state.loadingAction = null;
-            state.error = {
-              message: 'Erreur lors de la création de l\'élève (API)',
-              code: 'CREATE_API_ERROR',
-              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
-            };
+            state.error = createApiError(error, 'Erreur lors de la création de l\'élève', 'CREATE_API_ERROR');
           });
           throw error;
         }
@@ -524,11 +513,7 @@ export const useStudentStore = create<StudentStore>()(
           console.error('Erreur lors de la recherche par matricule:', error);
           set(state => { 
             state.loading = false;
-            state.error = {
-              message: 'Erreur lors de la recherche par matricule',
-              code: 'STUDENT_BY_MATRICULE_ERROR',
-              details: error instanceof Error ? [{ field: 'matricule', message: error.message }] : []
-            };
+            state.error = createApiError(error, 'Erreur lors de la recherche par matricule', 'STUDENT_BY_MATRICULE_ERROR', 'matricule');
           });
           return null;
         }
@@ -554,11 +539,7 @@ export const useStudentStore = create<StudentStore>()(
           console.error('Erreur lors de la recherche par classe:', error);
           set(state => { 
             state.loading = false;
-            state.error = {
-              message: 'Erreur lors de la recherche par classe',
-              code: 'STUDENTS_BY_CLASSROOM_ERROR',
-              details: error instanceof Error ? [{ field: 'classroomId', message: error.message }] : []
-            };
+            state.error = createApiError(error, 'Erreur lors de la recherche par classe', 'STUDENTS_BY_CLASSROOM_ERROR', 'classroomId');
           });
           return [];
         }
@@ -584,11 +565,7 @@ export const useStudentStore = create<StudentStore>()(
           console.error('Erreur lors de la recherche par salle:', error);
           set(state => { 
             state.loading = false;
-            state.error = {
-              message: 'Erreur lors de la recherche par salle',
-              code: 'STUDENTS_BY_ROOM_ERROR',
-              details: error instanceof Error ? [{ field: 'roomId', message: error.message }] : []
-            };
+            state.error = createApiError(error, 'Erreur lors de la recherche par salle', 'STUDENTS_BY_ROOM_ERROR', 'roomId');
           });
           return [];
         }
@@ -606,11 +583,7 @@ export const useStudentStore = create<StudentStore>()(
           console.error('Erreur lors de la recherche par ID:', error);
           set(state => { 
             state.loading = false;
-            state.error = {
-              message: 'Erreur lors de la recherche par ID',
-              code: 'STUDENT_BY_ID_ERROR',
-              details: error instanceof Error ? [{ field: 'id', message: error.message }] : []
-            };
+            state.error = createApiError(error, 'Erreur lors de la recherche par ID', 'STUDENT_BY_ID_ERROR', 'id');
           });
           return null;
         }
@@ -638,11 +611,7 @@ export const useStudentStore = create<StudentStore>()(
           set(state => { 
             state.loading = false;
             state.loadingAction = null;
-            state.error = {
-              message: 'Erreur lors de la mise à jour de l\'étudiant',
-              code: 'STUDENT_UPDATE_ERROR',
-              details: error instanceof Error ? [{ field: 'general', message: error.message }] : []
-            };
+            state.error = createApiError(error, 'Erreur lors de la mise à jour de l\'étudiant', 'STUDENT_UPDATE_ERROR');
           });
           throw error;
         }

@@ -14,6 +14,9 @@ import {
   SettingStats,
   CreateSettingDto,
   UpdateSettingDto,
+  MaintenanceResponse,
+  MaintenanceStatusResponse,
+  MaintenancePublicStatusResponse,
 } from '../types/setting';
 import { settingService } from '../services/settings/settingService';
 
@@ -37,6 +40,11 @@ interface SettingState {
   // Statistiques
   stats: SettingStats;                       // Statistiques calculées
   
+  // Mode Maintenance
+  maintenanceMode: boolean;                  // État du mode maintenance
+  maintenanceLoading: boolean;               // Chargement des actions maintenance
+  maintenanceLastUpdated: string | null;     // Dernière mise à jour
+  
   // Actions - Chargement des données
   fetchSettings: () => Promise<void>;
   fetchSettingsByGroup: (group: SettingGroup) => Promise<void>;
@@ -52,6 +60,12 @@ interface SettingState {
   // Actions - Upload de fichiers
   uploadLogo: (file: File, label: string, description?: string) => Promise<Setting>;
   uploadHeader: (file: File, label: string, description?: string) => Promise<Setting>;
+  
+  // Actions - Mode Maintenance
+  enableMaintenance: () => Promise<MaintenanceResponse>;
+  disableMaintenance: () => Promise<MaintenanceResponse>;
+  fetchMaintenanceStatus: () => Promise<void>;
+  fetchMaintenancePublicStatus: () => Promise<MaintenancePublicStatusResponse>;
   
   // Actions - Filtres et recherche
   setFilters: (filters: Partial<SettingFilters>) => void;
@@ -84,6 +98,9 @@ export const useSettingStore = create<SettingState>((set, get) => ({
       ACADEMIQUE: 0,
     },
   },
+  maintenanceMode: false,
+  maintenanceLoading: false,
+  maintenanceLastUpdated: null,
 
   // =====================================================
   // ACTIONS - CHARGEMENT DES DONNÉES
@@ -339,6 +356,91 @@ export const useSettingStore = create<SettingState>((set, get) => ({
         error: error.message || 'Erreur lors de l\'upload de l\'en-tête', 
         loading: false 
       });
+      throw error;
+    }
+  },
+
+  // =====================================================
+  // ACTIONS - MODE MAINTENANCE
+  // =====================================================
+
+  /**
+   * Activer le mode maintenance
+   */
+  enableMaintenance: async () => {
+    set({ maintenanceLoading: true, error: null });
+    try {
+      const response = await settingService.enableMaintenance();
+      
+      set({
+        maintenanceMode: response.maintenanceMode,
+        maintenanceLoading: false,
+        maintenanceLastUpdated: new Date().toISOString(),
+      });
+      
+      return response;
+    } catch (error: any) {
+      set({
+        error: error.message || 'Erreur lors de l\'activation du mode maintenance',
+        maintenanceLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Désactiver le mode maintenance
+   */
+  disableMaintenance: async () => {
+    set({ maintenanceLoading: true, error: null });
+    try {
+      const response = await settingService.disableMaintenance();
+      
+      set({
+        maintenanceMode: response.maintenanceMode,
+        maintenanceLoading: false,
+        maintenanceLastUpdated: new Date().toISOString(),
+      });
+      
+      return response;
+    } catch (error: any) {
+      set({
+        error: error.message || 'Erreur lors de la désactivation du mode maintenance',
+        maintenanceLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Récupérer le statut du mode maintenance
+   */
+  fetchMaintenanceStatus: async () => {
+    set({ maintenanceLoading: true, error: null });
+    try {
+      const response = await settingService.getMaintenanceStatus();
+      
+      set({
+        maintenanceMode: response.maintenanceMode,
+        maintenanceLastUpdated: response.lastUpdated || null,
+        maintenanceLoading: false,
+      });
+    } catch (error: any) {
+      set({
+        error: error.message || 'Erreur lors de la récupération du statut',
+        maintenanceLoading: false,
+      });
+    }
+  },
+
+  /**
+   * Récupérer le statut public du mode maintenance
+   */
+  fetchMaintenancePublicStatus: async () => {
+    try {
+      const response = await settingService.getMaintenancePublicStatus();
+      return response;
+    } catch (error: any) {
       throw error;
     }
   },

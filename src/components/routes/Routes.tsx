@@ -34,6 +34,7 @@ import { BadgesManagement } from 'components/pages/dashboard/BadgesManagement';
 import { TestManagement } from 'components/pages/dashboard/TestManagement';
 import { Re_registrationManagement } from '../pages/dashboard/Re_registrationManagement';
 import { Monitoring } from '../pages/dashboard/Monitoring';
+import TeacherCoursesView from '../pages/teacher/TeacherCoursesView';
 
 function AppRoutes() {
     return (<Routes> {/* Routes avec Navbar et Footer */}
@@ -59,6 +60,7 @@ function AppRoutes() {
         {/* Routes sans sidebar pour STUDENT et PARENT */}
         <Route path="/dashboard-overview"
             element={<PrivateRoute><ParentStudentDashboard /></PrivateRoute>} />
+        
         <Route path="/my-profile"
             element={<PrivateRoute><Profile /></PrivateRoute>} />
 
@@ -84,6 +86,8 @@ function AppRoutes() {
                 element={<RoleRoute requiredFeature="courses"><ScheduleManagement /></RoleRoute>} />
             <Route path="/schedules/my-schedule"
                 element={<RoleRoute requiredFeature="academic"><MySchedule /></RoleRoute>} />
+            <Route path="/my-courses"
+                element={<RoleRoute requiredFeature="academic"><TeacherCoursesView /></RoleRoute>} />
             <Route path="/employee"
                 element={<RoleRoute requiredFeature="employees"><EmployeesManagement /></RoleRoute>} />
             <Route path="/profile" element={<Profile />} />

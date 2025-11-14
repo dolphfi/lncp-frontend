@@ -9,6 +9,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuthStore } from "../../../stores/authStoreSimple";
 import { useStudentSelectionStore } from "../../../stores/studentSelectionStore";
+import { useDashboardStore } from "../../../stores/dashboardStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import {
@@ -22,25 +23,38 @@ import {
   TrendingUp,
   BookOpen,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
 import StudentScheduleCard from "./StudentScheduleCard";
-import StudentNotesCard from "./StudentNotesCard";
+import StudentNotesTable from "./StudentNotesTable";
+import StudentPaymentsCard from "./StudentPaymentsCard";
 import DashboardHeader from "../../includes/DashboardHeader";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import type {
-  ParentProfileData,
-  StudentProfileData,
+  ParentDashboard,
+  StudentDashboard,
+  ChildData,
   Attendance,
-} from "../../../types/studentProfile";
+} from "../../../types/dashboard";
 
 const StudentProfilePage: React.FC = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const { selectedStudent, setParentData } = useStudentSelectionStore();
-  const [studentData, setStudentData] = useState<StudentProfileData | null>(
+  
+  // Utiliser le dashboard store
+  const {
+    fetchDashboard,
+    getParentDashboard,
+    getStudentDashboard,
+    loading,
+    error
+  } = useDashboardStore();
+  
+  const [studentData, setStudentData] = useState<StudentDashboard | ChildData | null>(
     null
   );
-  const [loading, setLoading] = useState(true);
   const isParent = user?.role === "PARENT";
   const isStudentOrParent = user?.role === "STUDENT" || user?.role === "PARENT";
 
@@ -60,171 +74,38 @@ const StudentProfilePage: React.FC = () => {
 
   const loadProfileData = async () => {
     try {
-      setLoading(true);
-
-      // Mock data basé sur la structure JSON fournie
+      // Charger les données depuis le backend
+      await fetchDashboard();
+      
+      // Récupérer les données selon le rôle
       if (isParent) {
-        const mockParentData: ParentProfileData = {
-          parentInfo: {
-            id: user?.id || "c35adb28-5b1f-4990-a341-ee6823fa2c8a",
-            firstName: user?.first_name || "Hashim",
-            lastName: user?.last_name || "Key",
-            childrenCount: 9,
-          },
-          children: [
-            {
-              studentInfo: {
-                id: "23690c10-c976-4a19-94ad-c85dcdc1fbc2",
-                firstName: "Willa",
-                lastName: "Hamilton",
-                matricule: "LNCP-WH-2025-0003",
-                classroom: "NSI",
-                room: "Salle XY",
-                dateOfBirth: "2009-11-10",
-                age: 16,
-                lieuDeNaissance: "Corrupti ratione qu",
-                communeDeNaissance: "Consequat Voluptate",
-                sexe: "Femme",
-                handicap: "Non",
-                handicapDetails: "Sunt et numquam ea l",
-                badge: null,
-                avatarUrl:
-                  "https://res.cloudinary.com/dsx2ogi7w/image/upload/v1757822724/students/ku7hrepcmssp22kjgu0b.png",
-                adresse: {
-                  ligne1: null,
-                  departement: null,
-                  commune: null,
-                  sectionCommunale: null,
-                },
-                vacation: "Après-midi (PM)",
-              },
-              notes: [],
-              paymentRequired: true,
-              paymentMessage:
-                "Frais scolaires non payés - Accès aux notes restreint",
-              payments: [],
-              attendances: [
-                {
-                  id: "0dca886b-e3ee-473e-9366-a5e604a3be9d",
-                  timestamp: "2025-10-01T12:30:00.812Z",
-                  type: "Entrée",
-                  status: "Absent",
-                  readerId: "SYSTEM_AUTO_DETECTION",
-                  reason: "Absence détectée automatiquement par le système",
-                  isJustified: false,
-                  justification: null,
-                },
-                {
-                  id: "62813c40-b84d-450e-ab71-9c1f46652644",
-                  timestamp: "2025-10-02T18:46:52.331Z",
-                  type: "Entrée",
-                  status: "Absent",
-                  readerId: "SYSTEM_AUTO_DETECTION",
-                  reason: "Absence détectée automatiquement par le système",
-                  isJustified: false,
-                  justification: null,
-                },
-                {
-                  id: "ce947a5b-8427-402c-89a9-92a167c47cf9",
-                  timestamp: "2025-10-03T13:06:56.350Z",
-                  type: "Entrée",
-                  status: "Absent",
-                  readerId: "SYSTEM_AUTO_DETECTION",
-                  reason: "Absence détectée automatiquement par le système",
-                  isJustified: false,
-                  justification: null,
-                },
-              ],
-              schedule: [
-                {
-                  id: "1093bdae-fcb2-4bb9-9f71-49cde9c4c341",
-                  name: "Maxis",
-                  dayOfWeek: "LUNDI",
-                  vacation: "Matin (AM)",
-                  room: {
-                    id: "2ebcda2d-b492-4a41-a218-ec3af4864fcb",
-                    name: "Salle XY",
-                    capacity: 60,
-                    status: "Disponible",
-                  },
-                  timeSlots: [
-                    {
-                      id: "5e42959c-1018-4e0c-ab44-54d01def14dd",
-                      startTime: "08:00:00",
-                      endTime: "09:00:00",
-                      type: "COURSE",
-                      course: {
-                        id: "fcf51ca7-210e-48c6-9d6e-fd9c8494a11e",
-                        code: "PHYS-101",
-                        titre: "Optique",
-                        description: "ssdnskds sd",
-                        categorie: "Physique",
-                        ponderation: 100,
-                        statut: "Actif",
-                        classroom: {
-                          id: "82f8d071-3c1d-4c7f-93f8-286a9aa01e8d",
-                          name: "NSI",
-                          description: "1er Année Sec.",
-                        },
-                        employees: [
-                          {
-                            id: "9f947900-545b-4e73-b8a3-281cea579f76",
-                            firstName: "Madaline",
-                            lastName: "Parsons",
-                          },
-                          {
-                            id: "e9c41c13-86ce-4658-a6da-7201ef4d4c23",
-                            firstName: "Olga",
-                            lastName: "Cardenas",
-                          },
-                        ],
-                      },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        };
-        setParentData(mockParentData); // Le store sélectionne automatiquement le 1er enfant
+        const parentDashboard = getParentDashboard();
+        if (parentDashboard) {
+          setParentData(parentDashboard); // Le store sélectionne automatiquement le 1er enfant
+        }
       } else {
-        // Pour un élève connecté
-        const mockStudentData: StudentProfileData = {
-          studentInfo: {
-            id: user?.id || "1",
-            firstName: user?.first_name || "Jean",
-            lastName: user?.last_name || "Dupont",
-            matricule: "LNCP-JD-2025-0001",
-            classroom: "NSIII",
-            room: "Salle A",
-            dateOfBirth: "2008-05-20",
-            age: 17,
-            lieuDeNaissance: "Port-au-Prince",
-            communeDeNaissance: "Port-au-Prince",
-            sexe: "Homme",
-            handicap: "Non",
-            vacation: "Matin (AM)",
-            avatarUrl: user?.avatar,
-          },
-          notes: [],
-          paymentRequired: false,
-          payments: [],
-          attendances: [],
-          schedule: [],
-        };
-        setStudentData(mockStudentData);
+        const studentDashboard = getStudentDashboard();
+        if (studentDashboard) {
+          setStudentData(studentDashboard);
+        }
       }
-    } catch (error) {
-      console.error("Erreur lors du chargement du profil:", error);
-    } finally {
-      setLoading(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors du chargement des données");
     }
   };
 
+  // Afficher l'erreur si elle existe
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
+
+  // Afficher un loader pendant le chargement
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -292,8 +173,8 @@ const StudentProfilePage: React.FC = () => {
       {/* Header pour STUDENT et PARENT - Masquer la navigation bottom en mobile */}
       {isStudentOrParent && <DashboardHeader hideBottomNav={true} />}
       
-      <div className={`px-4 ${isStudentOrParent ? 'py-6 md:pb-8' : 'py-6 md:py-8'}`}>
-        <div className="max-w-5xl mx-auto">
+      <div className={`px-2 md:px-4 ${isStudentOrParent ? 'py-6 md:pb-8' : 'py-6 md:py-8'}`}>
+        <div className="max-w-7xl mx-auto">
           {/* Bouton retour pour STUDENT et PARENT */}
           {isStudentOrParent && (
             <button
@@ -526,6 +407,14 @@ const StudentProfilePage: React.FC = () => {
 
         {/* Colonne 2 - Activités Récentes */}
         <div className="col-span-1 lg:col-span-2 space-y-6">
+          {/* Table des notes - EN HAUT */}
+          <StudentNotesTable
+            notes={currentData.notes}
+            paymentRequired={currentData.paymentRequired}
+            paymentMessage={currentData.paymentMessage}
+          />
+
+          {/* Emploi du temps */}
           <StudentScheduleCard schedule={currentData.schedule} />
 
           {/* Carte Absences et Retards Récents - Redesign */}
@@ -608,89 +497,12 @@ const StudentProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Carte Dernières Notes - Redesign */}
-          <div className="rounded-2xl backdrop-blur-xl bg-white/90 overflow-hidden border border-gray-200">
-            <div className="p-5">
-              <h4 className="text-sm font-semibold text-blue-900 flex items-center gap-2 mb-4">
-                <BookOpen className="w-4 h-4 text-blue-600" />
-                Dernières Notes
-              </h4>
-
-              {currentData.paymentRequired ? (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-orange-100 flex items-center justify-center">
-                    <AlertTriangle className="w-8 h-8 text-orange-600" />
-                  </div>
-                  <p className="text-sm text-blue-900/70 font-medium mb-1">
-                    Accès restreint
-                  </p>
-                  <p className="text-xs text-blue-900/60 max-w-xs mx-auto">
-                    {currentData.paymentMessage}
-                  </p>
-                </div>
-              ) : latestNotes.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 gap-2">
-                    {latestNotes.map((note, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between p-3 rounded-xl bg-white/50 border border-gray-200/80 hover:bg-white/70 hover:border-blue-200 transition-all duration-200"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="p-2 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-                            <BookOpen className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-blue-900 truncate">
-                              {note.course}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex-shrink-0 ml-3">
-                          <span
-                            className={`text-sm font-bold px-3 py-1.5 rounded-full ${
-                              note.note >= 70
-                                ? "bg-green-100 text-green-700 border border-green-200"
-                                : note.note >= 50
-                                ? "bg-orange-100 text-orange-700 border border-orange-200"
-                                : "bg-red-100 text-red-700 border border-red-200"
-                            }`}
-                          >
-                            {note.note}/100
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Moyenne générale */}
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm font-semibold text-blue-900">
-                        Moyenne Générale
-                      </span>
-                    </div>
-                    <span className="text-lg font-bold text-blue-900">
-                      {averageNote}/100
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
-                    <BookOpen className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <p className="text-sm text-blue-900/70 font-medium">
-                    Aucune note disponible
-                  </p>
-                  <p className="text-xs text-blue-900/50 mt-1">
-                    Les notes apparaîtront ici
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Card Statut Financier - EN BAS */}
+          <StudentPaymentsCard
+            payments={currentData.payments}
+            paymentRequired={currentData.paymentRequired}
+            paymentMessage={currentData.paymentMessage}
+          />
         </div>
         </div>
         </div>

@@ -141,7 +141,7 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
             adresse: student.adresse ? JSON.stringify(student.adresse) : '',
             vacation: student.vacation === 'Matin (AM)' ? 'AM' : 'PM',
             niveauEnseignement: student.niveauEnseignement,
-            grade: student.niveauEtude.replace(/ /g, ''), // 'NS IV' -> 'NSIV'
+            grade: student.niveauEtude.replace(/ /g, '') as 'NSI' | 'NSII' | 'NSIII' | 'NSIV', // 'NS IV' -> 'NSIV' ou garde 'NSIV'
             nomMere: student.nomMere,
             prenomMere: student.prenomMere,
             statutMere: student.statutMere === 'Vivant' ? 'vivant' : 'mort',
@@ -309,7 +309,7 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
         adresse,
         vacation: data.vacation === 'AM' ? 'Matin (AM)' : 'Après-midi (PM)',
         niveauEnseignement: data.niveauEnseignement,
-        niveauEtude: data.grade === 'NSI' ? 'NS I' : data.grade === 'NSII' ? 'NS II' : data.grade === 'NSIII' ? 'NS III' : 'NS IV',
+        niveauEtude: data.grade, // Envoyer directement NSI, NSII, NSIII, NSIV sans espace
         nomMere: data.nomMere,
         prenomMere: data.prenomMere,
         statutMere: data.statutMere === 'vivant' ? 'Vivant' : 'Mort',

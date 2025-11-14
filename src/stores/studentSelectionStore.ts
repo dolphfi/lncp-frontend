@@ -2,17 +2,17 @@
  * Store pour gérer la sélection de l'élève par un parent
  */
 import { create } from 'zustand';
-import type { ChildData, ParentProfileData } from '../types/studentProfile';
+import type { ChildData, ParentDashboard } from '../types/dashboard';
 
 interface StudentSelectionState {
   // Données du parent
-  parentData: ParentProfileData | null;
+  parentData: ParentDashboard | null;
   
   // Élève actuellement sélectionné
   selectedStudent: ChildData | null;
   
   // Actions
-  setParentData: (data: ParentProfileData) => void;
+  setParentData: (data: ParentDashboard) => void;
   setSelectedStudent: (student: ChildData) => void;
   clearSelection: () => void;
 }

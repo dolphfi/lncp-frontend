@@ -118,14 +118,19 @@ export const createStudentSchema = z.object({
   dateOfBirth: z.string()
     .refine((date) => {
       const birthDate = new Date(date);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      return age >= 5 && age <= 25;
-    }, 'L\'âge doit être compris entre 5 et 25 ans')
+      return birthDate <= new Date();
+    }, 'La date de naissance ne peut pas être dans le futur')
     .refine((date) => {
       const birthDate = new Date(date);
-      return birthDate <= new Date();
-    }, 'La date de naissance ne peut pas être dans le futur'),
+      const today = new Date();
+      // Calcul précis de l'âge en tenant compte du mois et du jour
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age >= 5;
+    }, 'L\'étudiant doit avoir au moins 5 ans'),
   
   placeOfBirth: z.string().trim()
     .min(2, 'Le lieu de naissance doit contenir au moins 2 caractères')
@@ -277,14 +282,19 @@ export const updateStudentSchema = z.object({
   dateOfBirth: z.string()
     .refine((date) => {
       const birthDate = new Date(date);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      return age >= 5 && age <= 25;
-    }, 'L\'âge doit être compris entre 5 et 25 ans')
-    .refine((date) => {
-      const birthDate = new Date(date);
       return birthDate <= new Date();
     }, 'La date de naissance ne peut pas être dans le futur')
+    .refine((date) => {
+      const birthDate = new Date(date);
+      const today = new Date();
+      // Calcul précis de l'âge en tenant compte du mois et du jour
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age >= 5;
+    }, 'L\'étudiant doit avoir au moins 5 ans')
     .optional(),
   
   gender: z.enum(['male', 'female'], {

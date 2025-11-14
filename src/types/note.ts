@@ -26,7 +26,7 @@ export interface Note {
   note?: number;                 // Note obtenue
   
   // Statut de la note (pour workflow d'approbation)
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status?: 'PENDING' | 'APPROVED' | 'VALIDATED' | 'REJECTED';
   rejectionReason?: string;      // Raison du rejet (si REJECTED)
   
   // Métadonnées

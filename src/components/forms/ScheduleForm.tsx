@@ -96,7 +96,12 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       vacation: schedule.vacation,
       classroomId: schedule.classroomId,
       roomId: schedule.roomId,
-      timeSlots: schedule.timeSlots
+      timeSlots: schedule.timeSlots.map(slot => ({
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        type: slot.type as 'COURSE' | 'BREAK' | 'LUNCH' | 'STUDY',
+        courseId: slot.courseId
+      }))
     } : {
       name: '',
       dayOfWeek: 'LUNDI',
@@ -142,7 +147,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   };
 
   // Ajouter un créneau prédéfini
-  const addPresetTimeSlot = (preset: { startTime: string; endTime: string; type: 'COURSE' | 'BREAK' }) => {
+  const addPresetTimeSlot = (preset: { startTime: string; endTime: string; type: 'COURSE' | 'BREAK' | 'LUNCH' | 'STUDY' }) => {
     append({
       startTime: preset.startTime,
       endTime: preset.endTime,

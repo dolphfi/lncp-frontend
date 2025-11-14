@@ -365,7 +365,8 @@ const NotesList: React.FC = () => {
         
         const statusConfig: Record<string, { label: string; color: string }> = {
           PENDING: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800' },
-          APPROVED: { label: 'Approuvée', color: 'bg-green-100 text-green-800' },
+          APPROVED: { label: 'Validée', color: 'bg-green-100 text-green-800' },
+          VALIDATED: { label: 'Validée', color: 'bg-green-100 text-green-800' },
           REJECTED: { label: 'Rejetée', color: 'bg-red-100 text-red-800' }
         };
         
@@ -783,10 +784,12 @@ const NotesList: React.FC = () => {
                         {note.status && (
                           <Badge className={
                             note.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                            note.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                            (note.status === 'APPROVED' || note.status === 'VALIDATED') ? 'bg-green-100 text-green-800' :
                             'bg-red-100 text-red-800'
                           }>
-                            {note.status === 'PENDING' ? 'En attente' : note.status === 'APPROVED' ? 'Approuvée' : 'Rejetée'}
+                            {note.status === 'PENDING' ? 'En attente' : 
+                             (note.status === 'APPROVED' || note.status === 'VALIDATED') ? 'Validée' : 
+                             'Rejetée'}
                           </Badge>
                         )}
                       </div>

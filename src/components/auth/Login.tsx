@@ -40,6 +40,7 @@ useEffect(() => {
         if (user?.role === 'PARENT' || user?.role === 'STUDENT') {
             navigate('/dashboard-overview', { replace: true });
         } else {
+            // TEACHER, ADMIN, etc. → dashboard avec sidebar
             navigate('/dashboard', { replace: true });
         }
     }
@@ -88,6 +89,7 @@ try {
     if (loggedInUser?.role === 'PARENT' || loggedInUser?.role === 'STUDENT') {
         navigate('/dashboard-overview', { replace: true });
     } else {
+        // TEACHER, ADMIN, etc. → dashboard avec sidebar
         navigate('/dashboard', { replace: true });
     }
 } catch (error) {

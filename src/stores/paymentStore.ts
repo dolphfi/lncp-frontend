@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { paymentService } from '../services/payments/paymentService';
+import { getErrorMessage, createErrorWithMessage } from '../utils/errorHandler';
 import type {
   Payment,
   PaymentFilters,
@@ -122,8 +123,9 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         get().calculateStats();
         get().applyFiltersLocally();
       } catch (error: any) {
+        const errorMsg = getErrorMessage(error);
         set({
-          error: error.message || 'Erreur lors du chargement des paiements',
+          error: errorMsg,
           loading: false,
         });
       }
@@ -142,11 +144,13 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         get().applyFiltersLocally();
         return newPayment;
       } catch (error: any) {
+        const errorMsg = getErrorMessage(error, 'Erreur lors de la création du paiement');
         set({
-          error: error.message || 'Erreur lors de la création du paiement',
+          error: errorMsg,
           loading: false,
         });
-        throw error;
+        // Re-lancer l'erreur avec le message pour que le formulaire puisse l'afficher
+        throw createErrorWithMessage(error, 'Erreur lors de la création du paiement');
       }
     },
 
@@ -163,11 +167,12 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         get().applyFiltersLocally();
         return newPayment;
       } catch (error: any) {
+        const errorMsg = getErrorMessage(error);
         set({
-          error: error.message || 'Erreur lors de la création du dépôt bancaire',
+          error: errorMsg,
           loading: false,
         });
-        throw error;
+        throw new Error(errorMsg);
       }
     },
 
@@ -187,11 +192,12 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
           paymentUrl: response.paymentUrl,
         };
       } catch (error: any) {
+        const errorMsg = getErrorMessage(error);
         set({
-          error: error.message || 'Erreur lors de l\'initiation du paiement en ligne',
+          error: errorMsg,
           loading: false,
         });
-        throw error;
+        throw new Error(errorMsg);
       }
     },
 
@@ -203,11 +209,12 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         set({ selectedPayment: payment, loading: false });
         return payment;
       } catch (error: any) {
+        const errorMsg = getErrorMessage(error);
         set({
-          error: error.message || 'Erreur lors de la récupération du paiement',
+          error: errorMsg,
           loading: false,
         });
-        throw error;
+        throw new Error(errorMsg);
       }
     },
 
@@ -224,11 +231,12 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         get().applyFiltersLocally();
         return updatedPayment;
       } catch (error: any) {
+        const errorMsg = getErrorMessage(error);
         set({
-          error: error.message || 'Erreur lors de la mise à jour du paiement',
+          error: errorMsg,
           loading: false,
         });
-        throw error;
+        throw new Error(errorMsg);
       }
     },
 
@@ -244,11 +252,12 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         get().calculateStats();
         get().applyFiltersLocally();
       } catch (error: any) {
+        const errorMsg = getErrorMessage(error);
         set({
-          error: error.message || 'Erreur lors de la suppression du paiement',
+          error: errorMsg,
           loading: false,
         });
-        throw error;
+        throw new Error(errorMsg);
       }
     },
 
@@ -260,11 +269,12 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         set({ selectedPayment: payment, loading: false });
         return payment;
       } catch (error: any) {
+        const errorMsg = getErrorMessage(error);
         set({
-          error: error.message || 'Erreur lors de la récupération du paiement',
+          error: errorMsg,
           loading: false,
         });
-        throw error;
+        throw new Error(errorMsg);
       }
     },
 
@@ -275,8 +285,9 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         const balance = await paymentService.getStudentBalance(studentMatricule);
         set({ studentBalance: balance, loading: false });
       } catch (error: any) {
+        const errorMsg = getErrorMessage(error);
         set({
-          error: error.message || 'Erreur lors de la récupération du solde',
+          error: errorMsg,
           loading: false,
         });
       }

@@ -33,15 +33,58 @@ import {
 } from '../../ui/select';
 
 import { useScheduleStore } from '../../../stores/scheduleStore';
+import { useDashboardStore } from '../../../stores/dashboardStore';
 import { Schedule, DayOfWeek, VacationType, TimeSlot } from '../../../types/schedule';
 import { DAY_OF_WEEK_OPTIONS, VACATION_OPTIONS } from '../../../schemas/scheduleSchema';
 import authService from '../../../services/authService';
 import { MobileScheduleView } from './MobileScheduleView';
+import type { Schedule as DashboardSchedule } from '../../../types/dashboard';
 
 // Constantes pour la vue calendrier
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 7); // 7h à 17h
 const DAYS_SHORT = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
 const DAYS_FULL: DayOfWeek[] = ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI', 'DIMANCHE'];
+
+/**
+ * Convertir un horaire du dashboard vers le format schedule
+ */
+const convertDashboardScheduleToSchedule = (dashSchedule: DashboardSchedule): Schedule => {
+  return {
+    id: dashSchedule.id,
+    name: dashSchedule.name,
+    dayOfWeek: dashSchedule.dayOfWeek as DayOfWeek,
+    vacation: dashSchedule.vacation as VacationType,
+    classroomId: dashSchedule.room?.classroom?.id || '',
+    roomId: dashSchedule.room?.id || '',
+    timeSlots: dashSchedule.timeSlots.map(slot => ({
+      id: slot.id,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      type: slot.type,
+      courseId: slot.course?.id,
+      courseName: slot.course?.titre || '',
+      teacherId: slot.course?.employees?.[0]?.id,
+      teacherName: slot.course?.employees?.[0] 
+        ? `${slot.course.employees[0].firstName} ${slot.course.employees[0].lastName}`
+        : '',
+      classroomName: slot.course?.classroom?.name || '',
+      roomName: dashSchedule.room?.name || '',
+      course: slot.course
+    })),
+    classroom: dashSchedule.room?.classroom ? {
+      id: dashSchedule.room.classroom.id,
+      name: dashSchedule.room.classroom.name,
+      niveau: dashSchedule.room.classroom.description
+    } : undefined,
+    room: dashSchedule.room ? {
+      id: dashSchedule.room.id,
+      name: dashSchedule.room.name,
+      capacity: dashSchedule.room.capacity
+    } : undefined,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+};
 
 /**
  * Page Mon Horaire (TEACHER/STUDENT)
@@ -52,18 +95,38 @@ export const MySchedule: React.FC = () => {
     loading,
     fetchMySchedule
   } = useScheduleStore();
+  
+  const { getStudentDashboard } = useDashboardStore();
 
   // États locaux
   const [selectedDay, setSelectedDay] = useState<DayOfWeek | 'all'>('all');
   const [selectedVacation, setSelectedVacation] = useState<VacationType | 'all'>('all');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [mobileDayIndex, setMobileDayIndex] = useState<number>(0); // Index du jour actuel sur mobile
+  const [combinedSchedule, setCombinedSchedule] = useState<Schedule[]>([]);
 
   // Récupérer l'utilisateur connecté
   useEffect(() => {
     const user = authService.getUser();
     setCurrentUser(user);
   }, []);
+
+  // Combiner les horaires du dashboard et de l'API
+  useEffect(() => {
+    if (currentUser?.role === 'STUDENT') {
+      // Pour les étudiants, utiliser les horaires du dashboard
+      const dashboardData = getStudentDashboard();
+      if (dashboardData?.schedule) {
+        const convertedSchedules = dashboardData.schedule.map(convertDashboardScheduleToSchedule);
+        setCombinedSchedule(convertedSchedules);
+      } else {
+        setCombinedSchedule(mySchedule);
+      }
+    } else {
+      // Pour les professeurs, utiliser l'API schedules
+      setCombinedSchedule(mySchedule);
+    }
+  }, [currentUser, mySchedule, getStudentDashboard]);
 
   // Charger l'horaire au montage
   useEffect(() => {
@@ -88,7 +151,7 @@ export const MySchedule: React.FC = () => {
   const groupedSchedules = React.useMemo(() => {
     const grouped: Record<string, Schedule[]> = {};
 
-    mySchedule.forEach(schedule => {
+    combinedSchedule.forEach(schedule => {
       const key = `${schedule.dayOfWeek}-${schedule.vacation}`;
       if (!grouped[key]) {
         grouped[key] = [];
@@ -97,7 +160,7 @@ export const MySchedule: React.FC = () => {
     });
 
     return grouped;
-  }, [mySchedule]);
+  }, [combinedSchedule]);
 
   // Obtenir les créneaux d'un jour/période spécifique
   const getTimeSlotsForDayAndVacation = (day: DayOfWeek, vacation: VacationType): TimeSlot[] => {
@@ -271,7 +334,7 @@ export const MySchedule: React.FC = () => {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
               <span className="ml-3 text-gray-600">Chargement de votre horaire...</span>
             </div>
-          ) : mySchedule.length === 0 ? (
+          ) : combinedSchedule.length === 0 ? (
             <div className="text-center py-12">
               <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500 text-lg">Aucun horaire trouvé</p>
@@ -346,7 +409,7 @@ export const MySchedule: React.FC = () => {
                                     <div
                                       key={slotIndex}
                                       className={`${color.bg} ${color.border} ${color.text} ${heightClass} rounded p-1 mb-0.5 border-l-2 shadow-sm hover:shadow transition-all cursor-pointer overflow-hidden`}
-                                      title={`${slot.courseName}\n${slot.startTime.slice(0, 5)} - ${slot.endTime.slice(0, 5)}\n${slot.teacherName || ''}`}
+                                      title={`${slot.courseName}\n${slot.startTime.slice(0, 5)} - ${slot.endTime.slice(0, 5)}\n${slot.classroomName || ''} • ${slot.roomName || ''}`}
                                     >
                                       <div className="text-[8px] font-bold mb-0.5 truncate leading-tight">
                                         {slot.startTime.slice(0, 5)}-{slot.endTime.slice(0, 5)}
@@ -354,9 +417,11 @@ export const MySchedule: React.FC = () => {
                                       <div className="text-[9px] font-semibold truncate leading-tight">
                                         {slot.courseName || 'Cours'}
                                       </div>
-                                      {slot.teacherName && duration > 60 && (
+                                      {(slot.classroomName || slot.roomName) && (
                                         <div className="text-[8px] opacity-90 truncate mt-0.5">
-                                          {slot.teacherName}
+                                          {slot.classroomName && slot.roomName
+                                            ? `${slot.classroomName} • ${slot.roomName}`
+                                            : slot.classroomName || slot.roomName}
                                         </div>
                                       )}
                                     </div>
@@ -376,7 +441,7 @@ export const MySchedule: React.FC = () => {
       </Card>
 
       {/* Statistiques */}
-      {mySchedule.length > 0 && (
+      {combinedSchedule.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           <Card>
             <CardHeader className="pb-1">
@@ -386,7 +451,7 @@ export const MySchedule: React.FC = () => {
             </CardHeader>
             <CardContent className="pt-0 pb-2">
               <div className="text-lg sm:text-xl font-bold text-blue-600">
-                {mySchedule.reduce((sum, s) => sum + s.timeSlots.length, 0)}
+                {combinedSchedule.reduce((sum, s) => sum + s.timeSlots.length, 0)}
               </div>
             </CardContent>
           </Card>
@@ -399,7 +464,7 @@ export const MySchedule: React.FC = () => {
             </CardHeader>
             <CardContent className="pt-0 pb-2">
               <div className="text-lg sm:text-xl font-bold text-emerald-600">
-                {new Set(mySchedule.map(s => s.dayOfWeek)).size}
+                {new Set(combinedSchedule.map(s => s.dayOfWeek)).size}
               </div>
             </CardContent>
           </Card>
@@ -412,7 +477,7 @@ export const MySchedule: React.FC = () => {
             </CardHeader>
             <CardContent className="pt-0 pb-2">
               <div className="text-lg sm:text-xl font-bold text-cyan-600">
-                {new Set(mySchedule.map(s => s.classroomId)).size}
+                {new Set(combinedSchedule.map(s => s.classroomId)).size}
               </div>
             </CardContent>
           </Card>
