@@ -76,11 +76,20 @@ const ArchivesTab: React.FC = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [showReleveDialog, setShowReleveDialog] = useState(false);
   const [newArchiveYear, setNewArchiveYear] = useState('');
   const [studentMatricule, setStudentMatricule] = useState('');
   const [archiveStatus, setArchiveStatus] = useState<any>(null);
   const [studentHistory, setStudentHistory] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [releveData, setReleveData] = useState<any>(null);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [loadingReleve, setLoadingReleve] = useState(false);
+  
+  // États pour les filtres
+  const [filterStudents, setFilterStudents] = useState('');
+  const [filterPayments, setFilterPayments] = useState('');
+  const [filterGrades, setFilterGrades] = useState('');
 
   // Store Zustand
   const {
@@ -336,6 +345,126 @@ const ArchivesTab: React.FC = () => {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  /**
+   * Récupère le relevé de notes d'un étudiant archivé
+   */
+  const handleViewReleve = async (student: any) => {
+    if (!selectedYear) return;
+    
+    setLoadingReleve(true);
+    setSelectedStudent(student);
+    setShowReleveDialog(true);
+    
+    try {
+      // Importer dynamiquement le service
+      const { getArchivedReleveNotes } = await import('../../../services/archives/archiveService');
+      
+      const releve = await getArchivedReleveNotes({
+        academicYear: selectedYear.id,
+        matricule: student.matricule
+      });
+      
+      setReleveData(releve);
+      toast.success('Relevé de notes chargé');
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors du chargement du relevé');
+      setReleveData(null);
+    } finally {
+      setLoadingReleve(false);
+    }
+  };
+
+  /**
+   * Télécharge le relevé de notes en PDF
+   */
+  const handleDownloadReleve = async (student: any) => {
+    if (!selectedYear) return;
+    
+    try {
+      toast.info('Génération du PDF en cours...', { autoClose: 2000 });
+      
+      // Récupérer les données du relevé
+      const { getArchivedReleveNotes } = await import('../../../services/archives/archiveService');
+      const releve = await getArchivedReleveNotes({
+        academicYear: selectedYear.id,
+        matricule: student.matricule
+      });
+      
+      // Importer la fonction de génération PDF
+      const { generateRelevePDF } = await import('../../../utils/relevePDF');
+      
+      // Préparer les données pour le PDF
+      const releveData = {
+        student: releve.student,
+        academicYear: selectedYear.name
+      };
+      
+      // Générer le PDF
+      await generateRelevePDF(releveData, {
+        headerImagePath: '/header-2.png',
+        watermarkImagePath: '/paper.png',
+        schoolName: 'LNCP'
+      });
+      
+      toast.success('Relevé de notes téléchargé avec succès');
+    } catch (error: any) {
+      console.error('Erreur génération PDF:', error);
+      toast.error(error.message || 'Erreur lors de la génération du PDF');
+    }
+  };
+
+  /**
+   * Filtrage des données étudiants
+   */
+  const getFilteredStudents = () => {
+    if (!archivedData.students) return [];
+    
+    return archivedData.students.filter((student: any) => {
+      const searchTerm = filterStudents.toLowerCase();
+      return (
+        student.matricule?.toLowerCase().includes(searchTerm) ||
+        student.firstName?.toLowerCase().includes(searchTerm) ||
+        student.lastName?.toLowerCase().includes(searchTerm) ||
+        student.email?.toLowerCase().includes(searchTerm) ||
+        student.classroomName?.toLowerCase().includes(searchTerm)
+      );
+    });
+  };
+
+  /**
+   * Filtrage des données paiements
+   */
+  const getFilteredPayments = () => {
+    if (!archivedData.payments) return [];
+    
+    return archivedData.payments.filter((payment: any) => {
+      const searchTerm = filterPayments.toLowerCase();
+      return (
+        payment.reference?.toLowerCase().includes(searchTerm) ||
+        payment.studentName?.toLowerCase().includes(searchTerm) ||
+        payment.studentMatricule?.toLowerCase().includes(searchTerm) ||
+        payment.transactionType?.toLowerCase().includes(searchTerm)
+      );
+    });
+  };
+
+  /**
+   * Filtrage des données notes
+   */
+  const getFilteredGrades = () => {
+    if (!archivedData.grades) return [];
+    
+    return archivedData.grades.filter((grade: any) => {
+      const searchTerm = filterGrades.toLowerCase();
+      return (
+        grade.studentName?.toLowerCase().includes(searchTerm) ||
+        grade.studentMatricule?.toLowerCase().includes(searchTerm) ||
+        grade.courseName?.toLowerCase().includes(searchTerm) ||
+        grade.courseCode?.toLowerCase().includes(searchTerm)
+      );
+    });
   };
 
   return (
@@ -688,31 +817,304 @@ const ArchivesTab: React.FC = () => {
                       ))}
                     </TabsList>
 
-                    {(['students', 'employees', 'courses', 'payments', 'grades', 'attendance', 'bulletins'] as ArchiveDataType[]).map((type) => (
-                      <TabsContent key={type} value={type} className="mt-4">
-                        {loadingData ? (
-                          <div className="flex items-center justify-center py-8">
-                            <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                    {/* Tab Étudiants */}
+                    <TabsContent value="students" className="mt-4">
+                      {loadingData ? (
+                        <div className="flex items-center justify-center py-8">
+                          <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                        </div>
+                      ) : archivedData.students && archivedData.students.length > 0 ? (
+                        <div className="space-y-3">
+                          {/* Filtre de recherche */}
+                          <div className="flex items-center gap-2">
+                            <Search className="h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Rechercher par matricule, nom, classe..."
+                              value={filterStudents}
+                              onChange={(e) => setFilterStudents(e.target.value)}
+                              className="max-w-sm"
+                            />
+                            {filterStudents && (
+                              <Badge variant="outline">
+                                {getFilteredStudents().length} résultat(s)
+                              </Badge>
+                            )}
                           </div>
-                        ) : archivedData[type] && archivedData[type].length > 0 ? (
-                          <div className="space-y-2">
-                            <p className="text-sm text-gray-600">
-                              {archivedData[type].length} enregistrement(s) trouvé(s)
-                            </p>
-                            <div className="max-h-96 overflow-auto border rounded-lg">
-                              <pre className="p-4 text-xs">
-                                {JSON.stringify(archivedData[type], null, 2)}
-                              </pre>
-                            </div>
+                          
+                          <p className="text-sm text-gray-600">
+                            {getFilteredStudents().length} étudiant(s) archivé(s)
+                          </p>
+                          
+                          <div className="overflow-x-auto border rounded-lg">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Matricule</TableHead>
+                                  <TableHead>Nom Complet</TableHead>
+                                  <TableHead>Sexe</TableHead>
+                                  <TableHead>Classe</TableHead>
+                                  <TableHead>Salle</TableHead>
+                                  <TableHead>Vacation</TableHead>
+                                  <TableHead>Email</TableHead>
+                                  <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {getFilteredStudents().map((student: any) => (
+                                  <TableRow key={student.id}>
+                                    <TableCell className="font-mono text-xs">{student.matricule}</TableCell>
+                                    <TableCell className="font-medium">
+                                      {student.firstName} {student.lastName}
+                                    </TableCell>
+                                    <TableCell>{student.sexe}</TableCell>
+                                    <TableCell>{student.classroomName}</TableCell>
+                                    <TableCell>{student.roomName}</TableCell>
+                                    <TableCell><Badge variant="outline">{student.vacation}</Badge></TableCell>
+                                    <TableCell className="text-xs">{student.email}</TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleViewReleve(student)}
+                                          title="Voir le relevé de notes"
+                                        >
+                                          <Eye className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleDownloadReleve(student)}
+                                          title="Télécharger le relevé"
+                                        >
+                                          <Download className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
                           </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <AlertCircle className="h-8 w-8 text-gray-300 mb-2" />
-                            <p className="text-sm text-gray-500">Aucune donnée disponible</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <AlertCircle className="h-8 w-8 text-gray-300 mb-2" />
+                          <p className="text-sm text-gray-500">Aucun étudiant archivé</p>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    {/* Tab Paiements */}
+                    <TabsContent value="payments" className="mt-4">
+                      {loadingData ? (
+                        <div className="flex items-center justify-center py-8">
+                          <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                        </div>
+                      ) : archivedData.payments && archivedData.payments.length > 0 ? (
+                        <div className="space-y-3">
+                          {/* Filtre de recherche */}
+                          <div className="flex items-center gap-2">
+                            <Search className="h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Rechercher par référence, étudiant, matricule..."
+                              value={filterPayments}
+                              onChange={(e) => setFilterPayments(e.target.value)}
+                              className="max-w-sm"
+                            />
+                            {filterPayments && (
+                              <Badge variant="outline">
+                                {getFilteredPayments().length} résultat(s)
+                              </Badge>
+                            )}
                           </div>
-                        )}
-                      </TabsContent>
-                    ))}
+                          
+                          <p className="text-sm text-gray-600">
+                            {getFilteredPayments().length} paiement(s) archivé(s)
+                          </p>
+                          
+                          <div className="overflow-x-auto border rounded-lg">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Référence</TableHead>
+                                  <TableHead>Étudiant</TableHead>
+                                  <TableHead>Matricule</TableHead>
+                                  <TableHead>Montant</TableHead>
+                                  <TableHead>Type</TableHead>
+                                  <TableHead>Statut</TableHead>
+                                  <TableHead>Date</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {getFilteredPayments().map((payment: any) => (
+                                  <TableRow key={payment.id}>
+                                    <TableCell className="font-mono text-xs">{payment.reference}</TableCell>
+                                    <TableCell>{payment.studentName}</TableCell>
+                                    <TableCell className="font-mono text-xs">{payment.studentMatricule}</TableCell>
+                                    <TableCell className="font-bold">{payment.amount.toLocaleString()} HTG</TableCell>
+                                    <TableCell><Badge variant="outline">{payment.transactionType}</Badge></TableCell>
+                                    <TableCell>
+                                      <Badge className={payment.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                                        {payment.status}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {new Date(payment.createdAt).toLocaleDateString('fr-FR')}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <AlertCircle className="h-8 w-8 text-gray-300 mb-2" />
+                          <p className="text-sm text-gray-500">Aucun paiement archivé</p>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    {/* Tab Notes */}
+                    <TabsContent value="grades" className="mt-4">
+                      {loadingData ? (
+                        <div className="flex items-center justify-center py-8">
+                          <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                        </div>
+                      ) : archivedData.grades && archivedData.grades.length > 0 ? (
+                        <div className="space-y-3">
+                          {/* Filtre de recherche */}
+                          <div className="flex items-center gap-2">
+                            <Search className="h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Rechercher par étudiant, cours, code..."
+                              value={filterGrades}
+                              onChange={(e) => setFilterGrades(e.target.value)}
+                              className="max-w-sm"
+                            />
+                            {filterGrades && (
+                              <Badge variant="outline">
+                                {getFilteredGrades().length} résultat(s)
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          <p className="text-sm text-gray-600">
+                            {getFilteredGrades().length} note(s) archivée(s)
+                          </p>
+                          
+                          <div className="overflow-x-auto border rounded-lg">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Étudiant</TableHead>
+                                  <TableHead>Matricule</TableHead>
+                                  <TableHead>Cours</TableHead>
+                                  <TableHead>Code</TableHead>
+                                  <TableHead className="text-center">T1</TableHead>
+                                  <TableHead className="text-center">T2</TableHead>
+                                  <TableHead className="text-center">T3</TableHead>
+                                  <TableHead>Date</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {getFilteredGrades().map((grade: any) => (
+                                  <TableRow key={grade.id}>
+                                    <TableCell>{grade.studentName}</TableCell>
+                                    <TableCell className="font-mono text-xs">{grade.studentMatricule}</TableCell>
+                                    <TableCell className="font-medium">{grade.courseName}</TableCell>
+                                    <TableCell><Badge variant="outline">{grade.courseCode}</Badge></TableCell>
+                                    <TableCell className="text-center font-bold">
+                                      {grade.trimestre_1 ? Number(grade.trimestre_1).toFixed(2) : '-'}
+                                    </TableCell>
+                                    <TableCell className="text-center font-bold">
+                                      {grade.trimestre_2 ? Number(grade.trimestre_2).toFixed(2) : '-'}
+                                    </TableCell>
+                                    <TableCell className="text-center font-bold">
+                                      {grade.trimestre_3 ? Number(grade.trimestre_3).toFixed(2) : '-'}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {new Date(grade.createdAt).toLocaleDateString('fr-FR')}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <AlertCircle className="h-8 w-8 text-gray-300 mb-2" />
+                          <p className="text-sm text-gray-500">Aucune note archivée</p>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    {/* Tab Présences */}
+                    <TabsContent value="attendance" className="mt-4">
+                      {loadingData ? (
+                        <div className="flex items-center justify-center py-8">
+                          <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                        </div>
+                      ) : archivedData.attendance && archivedData.attendance.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600">
+                            {archivedData.attendance.length} présence(s) archivée(s)
+                          </p>
+                          <div className="overflow-x-auto border rounded-lg">
+                            <pre className="p-4 text-xs">
+                              {JSON.stringify(archivedData.attendance, null, 2)}
+                            </pre>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <AlertCircle className="h-8 w-8 text-gray-300 mb-2" />
+                          <p className="text-sm text-gray-500">Aucune présence archivée</p>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    {/* Tab Bulletins */}
+                    <TabsContent value="bulletins" className="mt-4">
+                      {loadingData ? (
+                        <div className="flex items-center justify-center py-8">
+                          <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                        </div>
+                      ) : archivedData.bulletins && archivedData.bulletins.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600">
+                            {archivedData.bulletins.length} bulletin(s) archivé(s)
+                          </p>
+                          <div className="overflow-x-auto border rounded-lg">
+                            <pre className="p-4 text-xs">
+                              {JSON.stringify(archivedData.bulletins, null, 2)}
+                            </pre>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <AlertCircle className="h-8 w-8 text-gray-300 mb-2" />
+                          <p className="text-sm text-gray-500">Aucun bulletin archivé</p>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    {/* Tabs Employees et Courses - Non implémentés pour l'instant */}
+                    <TabsContent value="employees" className="mt-4">
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <AlertCircle className="h-8 w-8 text-gray-300 mb-2" />
+                        <p className="text-sm text-gray-500">Les employés ne sont pas archivés avec les étudiants</p>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="courses" className="mt-4">
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <AlertCircle className="h-8 w-8 text-gray-300 mb-2" />
+                        <p className="text-sm text-gray-500">Les cours ne sont pas archivés avec les étudiants</p>
+                      </div>
+                    </TabsContent>
                   </Tabs>
                 </CardContent>
               </Card>
@@ -1126,6 +1528,139 @@ const ArchivesTab: React.FC = () => {
             >
               Fermer
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Relevé de notes */}
+      <Dialog open={showReleveDialog} onOpenChange={setShowReleveDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Relevé de Notes - {selectedStudent?.matricule}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedYear?.name} • {selectedStudent?.firstName} {selectedStudent?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {loadingReleve ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                <span className="ml-3 text-gray-600">Chargement du relevé...</span>
+              </div>
+            ) : releveData ? (
+              <>
+                {/* Informations étudiant */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Informations de l'étudiant</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-gray-500">Matricule</Label>
+                      <p className="font-mono text-sm font-medium">{releveData.student.matricule}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">Nom complet</Label>
+                      <p className="text-sm font-medium">
+                        {releveData.student.firstName} {releveData.student.lastName}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">Classe</Label>
+                      <p className="text-sm font-medium">{releveData.student.classroom?.name}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">Année académique</Label>
+                      <p className="text-sm font-medium">{selectedYear?.name}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Tableau des notes */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Notes par matière</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {releveData.student.notes && releveData.student.notes.length > 0 ? (
+                      <div className="overflow-x-auto border rounded-lg">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Code</TableHead>
+                              <TableHead>Matière</TableHead>
+                              <TableHead className="text-center">Trimestre 1</TableHead>
+                              <TableHead className="text-center">Trimestre 2</TableHead>
+                              <TableHead className="text-center">Trimestre 3</TableHead>
+                              <TableHead className="text-center">Moyenne</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {releveData.student.notes.map((note: any) => {
+                              const t1 = note.trimestre_1 ? Number(note.trimestre_1) : 0;
+                              const t2 = note.trimestre_2 ? Number(note.trimestre_2) : 0;
+                              const t3 = note.trimestre_3 ? Number(note.trimestre_3) : 0;
+                              const count = (t1 > 0 ? 1 : 0) + (t2 > 0 ? 1 : 0) + (t3 > 0 ? 1 : 0);
+                              const moyenne = count > 0 ? (t1 + t2 + t3) / count : 0;
+
+                              return (
+                                <TableRow key={note.id}>
+                                  <TableCell>
+                                    <Badge variant="outline">{note.courseCode}</Badge>
+                                  </TableCell>
+                                  <TableCell className="font-medium">{note.courseName}</TableCell>
+                                  <TableCell className="text-center font-bold">
+                                    {t1 > 0 ? t1.toFixed(2) : '-'}
+                                  </TableCell>
+                                  <TableCell className="text-center font-bold">
+                                    {t2 > 0 ? t2.toFixed(2) : '-'}
+                                  </TableCell>
+                                  <TableCell className="text-center font-bold">
+                                    {t3 > 0 ? t3.toFixed(2) : '-'}
+                                  </TableCell>
+                                  <TableCell className="text-center font-bold text-blue-600">
+                                    {moyenne > 0 ? moyenne.toFixed(2) : '-'}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        Aucune note disponible pour cet étudiant
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowReleveDialog(false)}>
+                    Fermer
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      handleDownloadReleve(selectedStudent);
+                      // Ne pas fermer le dialog automatiquement pour voir le résultat
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Télécharger PDF
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <AlertCircle className="h-12 w-12 text-gray-300 mb-3" />
+                <p className="text-gray-500">Erreur lors du chargement du relevé de notes</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -10,6 +10,7 @@
  */
 export type EntityType = 
   | 'STUDENT' 
+  | 'STUDENT_COMPLETE' // Étudiant avec toutes ses données associées
   | 'PAYMENT' 
   | 'NOTE' 
   | 'SCHEDULE'

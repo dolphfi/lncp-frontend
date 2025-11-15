@@ -1040,7 +1040,7 @@ class NoteService {
   }
 
   /**
-   * Rejeter une note en attente avec une raison (Admin/Censeur/Secrétaire uniquement)
+   * Rejeter une note en attente de validation (Admin uniquement)
    * PATCH /notes/reject/{id}
    * @param id - ID de la note en attente
    * @param reason - Raison du rejet (le professeur sera notifié par email)
@@ -1052,6 +1052,112 @@ class NoteService {
     } catch (error: any) {
       console.error(`Erreur lors du rejet de la note ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Impossible de rejeter la note');
+    }
+  }
+
+  // ========== ENDPOINTS BULLETINS (REPORT CARDS) ==========
+
+  /**
+   * Récupérer le bulletin d'un étudiant
+   * GET /notes/report-card/{studentId}
+   * @param studentId - ID de l'étudiant
+   * @param page - Numéro de page (default: 1)
+   * @param limit - Nombre d'éléments par page (default: 10)
+   */
+  async getStudentReportCard(studentId: string, page: number = 1, limit: number = 10): Promise<any> {
+    try {
+      const response = await api.get<any>(`/notes/report-card/${studentId}`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error(`Erreur lors de la récupération du bulletin de l'étudiant ${studentId}:`, error);
+      if (error.response?.status === 403) {
+        throw new Error('Accès refusé. Paiement des frais scolaires requis ou permissions insuffisantes.');
+      }
+      if (error.response?.status === 404) {
+        throw new Error('Étudiant non trouvé ou non assigné à une classe.');
+      }
+      throw new Error(error.response?.data?.message || 'Impossible de récupérer le bulletin');
+    }
+  }
+
+  /**
+   * Récupérer tous les bulletins d'une classe
+   * GET /notes/report-card/by-classroom/{classroomId}
+   * @param classroomId - ID de la classe
+   */
+  async getReportCardsByClassroom(classroomId: string): Promise<any> {
+    try {
+      const response = await api.get<any>(`/notes/report-card/by-classroom/${classroomId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Erreur lors de la récupération des bulletins de la classe ${classroomId}:`, error);
+      throw new Error(error.response?.data?.message || 'Impossible de récupérer les bulletins de la classe');
+    }
+  }
+
+  /**
+   * Récupérer tous les bulletins d'une salle
+   * GET /notes/report-card/by-room/{roomId}
+   * @param roomId - ID de la salle
+   */
+  async getReportCardsByRoom(roomId: string): Promise<any> {
+    try {
+      const response = await api.get<any>(`/notes/report-card/by-room/${roomId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Erreur lors de la récupération des bulletins de la salle ${roomId}:`, error);
+      throw new Error(error.response?.data?.message || 'Impossible de récupérer les bulletins de la salle');
+    }
+  }
+
+  /**
+   * Planifier la génération de tous les bulletins
+   * POST /notes/report-card/generate-all
+   */
+  async generateAllReportCards(): Promise<any> {
+    try {
+      const response = await api.post<any>('/notes/report-card/generate-all');
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la planification de génération des bulletins:', error);
+      throw new Error(error.response?.data?.message || 'Impossible de planifier la génération des bulletins');
+    }
+  }
+
+  /**
+   * Récupérer tous les bulletins générés du dernier lot
+   * GET /notes/report-card/generated
+   * @param batchId - ID optionnel d'un lot spécifique
+   */
+  async getGeneratedReportCards(batchId?: string): Promise<any> {
+    try {
+      const response = await api.get<any>('/notes/report-card/generated', {
+        params: batchId ? { batchId } : {}
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération des bulletins générés:', error);
+      throw new Error(error.response?.data?.message || 'Impossible de récupérer les bulletins générés');
+    }
+  }
+
+  /**
+   * Récupérer toutes les notes d'une année académique
+   * GET /notes/by-academic-year/{academicYearId}
+   * @param academicYearId - ID de l'année académique
+   */
+  async getNotesByAcademicYear(academicYearId: string): Promise<any> {
+    try {
+      const response = await api.get<any>(`/notes/by-academic-year/${academicYearId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Erreur lors de la récupération des notes de l'année ${academicYearId}:`, error);
+      if (error.response?.status === 404) {
+        throw new Error('Année académique non trouvée.');
+      }
+      throw new Error(error.response?.data?.message || 'Impossible de récupérer les notes de l\'année académique');
     }
   }
 }

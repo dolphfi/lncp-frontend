@@ -155,15 +155,105 @@ export const useArchiveStore = create<ArchiveState>()(
 
       /**
        * Récupère les données archivées pour un type spécifique
+       * Transforme les données STUDENT_COMPLETE en données par type
        */
       fetchArchivedData: async (yearId: string, dataType: ArchiveDataType) => {
         set({ loadingData: true, error: null });
         try {
           const result = await archiveService.getArchivedData(yearId, dataType);
+          
+          // Extraire les données selon le type demandé
+          let extractedData: any[] = [];
+          
+          if (result.data && Array.isArray(result.data)) {
+            result.data.forEach((archive: any) => {
+              if (archive.data) {
+                switch (dataType) {
+                  case 'students':
+                    // Extraire les infos de l'étudiant
+                    extractedData.push({
+                      id: archive.data.id,
+                      matricule: archive.data.matricule,
+                      firstName: archive.data.firstName,
+                      lastName: archive.data.lastName,
+                      email: archive.data.email,
+                      sexe: archive.data.sexe,
+                      dateOfBirth: archive.data.dateOfBirth,
+                      classroomName: archive.data.classroomName,
+                      roomName: archive.data.roomName,
+                      niveauEtude: archive.data.niveauEtude,
+                      vacation: archive.data.vacation,
+                      archivedAt: archive.archivedAt,
+                      stats: archive.data.stats,
+                    });
+                    break;
+                    
+                  case 'payments':
+                    // Extraire tous les paiements
+                    if (archive.data.payments && Array.isArray(archive.data.payments)) {
+                      archive.data.payments.forEach((payment: any) => {
+                        extractedData.push({
+                          ...payment,
+                          studentName: `${archive.data.firstName} ${archive.data.lastName}`,
+                          studentMatricule: archive.data.matricule,
+                          archivedAt: archive.archivedAt,
+                        });
+                      });
+                    }
+                    break;
+                    
+                  case 'grades':
+                    // Extraire toutes les notes
+                    if (archive.data.notes && Array.isArray(archive.data.notes)) {
+                      archive.data.notes.forEach((note: any) => {
+                        extractedData.push({
+                          ...note,
+                          studentName: `${archive.data.firstName} ${archive.data.lastName}`,
+                          studentMatricule: archive.data.matricule,
+                          archivedAt: archive.archivedAt,
+                        });
+                      });
+                    }
+                    break;
+                    
+                  case 'attendance':
+                    // Extraire toutes les présences
+                    if (archive.data.attendances && Array.isArray(archive.data.attendances)) {
+                      archive.data.attendances.forEach((attendance: any) => {
+                        extractedData.push({
+                          ...attendance,
+                          studentName: `${archive.data.firstName} ${archive.data.lastName}`,
+                          studentMatricule: archive.data.matricule,
+                          archivedAt: archive.archivedAt,
+                        });
+                      });
+                    }
+                    break;
+                    
+                  case 'bulletins':
+                    // Extraire tous les bulletins
+                    if (archive.data.reportCards && Array.isArray(archive.data.reportCards)) {
+                      archive.data.reportCards.forEach((reportCard: any) => {
+                        extractedData.push({
+                          ...reportCard,
+                          studentName: `${archive.data.firstName} ${archive.data.lastName}`,
+                          studentMatricule: archive.data.matricule,
+                          archivedAt: archive.archivedAt,
+                        });
+                      });
+                    }
+                    break;
+                }
+              }
+            });
+          }
+          
           set((state) => {
-            state.archivedData[dataType] = result.data;
+            state.archivedData[dataType] = extractedData;
             state.loadingData = false;
           });
+          
+          console.log(`✅ [Store Archives] ${extractedData.length} ${dataType} extrait(s)`);
         } catch (error: any) {
           set({ error: error.message, loadingData: false });
           throw error;

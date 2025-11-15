@@ -547,7 +547,7 @@ export const generateAcademicYearLabel = (startDate: Date, endDate: Date): strin
  * Récupère toutes les années archivées (compatibilité store)
  */
 export const getAllArchivedYears = async (): Promise<any[]> => {
-  const response = await getAllArchives(1, 100);
+  const response = await getAllArchives(1, 1000);
   const yearMap = new Map<string, any>();
   
   response.data.forEach(archive => {
@@ -569,8 +569,26 @@ export const getAllArchivedYears = async (): Promise<any[]> => {
         recordsCount: { students: 0, payments: 0, notes: 0 },
       });
     }
+    
     const yearData = yearMap.get(year)!;
-    if (archive.entityType === 'STUDENT') yearData.recordsCount.students++;
+    
+    // Compter les différents types d'entités
+    // Pour STUDENT_COMPLETE, on compte l'étudiant lui-même
+    if (archive.entityType === 'STUDENT' || archive.entityType === 'STUDENT_COMPLETE') {
+      yearData.recordsCount.students++;
+      
+      // Si STUDENT_COMPLETE, compter aussi les sous-entités dans data
+      if (archive.entityType === 'STUDENT_COMPLETE' && archive.data) {
+        if (archive.data.payments) {
+          yearData.recordsCount.payments += archive.data.payments.length;
+        }
+        if (archive.data.notes) {
+          yearData.recordsCount.notes += archive.data.notes.length;
+        }
+      }
+    }
+    
+    // Types d'entités séparées (si existant)
     if (archive.entityType === 'PAYMENT') yearData.recordsCount.payments++;
     if (archive.entityType === 'NOTE') yearData.recordsCount.notes++;
   });
@@ -649,36 +667,45 @@ export const getArchiveStats = async (): Promise<any> => {
 
 /**
  * Récupère les données archivées (compatibilité)
+ * Utilise /all-archives et retourne les archives complètes de STUDENT_COMPLETE
  */
 export const getArchivedData = async (yearId: string, dataType: string): Promise<any> => {
-  let data: any[] = [];
-  let total = 0;
-  
   try {
-    if (dataType === 'students') {
-      const response = await getArchivedStudents(yearId, 1, 100);
-      data = response.data;
-      total = response.total;
-    } else if (dataType === 'payments') {
-      const response = await getArchivedPayments(yearId, 1, 100);
-      data = response.data;
-      total = response.total;
-    } else if (dataType === 'notes' || dataType === 'grades') {
-      const response = await getArchivedNotes(yearId, 1, 100);
-      data = response.data;
-      total = response.total;
-    }
-  } catch (error) {
-    console.warn(`⚠️ Type ${dataType} non disponible`);
+    console.log(`📦 [Archives] Récupération ${dataType} pour l'année ${yearId}...`);
+    
+    // Récupérer toutes les archives de l'année spécifiée
+    const response = await getAllArchives(1, 1000); // Augmenter la limite pour avoir toutes les données
+    
+    // Filtrer les archives par année académique
+    const yearArchives = response.data.filter(archive => archive.academicYear === yearId);
+    
+    console.log(`✅ [Archives] ${yearArchives.length} archives trouvées pour ${yearId}`);
+    
+    return {
+      yearId,
+      yearName: yearId,
+      dataType,
+      data: yearArchives, // Retourner les archives complètes
+      metadata: {
+        totalRecords: yearArchives.length,
+        fetchedAt: new Date().toISOString(),
+        dataSize: '0 MB'
+      },
+    };
+  } catch (error: any) {
+    console.error(`❌ [Archives] Erreur récupération ${dataType}:`, error);
+    return {
+      yearId,
+      yearName: yearId,
+      dataType,
+      data: [],
+      metadata: {
+        totalRecords: 0,
+        fetchedAt: new Date().toISOString(),
+        dataSize: '0 MB'
+      },
+    };
   }
-  
-  return {
-    yearId,
-    yearName: yearId,
-    dataType,
-    data,
-    metadata: { totalRecords: total, fetchedAt: new Date().toISOString(), dataSize: '0 MB' },
-  };
 };
 
 /**
