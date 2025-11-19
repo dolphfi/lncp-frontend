@@ -513,7 +513,7 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
                   <Input {...register('handicapDetails' as any)} placeholder="Précisions si applicable" className="h-9" />
                 </FormField>
                 <FormField label={"Adresse (objet)"} required error={(errors as any).adresse?.message}>
-                  <Textarea {...register('adresse' as any)} placeholder='Texte libre ou JSON: {"rue":"...","ville":"..."}' className="min-h-[60px]" />
+                  <Textarea {...register('adresse' as any)} placeholder='Adresse' className="min-h-[60px]" />
                 </FormField>
               </div>
             </CardContent>
