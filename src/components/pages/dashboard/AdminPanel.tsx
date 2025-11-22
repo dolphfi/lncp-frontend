@@ -2862,7 +2862,7 @@ const SettingsTab: React.FC = () => {
                                 </div>
                             ) : (
                                 <Input
-                                    placeholder="Lycée National..."
+                                    placeholder="Acronyme de l'ecole"
                                     value={formData.value}
                                     onChange={(e) => setFormData({ ...formData, value: e.target.value })}
                                 />

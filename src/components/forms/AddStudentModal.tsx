@@ -515,8 +515,12 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
                 <FormField label="Détails du handicap">
                   <Input {...register('handicapDetails' as any)} placeholder="Précisions si applicable" className="h-9" />
                 </FormField>
+
                 <FormField label="Adresse complète" required error={(errors as any).adresse?.message}>
                   <Input {...register('adresse' as any)} placeholder="Numéro, Rue, Ville..." className="h-9" />
+                </FormField>
+                <FormField label={"Adresse (objet)"} required error={(errors as any).adresse?.message}>
+                  <Textarea {...register('adresse' as any)} placeholder='Adresse' className="min-h-[60px]" />
                 </FormField>
               </div>
             </CardContent>
