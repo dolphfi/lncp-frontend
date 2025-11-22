@@ -50,10 +50,12 @@ export const addStudentSchema = z.object({
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     lienParente: z.string().optional(),
-    email: z.string().optional(),
-    phone: z.string().optional(),
-    nif: z.string().optional(),
-    ninu: z.string().optional(),
+    // Validation simplifiée pour PhoneInput qui renvoie une string (ex: +509...)
+    phone: z.string().optional().or(z.literal("")), 
+    // NIF format: xxx-xxx-xxx-x (13 caractères)
+    nif: z.string().regex(/^\d{3}-\d{3}-\d{3}-\d{1}$/, "Le NIF doit respecter le format xxx-xxx-xxx-x").optional().or(z.literal("")),
+    // NINU format: 10 chiffres
+    ninu: z.string().regex(/^\d{10}$/, "Le NINU doit contenir exactement 10 chiffres").optional().or(z.literal("")),
   }).optional(),
 
   // Classe et salle

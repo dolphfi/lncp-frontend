@@ -22,203 +22,69 @@ import {
   GradeFees
 } from '../types/re_registration';
 
+import {
+  getArchivedData,
+  reRegisterOne,
+  reRegisterClassroom,
+  ArchivedStudentData,
+  BulkReRegistrationResponse
+} from '../services/reRegistration/reRegistrationService';
+
 // =====================================================
-// DONNÉES MOCK POUR LE DÉVELOPPEMENT
+// TYPES POUR LES DONNÉES ARCHIVÉES
 // =====================================================
 
-// Mock des années scolaires
-const mockAcademicYears: AcademicYear[] = [
-  {
-    id: '1',
-    year: '2024-2025',
-    startDate: '2024-09-01',
-    endDate: '2025-06-30',
-    isActive: true,
-    registrationStartDate: '2024-06-01',
-    registrationEndDate: '2024-08-31'
-  },
-  {
-    id: '2',
-    year: '2025-2026',
-    startDate: '2025-09-01',
-    endDate: '2026-06-30',
-    isActive: false,
-    registrationStartDate: '2025-06-01',
-    registrationEndDate: '2025-08-31'
-  }
-];
+export interface ArchivedStudent {
+  archiveId: string;
+  archivedAt: string;
+  id: string;
+  matricule: string;
+  userId: string;
+  sexe: string;
+  dateOfBirth: string;
+  lieuDeNaissance: string;
+  communeDeNaissance: string;
+  handicap: string;
+  handicapDetails: string;
+  vacation: string;
+  niveauEnseignement: string;
+  niveauEtude: string;
+  nomMere: string;
+  prenomMere: string;
+  statutMere: string;
+  occupationMere: string;
+  nomPere: string;
+  prenomPere: string;
+  statutPere: string;
+  occupationPere: string;
+  classroomId: string;
+  roomId: string;
+  personneResponsableId: string;
+  adresseAdresseligne1: string | null;
+  adresseDepartement: string | null;
+  adresseCommune: string | null;
+  adresseSectioncommunale: string | null;
+  notes: any[];
+  moyenneGenerale: number;
+  moyenneT1: number;
+  moyenneT2: number;
+  decision: string;
+  ponderationT1: number;
+  ponderationT2: number;
+  ponderationT3: number;
+  ponderationTotale: number;
+  status: 'pending' | 'completed' | 'failed';
+  
+  // Champs calculés ou mappés pour l'UI (optionnels si non présents dans l'API directe mais utiles)
+  firstName?: string; 
+  lastName?: string;
+  classroomName?: string;
+}
 
-// Mock des frais par classe
-const mockGradeFees: GradeFees[] = [
-  { grade: 'NSI', amount: 15000, currency: 'HTG' },
-  { grade: 'NSII', amount: 16000, currency: 'HTG' },
-  { grade: 'NSIII', amount: 17000, currency: 'HTG' },
-  { grade: 'NSIV', amount: 18000, currency: 'HTG' },
-  { grade: 'Philo', amount: 19000, currency: 'HTG' },
-  { grade: 'Rhéto', amount: 20000, currency: 'HTG' }
-];
-
-// Mock des réinscriptions
-const mockReRegistrations: ReRegistration[] = [
-  {
-    id: '1',
-    studentId: 'student-1',
-    student: {
-      id: 'student-1',
-      firstName: 'Jean',
-      lastName: 'Dupont',
-      gender: 'male',
-      dateOfBirth: '2008-05-15',
-      placeOfBirth: 'Port-au-Prince',
-      email: 'jean.dupont@email.com',
-      ninthGradeOrderNumber: '2023001',
-      level: 'secondaire',
-      grade: 'NSI',
-      roomId: 'room-1',
-      roomName: 'Salle A',
-      enrollmentDate: '2023-09-01',
-      studentId: 'STU2023001',
-      parentContact: {
-        responsiblePerson: 'Marie Dupont',
-        phone: '+509 3456-7890',
-        relationship: 'Mère'
-      },
-      status: 'active',
-      createdAt: '2023-09-01T08:00:00Z',
-      updatedAt: '2023-09-01T08:00:00Z'
-    },
-    academicYear: '2024-2025',
-    currentGrade: 'NSI',
-    newGrade: 'NSII',
-    currentRoomId: 'room-1',
-    newRoomId: 'room-2',
-    newRoomName: 'Salle B',
-    registrationDecision: 'grade_promotion',
-    status: 'confirmed',
-    registrationDate: '2024-06-15T10:00:00Z',
-    confirmationDate: '2024-06-20T14:30:00Z',
-    fees: {
-      amount: 16000,
-      currency: 'HTG',
-      isPaid: true,
-      paymentDate: '2024-06-22T09:00:00Z',
-      paymentMethod: 'Virement bancaire'
-    },
-    documents: {
-      reportCard: true,
-      parentAuthorization: true,
-      medicalCertificate: true,
-      photos: true
-    },
-    createdBy: 'admin-1',
-    createdAt: '2024-06-15T10:00:00Z',
-    updatedAt: '2024-06-20T14:30:00Z'
-  },
-  {
-    id: '2',
-    studentId: 'student-2',
-    student: {
-      id: 'student-2',
-      firstName: 'Marie',
-      lastName: 'Martin',
-      gender: 'female',
-      dateOfBirth: '2007-08-22',
-      placeOfBirth: 'Cap-Haïtien',
-      email: 'marie.martin@email.com',
-      ninthGradeOrderNumber: '2022045',
-      level: 'secondaire',
-      grade: 'NSII',
-      roomId: 'room-2',
-      roomName: 'Salle B',
-      enrollmentDate: '2022-09-01',
-      studentId: 'STU2022045',
-      parentContact: {
-        responsiblePerson: 'Pierre Martin',
-        phone: '+509 2345-6789',
-        relationship: 'Père'
-      },
-      status: 'active',
-      createdAt: '2022-09-01T08:00:00Z',
-      updatedAt: '2022-09-01T08:00:00Z'
-    },
-    academicYear: '2024-2025',
-    currentGrade: 'NSII',
-    newGrade: 'NSIII',
-    currentRoomId: 'room-2',
-    newRoomId: 'room-3',
-    newRoomName: 'Salle C',
-    registrationDecision: 'grade_promotion',
-    status: 'pending',
-    registrationDate: '2024-07-01T11:30:00Z',
-    fees: {
-      amount: 17000,
-      currency: 'HTG',
-      isPaid: false
-    },
-    documents: {
-      reportCard: true,
-      parentAuthorization: true,
-      medicalCertificate: false,
-      photos: true
-    },
-    createdBy: 'admin-2',
-    createdAt: '2024-07-01T11:30:00Z',
-    updatedAt: '2024-07-01T11:30:00Z'
-  },
-  {
-    id: '3',
-    studentId: 'student-3',
-    student: {
-      id: 'student-3',
-      firstName: 'Paul',
-      lastName: 'Pierre',
-      gender: 'male',
-      dateOfBirth: '2006-12-10',
-      placeOfBirth: 'Gonaïves',
-      email: 'paul.pierre@email.com',
-      ninthGradeOrderNumber: '2021078',
-      level: 'secondaire',
-      grade: 'NSIII',
-      roomId: 'room-3',
-      roomName: 'Salle C',
-      enrollmentDate: '2021-09-01',
-      studentId: 'STU2021078',
-      parentContact: {
-        responsiblePerson: 'Anne Pierre',
-        phone: '+509 4567-8901',
-        relationship: 'Mère'
-      },
-      status: 'active',
-      createdAt: '2021-09-01T08:00:00Z',
-      updatedAt: '2021-09-01T08:00:00Z'
-    },
-    academicYear: '2024-2025',
-    currentGrade: 'NSIII',
-    newGrade: 'NSIII',
-    currentRoomId: 'room-3',
-    newRoomId: 'room-3',
-    newRoomName: 'Salle C',
-    registrationDecision: 'grade_repeat',
-    status: 'rejected',
-    registrationDate: '2024-06-30T16:00:00Z',
-    rejectionReason: 'Résultats insuffisants pour passer en classe supérieure',
-    fees: {
-      amount: 17000,
-      currency: 'HTG',
-      isPaid: false
-    },
-    documents: {
-      reportCard: true,
-      parentAuthorization: false,
-      medicalCertificate: true,
-      photos: false
-    },
-    createdBy: 'admin-1',
-    updatedBy: 'admin-2',
-    createdAt: '2024-06-30T16:00:00Z',
-    updatedAt: '2024-07-05T10:15:00Z'
-  }
-];
+// =====================================================
+// HELPER FUNCTIONS
+// =====================================================
+// (Les fonctions helper peuvent être ajoutées ici si nécessaire)
 
 // =====================================================
 // INTERFACE DU STORE
@@ -227,9 +93,10 @@ interface ReRegistrationStore {
   // État
   reRegistrations: ReRegistration[];
   allReRegistrations: ReRegistration[];
+  archivedStudents: ArchivedStudent[];
   loading: boolean;
   error: ReRegistrationApiError | null;
-  loadingAction: 'create' | 'update' | 'delete' | 'confirm' | 'reject' | null;
+  loadingAction: 'create' | 'update' | 'delete' | 'confirm' | 'reject' | 'reregister' | 'bulk-reregister' | null;
 
   // Données de référence
   academicYears: AcademicYear[];
@@ -245,6 +112,9 @@ interface ReRegistrationStore {
 
   // Actions principales
   fetchReRegistrations: () => Promise<void>;
+  fetchArchivedStudents: () => Promise<void>;
+  reRegisterStudent: (archivedStudentId: string, newClassroomId?: string, newRoomId?: string) => Promise<void>;
+  reRegisterClassroom: (classroomId: string) => Promise<BulkReRegistrationResponse>;
   createReRegistration: (data: CreateReRegistrationDto) => Promise<void>;
   updateReRegistration: (data: UpdateReRegistrationDto) => Promise<void>;
   deleteReRegistration: (id: string) => Promise<void>;
@@ -277,6 +147,7 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
       // État initial
       reRegistrations: [],
       allReRegistrations: [],
+      archivedStudents: [],
       loading: false,
       error: null,
       loadingAction: null,
@@ -309,28 +180,121 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
         });
 
         try {
-          // Simulation d'un appel API
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
+          // TODO: Implémenter un vrai endpoint backend pour lister les réinscriptions
+          // Pour l'instant, on retourne une liste vide
           set((state) => {
-            state.allReRegistrations = mockReRegistrations;
-            state.reRegistrations = mockReRegistrations;
-            state.pagination.total = mockReRegistrations.length;
-            state.pagination.totalPages = Math.ceil(mockReRegistrations.length / state.pagination.limit);
+            state.allReRegistrations = [];
+            state.reRegistrations = [];
+            state.pagination.total = 0;
+            state.pagination.totalPages = 0;
             state.loading = false;
           });
 
           // Calculer les statistiques
           get().calculateStats();
 
-        } catch (error) {
+        } catch (error: any) {
           set((state) => {
             state.error = {
-              message: 'Erreur lors du chargement des réinscriptions',
+              message: error.message || 'Erreur lors du chargement des réinscriptions',
               code: 'FETCH_ERROR'
             };
             state.loading = false;
           });
+        }
+      },
+
+      fetchArchivedStudents: async () => {
+        set((state) => {
+          state.loading = true;
+          state.error = null;
+        });
+
+        try {
+          const data = await getArchivedData();
+          
+          set((state) => {
+            // On caste les données car l'API renvoie beaucoup de champs, 
+            // et on s'assure que ça correspond à notre interface interne
+            state.archivedStudents = data as unknown as ArchivedStudent[];
+            state.loading = false;
+          });
+
+        } catch (error: any) {
+          set((state) => {
+            state.error = {
+              message: error.message || 'Erreur lors du chargement des données archivées',
+              code: 'FETCH_ARCHIVED_ERROR'
+            };
+            state.loading = false;
+          });
+          throw error;
+        }
+      },
+
+      reRegisterStudent: async (archivedStudentId: string, newClassroomId?: string, newRoomId?: string) => {
+        set((state) => {
+          state.loadingAction = 'reregister';
+          state.error = null;
+        });
+
+        try {
+          const data = newClassroomId && newRoomId ? { newClassroomId, newRoomId } : {};
+          await reRegisterOne(archivedStudentId, data);
+          
+          // Mettre à jour le statut de l'étudiant archivé
+          set((state) => {
+            const studentIndex = state.archivedStudents.findIndex(s => s.archiveId === archivedStudentId);
+            if (studentIndex !== -1) {
+              state.archivedStudents[studentIndex].status = 'completed';
+            }
+            state.loadingAction = null;
+          });
+
+        } catch (error: any) {
+          set((state) => {
+            state.error = {
+              message: error.message || 'Erreur lors de la réinscription',
+              code: 'REREGISTER_ERROR'
+            };
+            state.loadingAction = null;
+          });
+          throw error;
+        }
+      },
+
+      reRegisterClassroom: async (classroomId: string): Promise<BulkReRegistrationResponse> => {
+        set((state) => {
+          state.loadingAction = 'bulk-reregister';
+          state.error = null;
+        });
+
+        try {
+          const result = await reRegisterClassroom(classroomId);
+          
+          // Mettre à jour les statuts des étudiants archivés
+          set((state) => {
+            result.results.forEach(r => {
+              // On cherche par id (qui correspond au studentId dans le résultat bulk)
+              const studentIndex = state.archivedStudents.findIndex(s => s.id === r.studentId);
+              if (studentIndex !== -1) {
+                state.archivedStudents[studentIndex].status = r.status === 'success' ? 'completed' : 'failed';
+              }
+            });
+            state.loadingAction = null;
+          });
+
+          return result;
+
+        } catch (error: any) {
+          set((state) => {
+            state.error = {
+              message: error.message || 'Erreur lors de la réinscription en masse',
+              code: 'BULK_REREGISTER_ERROR'
+            };
+            state.loadingAction = null;
+          });
+          throw error;
         }
       },
 
@@ -341,39 +305,13 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
         });
 
         try {
-          // Simulation d'un appel API
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          // TODO: Implémenter un vrai endpoint backend pour créer une réinscription
+          throw new Error('Endpoint de création non implémenté. Utilisez la réinscription depuis les archives.');
 
-          const newReRegistration: ReRegistration = {
-            id: `re-reg-${Date.now()}`,
-            ...data,
-            student: mockReRegistrations[0].student, // Mock student data
-            currentGrade: data.newGrade, // Simplified for mock
-            status: 'pending',
-            registrationDate: new Date().toISOString(),
-            fees: {
-              ...data.fees,
-              isPaid: false
-            },
-            createdBy: 'current-user',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-
-          set((state) => {
-            state.allReRegistrations.push(newReRegistration);
-            state.reRegistrations.push(newReRegistration);
-            state.pagination.total += 1;
-            state.pagination.totalPages = Math.ceil(state.pagination.total / state.pagination.limit);
-            state.loadingAction = null;
-          });
-
-          get().calculateStats();
-
-        } catch (error) {
+        } catch (error: any) {
           set((state) => {
             state.error = {
-              message: 'Erreur lors de la création de la réinscription',
+              message: error.message || 'Erreur lors de la création de la réinscription',
               code: 'CREATE_ERROR'
             };
             state.loadingAction = null;
@@ -553,11 +491,10 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
 
       fetchAcademicYears: async () => {
         try {
-          // Simulation d'un appel API
-          await new Promise(resolve => setTimeout(resolve, 500));
-
+          // TODO: Implémenter un vrai endpoint backend pour récupérer les années académiques
+          // Utiliser l'endpoint du module academicYearService à la place
           set((state) => {
-            state.academicYears = mockAcademicYears;
+            state.academicYears = [];
           });
 
         } catch (error) {
@@ -572,11 +509,9 @@ export const useReRegistrationStore = create<ReRegistrationStore>()(
 
       fetchGradeFees: async () => {
         try {
-          // Simulation d'un appel API
-          await new Promise(resolve => setTimeout(resolve, 500));
-
+          // TODO: Implémenter un vrai endpoint backend pour récupérer les frais par classe
           set((state) => {
-            state.gradeFees = mockGradeFees;
+            state.gradeFees = [];
           });
 
         } catch (error) {

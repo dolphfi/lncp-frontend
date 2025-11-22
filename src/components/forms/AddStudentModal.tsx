@@ -17,6 +17,9 @@ import { studentsService, type Responsable, type AddStudentApiPayload } from '..
 import { useClassroomStore } from '../../stores/classroomStore';
 import { VACATION_OPTIONS, TEACHING_LEVEL_OPTIONS } from '../../schemas/studentSchema';
 import ImageCrop from '../ui/image-crop';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
+import '../../styles/phone-input.css';
 
 // Utilisation directe du type généré par le schéma Zod
 
@@ -512,8 +515,8 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
                 <FormField label="Détails du handicap">
                   <Input {...register('handicapDetails' as any)} placeholder="Précisions si applicable" className="h-9" />
                 </FormField>
-                <FormField label={"Adresse (objet)"} required error={(errors as any).adresse?.message}>
-                  <Textarea {...register('adresse' as any)} placeholder='Texte libre ou JSON: {"rue":"...","ville":"..."}' className="min-h-[60px]" />
+                <FormField label="Adresse complète" required error={(errors as any).adresse?.message}>
+                  <Input {...register('adresse' as any)} placeholder="Numéro, Rue, Ville..." className="h-9" />
                 </FormField>
               </div>
             </CardContent>
@@ -694,10 +697,58 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
                       </Select>
                     )}/>
                   </FormField>
-                  <FormField label="Téléphone"><Input {...register('responsable.phone' as any)} className="h-9" /></FormField>
-                  <FormField label="Email"><Input type="email" {...register('responsable.email' as any)} className="h-9" /></FormField>
-                  <FormField label="NIF"><Input {...register('responsable.nif' as any)} className="h-9" /></FormField>
-                  <FormField label="NINU"><Input {...register('responsable.ninu' as any)} className="h-9" /></FormField>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="Email">
+                      <Input type="email" {...register('responsable.email' as any)} placeholder="email@exemple.com" className="h-9" />
+                    </FormField>
+                    <FormField label="Téléphone">
+                      <Controller
+                        name={'responsable.phone' as any}
+                        control={control}
+                        render={({ field }) => (
+                          <PhoneInput
+                            international
+                            defaultCountry="HT"
+                            value={field.value}
+                            onChange={field.onChange}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          />
+                        )}
+                      />
+                    </FormField>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="NIF">
+                      <Controller
+                        name="responsable.nif"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            placeholder="000-000-000-0"
+                            maxLength={13}
+                            className="h-9"
+                            onChange={(e) => {
+                              // Formatage en temps réel : xxx-xxx-xxx-x
+                              let value = e.target.value.replace(/\D/g, ''); // Garder que les chiffres
+                              if (value.length > 10) value = value.slice(0, 10); // Max 10 chiffres
+                              
+                              let formattedValue = '';
+                              if (value.length > 0) formattedValue += value.slice(0, 3);
+                              if (value.length > 3) formattedValue += '-' + value.slice(3, 6);
+                              if (value.length > 6) formattedValue += '-' + value.slice(6, 9);
+                              if (value.length > 9) formattedValue += '-' + value.slice(9, 10);
+                              
+                              field.onChange(formattedValue);
+                            }}
+                          />
+                        )}
+                      />
+                    </FormField>
+                    <FormField label="NINU (10 chiffres)">
+                      <Input {...register('responsable.ninu' as any)} placeholder="0000000000" maxLength={10} className="h-9" />
+                    </FormField>
+                  </div>
                 </div>
               )}
             </CardContent>

@@ -364,14 +364,14 @@ const AppSidebar = () => {
           },
           // Masquer les ressources matérielles et financières pour le secrétaire et les directeurs
           ...(user?.role !== 'SECRETARY' && user?.role !== 'DIRECTOR' && user?.role !== 'CENSORED' ? [
-            {
-              to: "/ressources",
-              label: "Ressources Matériel",
-              icon: Fence,
-              subItems: [
-                { to: "/roles", label: "Liste" },
-              ],
-            },
+            // {
+            //   to: "/ressources",
+            //   label: "Ressources Matériel",
+            //   icon: Fence,
+            //   subItems: [
+            //     { to: "/roles", label: "Liste" },
+            //   ],
+            // },
             {
               to: "/payments",
               label: "Ressources Financière",

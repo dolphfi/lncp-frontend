@@ -16,14 +16,14 @@ import {
   GraduationCap,
   CreditCard,
   FileText,
+  RefreshCw,
+  Download,
+  UserPlus,
+  Archive
 } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 import { Button } from '../../ui/button';
-import {
-  DataTable,
-  Column,
-  RowAction
-} from '../../ui/data-table';
 import { Badge } from '../../ui/badge';
 import {
   Card,
@@ -54,6 +54,7 @@ import {
 import { Textarea } from '../../ui/textarea';
 
 import { useReRegistrationStore } from '../../../stores/re_registrationStore';
+import { useClassroomStore } from '../../../stores/classroomStore';
 import { ReRegistration, ReRegistrationDecision, ReRegistrationStatus } from '../../../types/re_registration';
 
 // =====================================================
@@ -68,8 +69,53 @@ export const Re_registrationManagement: React.FC = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [selectedReRegistration, setSelectedReRegistration] = useState<ReRegistration | null>(null);
+  const [selectedArchivedStudent, setSelectedArchivedStudent] = useState<any>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [confirmationNotes, setConfirmationNotes] = useState('');
+  const [bulkResults, setBulkResults] = useState<any>(null);
+  const [showBulkResultsDialog, setShowBulkResultsDialog] = useState(false);
+  const [selectedClassroomId, setSelectedClassroomId] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Store
+  const {
+    reRegistrations,
+    archivedStudents,
+    loading,
+    error,
+    loadingAction,
+    pagination,
+    stats,
+    academicYears,
+    fetchReRegistrations,
+    fetchArchivedStudents,
+    reRegisterStudent,
+    reRegisterClassroom,
+    deleteReRegistration,
+    confirmReRegistration,
+    rejectReRegistration,
+    fetchAcademicYears,
+    fetchGradeFees,
+    changePage,
+    clearError
+  } = useReRegistrationStore();
+
+  // Classroom Store
+  const { fetchAll: fetchAllClassrooms, items: classrooms } = useClassroomStore();
+
+  // Filtrer les étudiants archivés
+  const filteredArchivedStudents = React.useMemo(() => {
+    if (!archivedStudents) return [];
+    if (!searchTerm) return archivedStudents;
+    
+    const lowerTerm = searchTerm.toLowerCase();
+    return archivedStudents.filter((student: any) => 
+      student.matricule?.toLowerCase().includes(lowerTerm) ||
+      student.firstName?.toLowerCase().includes(lowerTerm) ||
+      student.lastName?.toLowerCase().includes(lowerTerm) ||
+      student.niveauEtude?.toLowerCase().includes(lowerTerm)
+    );
+  }, [archivedStudents, searchTerm]);
 
   // État du formulaire de réinscription en masse
   const [bulkFormData, setBulkFormData] = useState({
@@ -84,155 +130,6 @@ export const Re_registrationManagement: React.FC = () => {
     }
   });
 
-
-  // Store
-  const {
-    reRegistrations,
-    loading,
-    error,
-    loadingAction,
-    pagination,
-    stats,
-    academicYears,
-    fetchReRegistrations,
-    deleteReRegistration,
-    confirmReRegistration,
-    rejectReRegistration,
-    fetchAcademicYears,
-    fetchGradeFees,
-    changePage,
-    clearError
-  } = useReRegistrationStore();
-
-  // Configuration des colonnes
-  const columns: Column<ReRegistration>[] = [
-    {
-      key: 'student',
-      label: 'Élève',
-      sortable: true,
-      searchable: true,
-      width: '200px',
-      render: (student: any) => (
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-xs">
-            {student.firstName?.charAt(0)}{student.lastName?.charAt(0)}
-          </div>
-          <div>
-            <p className="font-medium text-gray-900 dark:text-gray-100">
-              {student.firstName} {student.lastName}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {student.studentId}
-            </p>
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'currentGrade',
-      label: 'Classe actuelle',
-      sortable: true,
-      width: '200px',
-      render: (currentGrade: string) => (
-        <Badge variant="outline" className="text-xs whitespace-nowrap">
-          {currentGrade}
-        </Badge>
-      )
-    },
-    {
-      key: 'registrationDecision',
-      label: 'Decision',
-      sortable: true,
-      width: '120px',
-      render: (type: ReRegistrationDecision) => {
-        const typeLabels = {
-          same_grade: 'Même classe',
-          grade_promotion: 'Promotion',
-          grade_repeat: 'Redoublement'
-        };
-        const typeColors = {
-          same_grade: 'default',
-          grade_promotion: 'secondary',
-          grade_repeat: 'outline'
-        } as const;
-
-        return (
-          <Badge variant={typeColors[type]} className="text-xs">
-            {typeLabels[type]}
-          </Badge>
-        );
-      }
-    },
-    {
-      key: 'status',
-      label: 'Statut',
-      sortable: true,
-      width: '120px',
-      render: (status: ReRegistrationStatus) => {
-        const statusConfig = {
-          pending: { label: 'En attente', variant: 'secondary' as const, icon: AlertCircle },
-          confirmed: { label: 'Confirmée', variant: 'default' as const, icon: CheckCircle },
-          rejected: { label: 'Rejetée', variant: 'destructive' as const, icon: XCircle },
-          cancelled: { label: 'Annulée', variant: 'outline' as const, icon: XCircle }
-        };
-
-        const config = statusConfig[status];
-        const Icon = config.icon;
-
-        return (
-          <Badge variant={config.variant} className="text-xs flex items-center gap-1">
-            <Icon className="h-3 w-3" />
-            {config.label}
-          </Badge>
-        );
-      }
-    },
-    {
-      key: 'registrationDate',
-      label: 'Date demande',
-      sortable: true,
-      width: '200px',
-      render: (date: string) => (
-        <span className="text-sm text-gray-600 dark:text-gray-400">
-          {new Date(date).toLocaleDateString('fr-FR')}
-        </span>
-      )
-    }
-  ];
-
-  // Actions de ligne
-  const rowActions: RowAction<ReRegistration>[] = [
-    {
-      label: "Voir",
-      icon: <Eye className="h-4 w-4" />,
-      onClick: (reRegistration) => {
-        setSelectedReRegistration(reRegistration);
-        setShowViewDialog(true);
-      }
-    },
-    {
-      label: "Confirmer",
-      icon: <CheckCircle className="h-4 w-4" />,
-      onClick: (reRegistration: ReRegistration) => {
-        if (reRegistration.status === 'pending') {
-          setSelectedReRegistration(reRegistration);
-          setShowConfirmDialog(true);
-        }
-      },
-      variant: "success"
-    },
-    {
-      label: "Rejeter",
-      icon: <XCircle className="h-4 w-4" />,
-      onClick: (reRegistration: ReRegistration) => {
-        if (reRegistration.status === 'pending') {
-          setSelectedReRegistration(reRegistration);
-          setShowRejectDialog(true);
-        }
-      },
-      variant: "destructive"
-    }
-  ];
 
   // Gestionnaires
   const handleDeleteReRegistration = async () => {
@@ -274,12 +171,110 @@ export const Re_registrationManagement: React.FC = () => {
   };
 
 
+  // Handlers pour réinscription
+  const handleReRegisterStudent = async (student: any) => {
+    try {
+      // Le backend attend l'ID original de l'étudiant (student.id) et non l'ID de l'archive
+      await reRegisterStudent(student.id);
+      const fullName = student.firstName && student.lastName 
+        ? `${student.firstName} ${student.lastName}` 
+        : (student.matricule || 'L\'étudiant');
+      toast.success(`${fullName} réinscrit avec succès !`);
+      await fetchArchivedStudents(); // Recharger les données
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la réinscription');
+    }
+  };
+
+  const handleBulkReRegister = async () => {
+    if (!selectedClassroomId) {
+      toast.error('Veuillez sélectionner une classe');
+      return;
+    }
+
+    try {
+      const results = await reRegisterClassroom(selectedClassroomId);
+      setBulkResults(results);
+      setShowBulkDialog(false);
+      setShowBulkResultsDialog(true);
+      await fetchArchivedStudents(); // Recharger les données
+      toast.success(`${results.success} étudiants réinscrits avec succès !`);
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la réinscription en masse');
+    }
+  };
+
   // Effet pour charger les données
   useEffect(() => {
-    fetchReRegistrations();
-    fetchAcademicYears();
-    fetchGradeFees();
-  }, [fetchReRegistrations, fetchAcademicYears, fetchGradeFees]);
+    const loadData = async () => {
+      try {
+        await fetchArchivedStudents();
+      } catch (error: any) {
+        // Gérer l'erreur de manière silencieuse avec un toast
+        if (error.message?.includes('année académique planifiée')) {
+          toast.warning('Aucune année académique planifiée trouvée. Veuillez configurer une année académique pour la réinscription.', {
+            autoClose: 5000
+          });
+        } else {
+          toast.error('Erreur lors du chargement des données archivées');
+        }
+        clearError();
+      }
+      
+      // Charger les autres données
+      fetchReRegistrations();
+      fetchAcademicYears();
+      fetchGradeFees();
+      fetchAllClassrooms();
+    };
+    
+    loadData();
+  }, [fetchArchivedStudents, fetchReRegistrations, fetchAcademicYears, fetchGradeFees, clearError, fetchAllClassrooms]);
+
+  // Calculer les classes disponibles pour la réinscription
+  const availableClasses = React.useMemo(() => {
+    if (!archivedStudents || archivedStudents.length === 0) return [];
+
+    const classesMap = new Map();
+
+    archivedStudents.forEach((student: any) => {
+      if (student.classroomId) {
+        if (!classesMap.has(student.classroomId)) {
+          // Essayer de trouver le nom de la classe dans le store classrooms
+          const classroom = classrooms.find(c => c.id === student.classroomId);
+          const className = classroom ? classroom.name : (student.classroomName || student.niveauEtude || 'Classe inconnue');
+          
+          classesMap.set(student.classroomId, {
+            id: student.classroomId,
+            name: className,
+            total: 0,
+            admis: 0,
+            repech: 0,
+            redouble: 0,
+            pending: 0
+          });
+        }
+
+        const classStats = classesMap.get(student.classroomId);
+        classStats.total++;
+
+        // Compter selon la décision
+        const decision = student.decision?.toLowerCase() || '';
+        if (decision.includes('admis')) classStats.admis++;
+        else if (decision.includes('repech')) classStats.repech++;
+        else if (decision.includes('redoubl')) classStats.redouble++;
+        
+        // Compter selon le statut
+        if (student.status === 'pending') classStats.pending++;
+      }
+    });
+
+    return Array.from(classesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [archivedStudents, classrooms]);
+
+  const selectedClassStats = React.useMemo(() => {
+    return availableClasses.find(c => c.id === selectedClassroomId);
+  }, [availableClasses, selectedClassroomId]);
 
   return (
     <div className="space-y-6">
@@ -293,7 +288,7 @@ export const Re_registrationManagement: React.FC = () => {
         </Button>
       </div>
 
-      {error && (
+      {error && !error.message?.includes('année académique planifiée') && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error.message}<Button variant="link" size="sm" onClick={clearError} className="ml-2 h-auto p-0">Fermer</Button></AlertDescription>
@@ -353,18 +348,139 @@ export const Re_registrationManagement: React.FC = () => {
         </div>
       )}
 
-      <DataTable
-        data={reRegistrations}
-        columns={columns}
-        loading={loading}
-        rowActions={rowActions}
-        pagination={pagination}
-        onPageChange={changePage}
-        searchPlaceholder="Rechercher un élève..."
-        emptyStateMessage="Aucune réinscription trouvée"
-        title="Liste des réinscriptions"
-        description={`${pagination.total} réinscriptions`}
-      />
+      {/* Liste des étudiants archivés */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div className="space-y-1">
+            <CardTitle>Étudiants archivés de l'année précédente</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Ces étudiants sont prêts à être réinscrits pour la nouvelle année académique
+            </p>
+          </div>
+          <div className="w-72">
+            <Input
+              placeholder="Rechercher un étudiant..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-9"
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+              <span className="ml-3 text-gray-600">Chargement...</span>
+            </div>
+          ) : filteredArchivedStudents && filteredArchivedStudents.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3">Matricule</th>
+                    <th className="text-left p-3">Nom Complet</th>
+                    <th className="text-left p-3">Niveau</th>
+                    <th className="text-left p-3">Moyenne</th>
+                    <th className="text-left p-3">Décision</th>
+                    <th className="text-left p-3">Statut</th>
+                    <th className="text-center p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredArchivedStudents.map((student: any) => (
+                    <tr key={student.archiveId} className="border-b hover:bg-gray-50">
+                      <td className="p-3 font-mono text-sm">{student.matricule}</td>
+                      <td className="p-3">
+                        {student.firstName || student.lastName ? (
+                          <span>{student.firstName} {student.lastName}</span>
+                        ) : (
+                          <span className="text-gray-600 font-mono">{student.matricule || 'L\'étudiant'}</span>
+                        )}
+                      </td>
+                      <td className="p-3">{student.niveauEtude}</td>
+                      <td className="p-3 font-medium">{student.moyenneGenerale ? Number(student.moyenneGenerale).toFixed(2) : '-'}</td>
+                      <td className="p-3">
+                        <Badge 
+                          variant={
+                            student.decision?.toLowerCase().includes('admis') ? 'default' :
+                            student.decision?.toLowerCase().includes('repech') ? 'secondary' : 'destructive'
+                          } 
+                          className={`text-xs ${
+                            student.decision?.toLowerCase().includes('admis') ? 'bg-green-600 hover:bg-green-700' :
+                            student.decision?.toLowerCase().includes('repech') ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : ''
+                          }`}
+                        >
+                          {student.decision || 'En attente'}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        <Badge
+                          variant={
+                            student.status === 'pending' ? 'secondary' :
+                            student.status === 'completed' ? 'default' : 'destructive'
+                          }
+                        >
+                          {student.status === 'pending' && 'En attente'}
+                          {student.status === 'completed' && 'Réinscrit'}
+                          {student.status === 'failed' && 'Échec'}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center justify-center gap-2">
+                          {student.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleReRegisterStudent(student)}
+                              disabled={loadingAction === 'reregister'}
+                            >
+                              <UserPlus className="h-4 w-4 mr-2" />
+                              Réinscrire
+                            </Button>
+                          )}
+                          {student.status === 'completed' && (
+                            <Badge variant="outline" className="text-green-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Terminé
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
+              <Archive className="h-16 w-16 text-gray-300 mb-2" />
+              <div>
+                <p className="text-gray-500 font-medium mb-1">Aucun étudiant archivé trouvé</p>
+                <p className="text-sm text-gray-400 max-w-md">
+                  {searchTerm ? (
+                    'Aucun résultat ne correspond à votre recherche.'
+                  ) : error?.message?.includes('année académique planifiée') ? (
+                    <>
+                      Aucune année académique n'est planifiée pour la réinscription.
+                      <br />
+                      Veuillez configurer une année académique dans le module "Années Académiques".
+                    </>
+                  ) : (
+                    'Les étudiants archivés de l\'année précédente apparaîtront ici pour être réinscrits.'
+                  )}
+                </p>
+              </div>
+              {error?.message?.includes('année académique planifiée') && (
+                <Alert className="max-w-md">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    <strong>Action requise :</strong> Créez ou activez une année académique dans le module de gestion des années académiques pour permettre les réinscriptions.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Dialog de suppression */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -601,188 +717,187 @@ export const Re_registrationManagement: React.FC = () => {
 
       {/* Dialog de réinscription en masse */}
       <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Réinscrire une classe</DialogTitle>
+            <DialogTitle>Réinscrire une classe archivée</DialogTitle>
             <DialogDescription>
-              Créer des demandes de réinscription pour tous les élèves d'une classe
+              Réinscrivez automatiquement tous les étudiants d'une classe archivée selon leurs décisions académiques
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 pr-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="current-grade">Classe actuelle *</Label>
-                <Select
-                  value={bulkFormData.currentGrade}
-                  onValueChange={(value) => setBulkFormData(prev => ({ ...prev, currentGrade: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner la classe actuelle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NSI">NSI</SelectItem>
-                    <SelectItem value="NSII">NSII</SelectItem>
-                    <SelectItem value="NSIII">NSIII</SelectItem>
-                    <SelectItem value="NSIV">NSIV</SelectItem>
-                    <SelectItem value="Philo">Philo</SelectItem>
-                    <SelectItem value="Rhéto">Rhéto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="new-grade">Nouvelle classe *</Label>
-                <Select
-                  value={bulkFormData.newGrade}
-                  onValueChange={(value) => setBulkFormData(prev => ({ ...prev, newGrade: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner la nouvelle classe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NSI">NSI</SelectItem>
-                    <SelectItem value="NSII">NSII</SelectItem>
-                    <SelectItem value="NSIII">NSIII</SelectItem>
-                    <SelectItem value="NSIV">NSIV</SelectItem>
-                    <SelectItem value="Philo">Philo</SelectItem>
-                    <SelectItem value="Rhéto">Rhéto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="bulk-academic-year">Année scolaire</Label>
-                <Select
-                  value={bulkFormData.academicYear}
-                  onValueChange={(value) => setBulkFormData(prev => ({ ...prev, academicYear: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {academicYears.map((year) => (
-                      <SelectItem key={year.id} value={year.year}>
-                        {year.year} {year.isActive && '(Active)'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bulk-registration-type">Type de réinscription</Label>
-                <Select
-                  value={bulkFormData.registrationDecision}
-                  onValueChange={(value: ReRegistrationDecision) => setBulkFormData(prev => ({ ...prev, registrationDecision: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grade_promotion">Promotion</SelectItem>
-                    <SelectItem value="grade_repeat">Redoublement</SelectItem>
-                    <SelectItem value="same_grade">Même classe</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="bulk-fees-amount">Montant des frais (HTG)</Label>
-                <Input
-                  id="bulk-fees-amount"
-                  type="number"
-                  value={bulkFormData.fees.amount}
-                  onChange={(e) => setBulkFormData(prev => ({
-                    ...prev,
-                    fees: { ...prev.fees, amount: parseInt(e.target.value) || 0 }
-                  }))}
-                  placeholder="Ex: 15000"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bulk-fees-currency">Devise</Label>
-                <Select
-                  value={bulkFormData.fees.currency}
-                  onValueChange={(value) => setBulkFormData(prev => ({
-                    ...prev,
-                    fees: { ...prev.fees, currency: value }
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="HTG">HTG</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="bulk-notes">Notes (optionnel)</Label>
-              <Textarea
-                id="bulk-notes"
-                value={bulkFormData.notes}
-                onChange={(e) => setBulkFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Notes générales pour toutes les réinscriptions..."
-                rows={3}
-              />
+              <Label htmlFor="classroom-select">Classe archivée *</Label>
+              <Select
+                value={selectedClassroomId}
+                onValueChange={setSelectedClassroomId}
+              >
+                <SelectTrigger id="classroom-select">
+                  <SelectValue placeholder="Sélectionner une classe" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableClasses.map((cls: any) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name} ({cls.pending} étudiants en attente / {cls.total} total)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Sélectionnez la classe archivée dont les étudiants doivent être réinscrits
+              </p>
             </div>
 
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="pt-4">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
-                  <div className="text-sm text-blue-800">
-                    <p className="font-semibold mb-1">Information :</p>
-                    <p className="text-xs">
-                      Cette action créera une demande de réinscription pour chaque élève de la classe sélectionnée.
-                      Tous les élèves auront les mêmes paramètres (frais, type, notes).
-                    </p>
+            {selectedClassStats && (
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm text-slate-900">Aperçu de la classe {selectedClassStats.name}</h4>
+                  <Badge variant="outline">{selectedClassStats.total} étudiants</Badge>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-green-50 p-2 rounded border border-green-100">
+                    <div className="text-lg font-bold text-green-700">{selectedClassStats.admis}</div>
+                    <div className="text-xs text-green-600">Admis</div>
+                  </div>
+                  <div className="bg-orange-50 p-2 rounded border border-orange-100">
+                    <div className="text-lg font-bold text-orange-700">{selectedClassStats.repech}</div>
+                    <div className="text-xs text-orange-600">Repêchés</div>
+                  </div>
+                  <div className="bg-red-50 p-2 rounded border border-red-100">
+                    <div className="text-lg font-bold text-red-700">{selectedClassStats.redouble}</div>
+                    <div className="text-xs text-red-600">Redoublants</div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+
+                {selectedClassStats.pending === 0 && (
+                  <Alert className="bg-blue-50 border-blue-200 py-2">
+                    <CheckCircle className="h-4 w-4 text-blue-500" />
+                    <AlertDescription className="text-xs text-blue-700 ml-2">
+                      Tous les étudiants de cette classe sont déjà traités (réinscrits ou échoués).
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                <strong>Fonctionnement intelligent :</strong>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Admis(e) → Promotion vers classe supérieure</li>
+                  <li>Repêché(e) → Promotion avec salle séparée</li>
+                  <li>Redoublé(e) → Même classe avec réassignation</li>
+                  <li>En cours/Autres → Marqués comme échecs</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
 
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowBulkDialog(false);
-                  setBulkFormData({
-                    currentGrade: '',
-                    newGrade: '',
-                    academicYear: '2024-2025',
-                    registrationDecision: 'grade_promotion',
-                    notes: '',
-                    fees: {
-                      amount: 0,
-                      currency: 'HTG'
-                    }
-                  });
+                  setSelectedClassroomId('');
                 }}
               >
                 Annuler
               </Button>
               <Button
-                onClick={() => {
-                  // TODO: Implémenter la logique de réinscription en masse
-                  console.log('Réinscription en masse:', bulkFormData);
-                  setShowBulkDialog(false);
-                }}
-                disabled={!bulkFormData.currentGrade || !bulkFormData.newGrade}
+                onClick={handleBulkReRegister}
+                disabled={!selectedClassroomId || loadingAction === 'bulk-reregister' || (selectedClassStats?.pending === 0)}
               >
-                Créer les réinscriptions
+                {loadingAction === 'bulk-reregister' ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Réinscription...
+                  </>
+                ) : (
+                  <>
+                    <GraduationCap className="h-4 w-4 mr-2" />
+                    Réinscrire la classe
+                  </>
+                )}
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog résultats réinscription en masse */}
+      <Dialog open={showBulkResultsDialog} onOpenChange={setShowBulkResultsDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Résultats de la réinscription en masse</DialogTitle>
+          </DialogHeader>
+          {bulkResults && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Réussites</p>
+                        <p className="text-2xl font-bold text-green-600">{bulkResults.success}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-5 w-5 text-red-600" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Échecs</p>
+                        <p className="text-2xl font-bold text-red-600">{bulkResults.failed}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-2">Matricule</th>
+                      <th className="text-left p-2">Statut</th>
+                      <th className="text-left p-2">Décision</th>
+                      <th className="text-left p-2">Message</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkResults.results.map((result: any, idx: number) => (
+                      <tr key={idx} className="border-t">
+                        <td className="p-2 font-mono text-xs">{result.matricule}</td>
+                        <td className="p-2">
+                          <Badge variant={result.status === 'success' ? 'default' : 'destructive'}>
+                            {result.status}
+                          </Badge>
+                        </td>
+                        <td className="p-2">{result.decision || '-'}</td>
+                        <td className="p-2 text-xs">
+                          {result.error ? (
+                            <span className="text-red-600">{result.error}</span>
+                          ) : (
+                            <span className="text-green-600">{result.message}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={() => setShowBulkResultsDialog(false)}>
+                  Fermer
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

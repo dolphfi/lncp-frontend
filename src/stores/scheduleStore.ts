@@ -237,12 +237,37 @@ export const useScheduleStore = create<ScheduleStore>()(
       
       try {
         const response = await scheduleService.getSchedulesByClassroom(classroomId, filters);
+        console.log('📦 Réponse reçue:', response);
         
-        const schedules = response.data.map(convertScheduleFromApi);
+        // Normaliser la réponse (tableau direct ou objet { data: ... })
+        const schedulesData = Array.isArray(response) ? response : response?.data;
+        
+        // Vérifier que les données existent
+        if (!schedulesData) {
+          console.warn('⚠️ Réponse vide ou invalide du backend');
+          set(state => {
+            state.schedules = [];
+            state.pagination = {
+              page: 1,
+              limit: 10,
+              total: 0,
+              totalPages: 0
+            };
+            state.loading = false;
+          });
+          return;
+        }
+        
+        const schedules = schedulesData.map(convertScheduleFromApi);
         
         set(state => {
           state.schedules = schedules;
-          state.pagination = response.pagination;
+          state.pagination = (response as any).pagination || {
+            page: 1,
+            limit: 10,
+            total: schedules.length,
+            totalPages: 1
+          };
           state.loading = false;
         });
         
@@ -251,6 +276,7 @@ export const useScheduleStore = create<ScheduleStore>()(
         
         set(state => {
           state.loading = false;
+          state.schedules = [];
           state.error = {
             message: 'Erreur lors du chargement des horaires de la classe',
             code: 'FETCH_CLASSROOM_ERROR',
@@ -258,7 +284,7 @@ export const useScheduleStore = create<ScheduleStore>()(
           };
         });
         
-        toast.error('Erreur lors du chargement des horaires');
+        toast.error('Erreur lors du chargement des horaires de la classe');
       }
     },
     
@@ -275,12 +301,38 @@ export const useScheduleStore = create<ScheduleStore>()(
       
       try {
         const response = await scheduleService.getSchedulesByRoom(roomId, filters);
+        console.log('📦 Réponse reçue:', response);
         
-        const schedules = response.data.map(convertScheduleFromApi);
+        // Normaliser la réponse (tableau direct ou objet { data: ... })
+        // Si response est un tableau, c'est directement les données
+        const schedulesData = Array.isArray(response) ? response : response?.data;
+        
+        // Vérifier que response ou response.data existent
+        if (!schedulesData) {
+          console.warn('⚠️ Réponse vide ou invalide du backend');
+          set(state => {
+            state.schedules = [];
+            state.pagination = {
+              page: 1,
+              limit: 10,
+              total: 0,
+              totalPages: 0
+            };
+            state.loading = false;
+          });
+          return;
+        }
+        
+        const schedules = schedulesData.map(convertScheduleFromApi);
         
         set(state => {
           state.schedules = schedules;
-          state.pagination = response.pagination;
+          state.pagination = (response as any).pagination || {
+            page: 1,
+            limit: 10,
+            total: schedules.length,
+            totalPages: 1
+          };
           state.loading = false;
         });
         
@@ -289,6 +341,7 @@ export const useScheduleStore = create<ScheduleStore>()(
         
         set(state => {
           state.loading = false;
+          state.schedules = [];
           state.error = {
             message: 'Erreur lors du chargement des horaires de la salle',
             code: 'FETCH_ROOM_ERROR',
@@ -296,7 +349,7 @@ export const useScheduleStore = create<ScheduleStore>()(
           };
         });
         
-        toast.error('Erreur lors du chargement des horaires');
+        toast.error('Erreur lors du chargement des horaires de la salle');
       }
     },
     

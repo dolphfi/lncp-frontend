@@ -535,13 +535,7 @@ const AdminPanel: React.FC = () => { // États locaux
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button variant="outline"
-                    onClick={loadAdminData}
-                    className="flex-1 sm:flex-none text-xs sm:text-sm">
-                    <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
-                    <span className="hidden sm:inline">Actualiser</span>
-                    <span className="sm:hidden">Refresh</span>
-                </Button>
+                
                 <Button onClick={
                     () => {
                         setActiveTab('settings');
@@ -1253,6 +1247,17 @@ const AcademicYearTab: React.FC = () => {
         fetchCurrentAcademicYear();
     }, [fetchAllAcademicYears, fetchCurrentAcademicYear]);
 
+    // Auto-générer le libellé basé sur les dates
+    useEffect(() => {
+        if (formData.dateDebut && formData.dateFin) {
+            const startYear = new Date(formData.dateDebut).getFullYear();
+            const endYear = new Date(formData.dateFin).getFullYear();
+            if (!isNaN(startYear) && !isNaN(endYear)) {
+                setFormData(prev => ({ ...prev, label: `${startYear}-${endYear}` }));
+            }
+        }
+    }, [formData.dateDebut, formData.dateFin]);
+
     // Gérer la soumission du formulaire
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1266,13 +1271,29 @@ const AcademicYearTab: React.FC = () => {
 
         const debut = new Date(formData.dateDebut);
         const fin = new Date(formData.dateFin);
+        
         if (debut >= fin) {
             setSubmitError("La date de fin doit être postérieure à la date de début");
             return;
         }
 
+        if (debut.getFullYear() === fin.getFullYear()) {
+            setSubmitError("La date de fin ne peut pas être la même année que la date de début");
+            return;
+        }
+
+        // Validation durée max 1 an
+        const maxDate = new Date(debut);
+        maxDate.setFullYear(maxDate.getFullYear() + 1);
+        
+        if (fin > maxDate) {
+            setSubmitError("La durée de l'année académique ne doit pas dépasser 1 an");
+            return;
+        }
+
         try {
             await createAcademicYear(formData);
+            await fetchAllAcademicYears(); // Forcer le rafraîchissement de la liste
             setShowAddDialog(false);
             setFormData({ label: '', dateDebut: '', dateFin: '' });
             toast.success('Année académique créée avec succès');
@@ -1366,6 +1387,12 @@ const AcademicYearTab: React.FC = () => {
         }
     };
 
+    const formatDateDisplay = (dateString: string) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? dateString : date.toLocaleDateString();
+    };
+
     return (
         <div className="space-y-6">
             {/* En-tête */}
@@ -1401,7 +1428,7 @@ const AcademicYearTab: React.FC = () => {
                                 </h3>
                                 <p className="text-green-700 dark:text-green-300">
                                     Du {new Date(currentAcademicYear.dateDebut).toLocaleDateString()} 
-                                    au {new Date(currentAcademicYear.dateFin).toLocaleDateString()}
+                                    {' '}au {new Date(currentAcademicYear.dateFin).toLocaleDateString()}
                                 </p>
                             </div>
                             <Badge variant="default" className="bg-green-600">
@@ -1454,8 +1481,8 @@ const AcademicYearTab: React.FC = () => {
                                         </TableCell>
                                         <TableCell>
                                             <div className="text-sm">
-                                                <div>Du {new Date(year.dateDebut).toLocaleDateString()}</div>
-                                                <div>Au {new Date(year.dateFin).toLocaleDateString()}</div>
+                                                <div>Du {formatDateDisplay(year.dateDebut)}</div>
+                                                <div>Au {formatDateDisplay(year.dateFin)}</div>
                                             </div>
                                         </TableCell>
                                         <TableCell>
@@ -1471,15 +1498,18 @@ const AcademicYearTab: React.FC = () => {
                                                 >
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="sm"
-                                                    onClick={() => handleEdit(year)}
-                                                    title="Modifier"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                {currentAcademicYear?.id !== year.id && (
+                                                {
+                                                    currentAcademicYear?.id !== year.id && (year.statut === 'Planifiée' || year.statut === 'En cours') && (<Button
+
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleEdit(year)}
+                                                        title="Modifier"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    )}
+                                                {currentAcademicYear?.id !== year.id && year.statut === 'Planifiée' && (
                                                     <Button 
                                                         variant="outline" 
                                                         size="sm" 
@@ -1516,13 +1546,13 @@ const AcademicYearTab: React.FC = () => {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <Label className="text-sm font-medium">
-                                Libellé <span className="text-red-500">*</span>
+                                Libellé (Généré automatiquement)
                             </Label>
                             <Input
                                 value={formData.label}
-                                onChange={(e) => setFormData({...formData, label: e.target.value})}
-                                placeholder="Ex: 2025-2026"
-                                className="h-9"
+                                disabled
+                                placeholder="Généré automatiquement (ex: 2025-2026)"
+                                className="h-9 bg-gray-50"
                             />
                         </div>
 
@@ -1545,6 +1575,8 @@ const AcademicYearTab: React.FC = () => {
                             <Input
                                 type="date"
                                 value={formData.dateFin}
+                                min={formData.dateDebut ? `${new Date(formData.dateDebut).getFullYear() + 1}-01-01` : undefined}
+                                max={formData.dateDebut ? new Date(new Date(formData.dateDebut).setFullYear(new Date(formData.dateDebut).getFullYear() + 1)).toISOString().split('T')[0] : undefined}
                                 onChange={(e) => setFormData({...formData, dateFin: e.target.value})}
                                 className="h-9"
                             />
@@ -1588,13 +1620,13 @@ const AcademicYearTab: React.FC = () => {
                                 <div>
                                     <Label className="text-sm font-medium text-gray-700">Date de début</Label>
                                     <p className="text-sm bg-gray-50 p-2 rounded border">
-                                        {new Date(selectedYear.dateDebut).toLocaleDateString()}
+                                        {formatDateDisplay(selectedYear.dateDebut)}
                                     </p>
                                 </div>
                                 <div>
                                     <Label className="text-sm font-medium text-gray-700">Date de fin</Label>
                                     <p className="text-sm bg-gray-50 p-2 rounded border">
-                                        {new Date(selectedYear.dateFin).toLocaleDateString()}
+                                        {formatDateDisplay(selectedYear.dateFin)}
                                     </p>
                                 </div>
                             </div>
@@ -1617,13 +1649,13 @@ const AcademicYearTab: React.FC = () => {
                                 <div>
                                     <Label className="text-sm font-medium text-gray-700">Créée le</Label>
                                     <p className="text-sm bg-gray-50 p-2 rounded border">
-                                        {new Date(selectedYear.createdAt).toLocaleDateString()}
+                                        {formatDateDisplay(selectedYear.createdAt)}
                                     </p>
                                 </div>
                                 <div>
                                     <Label className="text-sm font-medium text-gray-700">Modifiée le</Label>
                                     <p className="text-sm bg-gray-50 p-2 rounded border">
-                                        {new Date(selectedYear.updatedAt).toLocaleDateString()}
+                                        {formatDateDisplay(selectedYear.updatedAt)}
                                     </p>
                                 </div>
                             </div>

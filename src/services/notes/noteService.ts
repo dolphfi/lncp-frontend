@@ -228,11 +228,16 @@ class NoteService {
   }
 
   /**
-   * Récupérer toutes les classes pour le filtre
+   * Récupérer toutes les classes pour le filtre (avec salles)
    */
   async getAllClassrooms(): Promise<any[]> {
     try {
-      const response = await api.get<any>('/classroom/all-classroom');
+      const response = await api.get<any>('/classroom/all-classroom', {
+        params: {
+          page: 1,
+          limit: 100 // Charger toutes les classes avec leurs salles
+        }
+      });
       return response.data?.data || response.data || [];
     } catch (error) {
       console.error('Erreur lors du chargement des classes:', error);

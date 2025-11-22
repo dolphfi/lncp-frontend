@@ -11,22 +11,25 @@ import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 import { ApiError } from '../types/student';
+import attendanceService, { ManualAttendanceDto, JustificationDto } from '../services/attendanceService';
 
 // =====================================================
 // TYPES POUR LES PRÉSENCES
 // =====================================================
 export interface Attendance {
   id: string;
-  studentId: string;
-  studentName: string;
-  studentMatricule: string;
-  date: string;
+  studentId?: string;
+  employeeId?: string;
+  studentName?: string; // À enrichir si le backend ne renvoie pas le nom directement
+  studentMatricule?: string;
+  date: string; // timestamp ou date string
   status: 'present' | 'absent' | 'late' | 'excused';
-  classroomId: string;
-  classroomName: string;
+  classroomId?: string;
+  classroomName?: string;
   roomId?: string;
   roomName?: string;
-  notes?: string;
+  reason?: string; // Pour les justifications ou manuel
+  timestamp: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,6 +41,7 @@ export interface AttendanceFilters {
   roomId?: string;
   dateFrom?: string;
   dateTo?: string;
+  userId?: string; // Pour le rapport par utilisateur
 }
 
 export interface AttendanceStats {
@@ -64,10 +68,11 @@ export interface PaginationOptions {
 interface AttendanceStore {
   // État
   attendances: Attendance[];
-  allAttendances: Attendance[];
+  allAttendances: Attendance[]; // Cache local pour filtrage client si nécessaire
+  userSummary: any | null; // Pour le résumé utilisateur
   loading: boolean;
   error: ApiError | null;
-  loadingAction: 'create' | 'update' | 'delete' | null;
+  loadingAction: 'create' | 'update' | 'delete' | 'justify' | 'maintenance' | null;
   
   // Filtres et pagination
   filters: AttendanceFilters;
@@ -78,11 +83,16 @@ interface AttendanceStore {
   stats: AttendanceStats | null;
   
   // Actions principales
-  fetchAttendances: () => Promise<void>;
-  createAttendance: (data: Partial<Attendance>) => Promise<void>;
-  updateAttendance: (data: Partial<Attendance> & { id: string }) => Promise<void>;
-  deleteAttendance: (id: string) => Promise<void>;
-  markAttendance: (studentId: string, status: Attendance['status'], date: string) => Promise<void>;
+  fetchUserReport: (userId: string) => Promise<void>;
+  fetchLatenessReport: (date?: string) => Promise<void>;
+  
+  recordManualAttendance: (data: ManualAttendanceDto) => Promise<void>;
+  justifyAttendance: (id: string, data: JustificationDto) => Promise<void>;
+  
+  // Maintenance Admin
+  cleanupInvalidAbsences: () => Promise<void>;
+  reprocessAbsences: (date: string) => Promise<void>;
+  forceAbsenceDetection: () => Promise<void>;
   
   // Actions de filtrage et tri
   setFilters: (filters: Partial<AttendanceFilters>) => void;
@@ -93,12 +103,6 @@ interface AttendanceStore {
   // Actions utilitaires
   clearError: () => void;
   resetFilters: () => void;
-  fetchStats: () => Promise<void>;
-  
-  // Actions spécifiques
-  getAttendancesByDate: (date: string) => Promise<Attendance[]>;
-  getAttendancesByStudent: (studentId: string) => Promise<Attendance[]>;
-  getAttendancesByClassroom: (classroomId: string) => Promise<Attendance[]>;
 }
 
 // =====================================================
@@ -110,24 +114,23 @@ const filterAttendances = (attendances: Attendance[], filters: AttendanceFilters
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
       const matchesSearch = 
-        attendance.studentName.toLowerCase().includes(searchTerm) ||
-        attendance.studentMatricule.toLowerCase().includes(searchTerm) ||
-        attendance.classroomName.toLowerCase().includes(searchTerm);
+        (attendance.studentName?.toLowerCase().includes(searchTerm) ?? false) ||
+        (attendance.studentMatricule?.toLowerCase().includes(searchTerm) ?? false) ||
+        (attendance.classroomName?.toLowerCase().includes(searchTerm) ?? false);
       if (!matchesSearch) return false;
     }
     
     if (filters.status && attendance.status !== filters.status) return false;
     if (filters.classroomId && attendance.classroomId !== filters.classroomId) return false;
-    if (filters.roomId && attendance.roomId !== filters.roomId) return false;
     
     if (filters.dateFrom) {
-      const attendanceDate = new Date(attendance.date);
+      const attendanceDate = new Date(attendance.timestamp || attendance.date);
       const fromDate = new Date(filters.dateFrom);
       if (attendanceDate < fromDate) return false;
     }
     
     if (filters.dateTo) {
-      const attendanceDate = new Date(attendance.date);
+      const attendanceDate = new Date(attendance.timestamp || attendance.date);
       const toDate = new Date(filters.dateTo);
       if (attendanceDate > toDate) return false;
     }
@@ -153,39 +156,6 @@ const paginateAttendances = (attendances: Attendance[], page: number, limit: num
   return attendances.slice(startIndex, endIndex);
 };
 
-const calculateStats = (attendances: Attendance[]): AttendanceStats => {
-  const total = attendances.length;
-  const present = attendances.filter(a => a.status === 'present').length;
-  const absent = attendances.filter(a => a.status === 'absent').length;
-  const late = attendances.filter(a => a.status === 'late').length;
-  const excused = attendances.filter(a => a.status === 'excused').length;
-  
-  const attendanceRate = total > 0 ? ((present + late) / total) * 100 : 0;
-  
-  const byClassroom: Record<string, number> = {};
-  attendances.forEach(a => {
-    byClassroom[a.classroomName] = (byClassroom[a.classroomName] || 0) + 1;
-  });
-  
-  const byStatus: Record<string, number> = {
-    present,
-    absent,
-    late,
-    excused
-  };
-  
-  return {
-    total,
-    present,
-    absent,
-    late,
-    excused,
-    attendanceRate,
-    byClassroom,
-    byStatus
-  };
-};
-
 // =====================================================
 // CRÉATION DU STORE
 // =====================================================
@@ -195,6 +165,7 @@ export const useAttendanceStore = create<AttendanceStore>()((
       // État initial
       attendances: [],
       allAttendances: [],
+      userSummary: null,
       loading: false,
       error: null,
       loadingAction: null,
@@ -205,7 +176,8 @@ export const useAttendanceStore = create<AttendanceStore>()((
         classroomId: undefined,
         roomId: undefined,
         dateFrom: undefined,
-        dateTo: undefined
+        dateTo: undefined,
+        userId: undefined
       },
       pagination: {
         page: 1,
@@ -214,30 +186,39 @@ export const useAttendanceStore = create<AttendanceStore>()((
         totalPages: 0
       },
       sortOptions: {
-        field: 'date',
+        field: 'timestamp',
         order: 'desc'
       },
       
       stats: null,
       
       // Actions principales
-      fetchAttendances: async () => {
+      
+      fetchUserReport: async (userId: string) => {
         set({ loading: true, error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          const mockAttendances: Attendance[] = [];
+          const data = await attendanceService.getUserReport(userId);
+          // Supposons que data est un tableau d'attendances
+          const attendances = Array.isArray(data) ? data : [];
           
           set({ 
-            allAttendances: mockAttendances,
+            allAttendances: attendances,
             loading: false 
           });
           
+          // Récupérer aussi le résumé
+          try {
+            const summary = await attendanceService.getUserSummary(userId);
+            set({ userSummary: summary });
+          } catch (e) {
+            console.warn('Impossible de récupérer le résumé utilisateur', e);
+          }
+          
           get().applyFiltersLocally();
-          await get().fetchStats();
         } catch (error: any) {
           set({ 
             error: { 
-              message: error.message || 'Erreur lors du chargement des présences',
+              message: error.message || 'Erreur lors du chargement du rapport utilisateur',
               code: error.code || 'FETCH_ERROR'
             },
             loading: false 
@@ -245,17 +226,57 @@ export const useAttendanceStore = create<AttendanceStore>()((
         }
       },
       
-      createAttendance: async (data: Partial<Attendance>) => {
+      fetchLatenessReport: async (date?: string) => {
+        set({ loading: true, error: null });
+        try {
+          // Si pas de date, utiliser aujourd'hui. 
+          // Le backend semble strict sur le format ISO 8601.
+          // Si date est "YYYY-MM-DD", on ajoute une heure pour faire un ISO valide
+          let dateParam = date;
+          if (!dateParam) {
+            dateParam = new Date().toISOString();
+          } else if (dateParam.match(/^\d{4}-\d{2}-\d{2}$/)) {
+             // Si format YYYY-MM-DD, convertir en ISO complet (début de journée)
+             dateParam = new Date(dateParam).toISOString();
+          }
+
+          const data = await attendanceService.getLatenessReport(dateParam);
+          const attendances = Array.isArray(data) ? data : [];
+          
+          set({ 
+            allAttendances: attendances,
+            loading: false 
+          });
+          
+          get().applyFiltersLocally();
+        } catch (error: any) {
+          set({ 
+            error: { 
+              message: error.message || 'Erreur lors du chargement des retards',
+              code: error.code || 'FETCH_ERROR'
+            },
+            loading: false 
+          });
+        }
+      },
+
+      recordManualAttendance: async (data: ManualAttendanceDto) => {
         set({ loadingAction: 'create', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Création de présence:', data);
-          await get().fetchAttendances();
+          await attendanceService.recordManual(data);
+          // Rafraîchir la liste si un filtre utilisateur est actif
+          const { filters } = get();
+          if (filters.userId) {
+            await get().fetchUserReport(filters.userId);
+          } else {
+            // Sinon on ne peut pas facilement rafraîchir "tout", on laisse tel quel ou on vide
+            // Optionnel: toast success géré par le composant
+          }
           set({ loadingAction: null });
         } catch (error: any) {
           set({ 
             error: { 
-              message: error.message || 'Erreur lors de la création',
+              message: error.message || 'Erreur lors du pointage manuel',
               code: error.code || 'CREATE_ERROR'
             },
             loadingAction: null 
@@ -263,19 +284,28 @@ export const useAttendanceStore = create<AttendanceStore>()((
           throw error;
         }
       },
-      
-      updateAttendance: async (data: Partial<Attendance> & { id: string }) => {
-        set({ loadingAction: 'update', error: null });
+
+      justifyAttendance: async (id: string, data: JustificationDto) => {
+        set({ loadingAction: 'justify', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Mise à jour de présence:', data);
-          await get().fetchAttendances();
+          await attendanceService.justify(id, data);
+          
+          // Mettre à jour localement pour éviter un rechargement complet
+          set((state) => {
+            const index = state.allAttendances.findIndex(a => a.id === id);
+            if (index !== -1) {
+              state.allAttendances[index].reason = data.reason;
+              // On pourrait aussi changer le statut si l'API le renvoie, mais ici on suppose
+            }
+          });
+          
+          get().applyFiltersLocally();
           set({ loadingAction: null });
         } catch (error: any) {
           set({ 
             error: { 
-              message: error.message || 'Erreur lors de la mise à jour',
-              code: error.code || 'UPDATE_ERROR'
+              message: error.message || 'Erreur lors de la justification',
+              code: error.code || 'JUSTIFY_ERROR'
             },
             loadingAction: null 
           });
@@ -283,37 +313,51 @@ export const useAttendanceStore = create<AttendanceStore>()((
         }
       },
       
-      deleteAttendance: async (id: string) => {
-        set({ loadingAction: 'delete', error: null });
+      // Maintenance Admin
+      cleanupInvalidAbsences: async () => {
+        set({ loadingAction: 'maintenance', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Suppression de présence:', id);
-          await get().fetchAttendances();
+          await attendanceService.cleanupInvalidAbsences();
           set({ loadingAction: null });
         } catch (error: any) {
           set({ 
             error: { 
-              message: error.message || 'Erreur lors de la suppression',
-              code: error.code || 'DELETE_ERROR'
+              message: error.message || 'Erreur lors du nettoyage',
+              code: 'MAINTENANCE_ERROR'
             },
             loadingAction: null 
           });
           throw error;
         }
       },
-      
-      markAttendance: async (studentId: string, status: Attendance['status'], date: string) => {
-        set({ loadingAction: 'create', error: null });
+
+      reprocessAbsences: async (date: string) => {
+        set({ loadingAction: 'maintenance', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Marquage présence:', { studentId, status, date });
-          await get().fetchAttendances();
+          await attendanceService.reprocessAbsences(date);
           set({ loadingAction: null });
         } catch (error: any) {
           set({ 
             error: { 
-              message: error.message || 'Erreur lors du marquage',
-              code: error.code || 'MARK_ERROR'
+              message: error.message || 'Erreur lors du re-traitement',
+              code: 'MAINTENANCE_ERROR'
+            },
+            loadingAction: null 
+          });
+          throw error;
+        }
+      },
+
+      forceAbsenceDetection: async () => {
+        set({ loadingAction: 'maintenance', error: null });
+        try {
+          await attendanceService.forceAbsenceDetection();
+          set({ loadingAction: null });
+        } catch (error: any) {
+          set({ 
+            error: { 
+              message: error.message || 'Erreur lors de la détection forcée',
+              code: 'MAINTENANCE_ERROR'
             },
             loadingAction: null 
           });
@@ -374,7 +418,8 @@ export const useAttendanceStore = create<AttendanceStore>()((
             classroomId: undefined,
             roomId: undefined,
             dateFrom: undefined,
-            dateTo: undefined
+            dateTo: undefined,
+            userId: undefined
           },
           pagination: {
             page: 1,
@@ -384,48 +429,8 @@ export const useAttendanceStore = create<AttendanceStore>()((
           }
         });
         get().applyFiltersLocally();
-      },
-      
-      fetchStats: async () => {
-        try {
-          const { allAttendances } = get();
-          const stats = calculateStats(allAttendances);
-          set({ stats });
-        } catch (error: any) {
-          console.error('Erreur lors du calcul des statistiques:', error);
-        }
-      },
-      
-      // Actions spécifiques
-      getAttendancesByDate: async (date: string) => {
-        try {
-          const { allAttendances } = get();
-          return allAttendances.filter(a => a.date === date);
-        } catch (error: any) {
-          console.error('Erreur:', error);
-          return [];
-        }
-      },
-      
-      getAttendancesByStudent: async (studentId: string) => {
-        try {
-          const { allAttendances } = get();
-          return allAttendances.filter(a => a.studentId === studentId);
-        } catch (error: any) {
-          console.error('Erreur:', error);
-          return [];
-        }
-      },
-      
-      getAttendancesByClassroom: async (classroomId: string) => {
-        try {
-          const { allAttendances } = get();
-          return allAttendances.filter(a => a.classroomId === classroomId);
-        } catch (error: any) {
-          console.error('Erreur:', error);
-          return [];
-        }
       }
     }))
   )
 ));
+

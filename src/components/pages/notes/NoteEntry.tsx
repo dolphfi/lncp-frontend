@@ -212,8 +212,18 @@ const NoteEntry: React.FC = () => {
       let courses: any[] = [];
 
       if (userRole === 'TEACHER') {
-        // Pour les TEACHER : utiliser /dashboard pour leurs cours uniquement
-        courses = await getTeacherCourses();
+        // Pour les TEACHER : charger leurs cours et filtrer par classe de l'étudiant
+        const allTeacherCourses = await getTeacherCourses();
+        
+        // Filtrer les cours selon la classe de l'étudiant sélectionné
+        if (student.classroom?.id) {
+          courses = allTeacherCourses.filter((course: any) => 
+            course.classrooms?.some((classroom: any) => classroom.id === student.classroom.id) ||
+            course.classroom?.id === student.classroom.id
+          );
+        } else {
+          courses = allTeacherCourses;
+        }
       } else {
         // Pour les autres rôles : utiliser /courses/all-courses avec filtre par classe
         const classroomId = selectedClassroom || student.classroom?.id;
@@ -326,8 +336,13 @@ const NoteEntry: React.FC = () => {
         reset();
         setSelectedStudent(null);
         setSelectedCourse(null);
-        setCourseOptions([]);
-        setLoadedCourses([]);
+        
+        // Ne pas effacer les cours si une classe est sélectionnée
+        // Cela permet de continuer à ajouter des notes pour d'autres élèves de la même classe
+        if (!selectedClassroom) {
+          setCourseOptions([]);
+          setLoadedCourses([]);
+        }
         // Le toast de succès est géré par le store
       }
     } catch (error) {
@@ -425,9 +440,13 @@ const NoteEntry: React.FC = () => {
                 {errors.courseId && (
                   <p className="text-sm text-red-600">{errors.courseId.message}</p>
                 )}
-                {!selectedStudent && (
+                {!selectedStudent ? (
                   <p className="text-sm text-gray-500">
                     Sélectionnez d'abord un élève
+                  </p>
+                ) : selectedStudent.classroom?.name && (
+                  <p className="text-sm text-blue-600">
+                    Cours filtrés pour la classe: <strong>{selectedStudent.classroom.name}</strong>
                   </p>
                 )}
               </div>

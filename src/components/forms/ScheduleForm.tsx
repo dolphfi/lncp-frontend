@@ -455,7 +455,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     />
                     {errors.timeSlots?.[index]?.startTime && (
                       <p className="text-xs text-red-600">
-                        {errors.timeSlots[index]?.startTime?.message}
+                        {(errors.timeSlots?.[index]?.startTime as any)?.message}
                       </p>
                     )}
                   </div>
@@ -471,7 +471,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     />
                     {errors.timeSlots?.[index]?.endTime && (
                       <p className="text-xs text-red-600">
-                        {errors.timeSlots[index]?.endTime?.message}
+                        {(errors.timeSlots?.[index]?.endTime as any)?.message}
                       </p>
                     )}
                   </div>
@@ -492,9 +492,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                         <SelectItem value="BREAK">Pause</SelectItem>
                       </SelectContent>
                     </Select>
-                    {errors.timeSlots?.[index]?.type && (
+                    {(errors.timeSlots?.[index] as any)?.type && (
                       <p className="text-xs text-red-600">
-                        {errors.timeSlots[index]?.type?.message}
+                        {(errors.timeSlots?.[index] as any)?.type?.message}
                       </p>
                     )}
                   </div>
@@ -538,7 +538,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     </Select>
                     {errors.timeSlots?.[index]?.courseId && (
                       <p className="text-xs text-red-600">
-                        {errors.timeSlots[index]?.courseId?.message}
+                        {(errors.timeSlots?.[index]?.courseId as any)?.message}
                       </p>
                     )}
                     {selectedClassroomId && watch(`timeSlots.${index}.type`) === 'COURSE' && (

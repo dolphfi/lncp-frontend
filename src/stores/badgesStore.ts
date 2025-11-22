@@ -11,22 +11,24 @@ import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 import { ApiError } from '../types/student';
+import { badgeService } from './services/badges/badgeService';
 
 // =====================================================
 // TYPES POUR LES BADGES
 // =====================================================
 export interface Badge {
   id: string;
-  studentId: string;
-  studentName: string;
-  studentMatricule: string;
+  studentId?: string; // Optionnel car peut être assigné à un employé
+  employeeId?: string;
+  studentName: string; // Nom complet (étudiant ou employé)
+  studentMatricule: string; // Matricule ou code employé
   studentPhoto?: string;
   classroomId: string;
   classroomName: string;
   roomId?: string;
   roomName?: string;
-  badgeNumber: string;
-  qrCode?: string;
+  badgeNumber: string; // Correspond souvent au NFC ID ou un code visuel
+  nfcId: string; // Ajout du champ NFC ID
   status: 'active' | 'inactive' | 'lost' | 'damaged';
   issueDate: string;
   expiryDate?: string;
@@ -35,6 +37,37 @@ export interface Badge {
   createdAt: string;
   updatedAt: string;
 }
+
+// Fonction de conversion API -> Store
+const convertApiBadgeToStore = (apiBadge: any): Badge => {
+  // Adaptation selon la réponse réelle de l'API.
+  // On suppose ici une structure basée sur ce que retourne assign-badge
+  return {
+    id: apiBadge.id,
+    nfcId: apiBadge.nfcId || apiBadge.badgeNumber, // Fallback
+    badgeNumber: apiBadge.badgeNumber || apiBadge.nfcId,
+    status: apiBadge.status || 'active',
+    
+    // Infos assignataire (peut être nested dans 'assignee' ou à plat)
+    studentId: apiBadge.studentId || apiBadge.assignee?.id,
+    employeeId: apiBadge.employeeId || apiBadge.assignee?.id,
+    studentName: (apiBadge.assignee?.firstName && apiBadge.assignee?.lastName) 
+      ? `${apiBadge.assignee.firstName} ${apiBadge.assignee.lastName}` 
+      : (apiBadge.studentName || 'Inconnu'),
+    studentMatricule: apiBadge.assignee?.matricule || apiBadge.assignee?.code || apiBadge.studentMatricule || '',
+    studentPhoto: apiBadge.assignee?.avatarUrl || apiBadge.studentPhoto,
+    
+    classroomId: apiBadge.classroomId || '', // À voir si dispo
+    classroomName: apiBadge.classroomName || apiBadge.assignee?.classroomName || '',
+    
+    issueDate: apiBadge.issueDate || apiBadge.createdAt || new Date().toISOString(),
+    expiryDate: apiBadge.expiryDate,
+    lastUsed: apiBadge.lastUsed,
+    notes: apiBadge.notes,
+    createdAt: apiBadge.createdAt || new Date().toISOString(),
+    updatedAt: apiBadge.updatedAt || new Date().toISOString(),
+  };
+};
 
 export interface BadgeFilters {
   search?: string;
@@ -213,11 +246,12 @@ export const useBadgeStore = create<BadgeStore>()((
       fetchBadges: async () => {
         set({ loading: true, error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          const mockBadges: Badge[] = [];
+          const response = await badgeService.getAllBadges();
+          // Conversion des données
+          const badges = (Array.isArray(response) ? response : []).map(convertApiBadgeToStore);
           
           set({ 
-            allBadges: mockBadges,
+            allBadges: badges,
             loading: false 
           });
           
@@ -237,8 +271,22 @@ export const useBadgeStore = create<BadgeStore>()((
       createBadge: async (data: Partial<Badge>) => {
         set({ loadingAction: 'create', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Création de badge:', data);
+          // Si on a nfcId et un studentId/employeeId, c'est une assignation
+          if (data.nfcId) {
+             if (data.studentId || data.employeeId) {
+               await badgeService.assignBadge({
+                 nfcId: data.nfcId,
+                 studentId: data.studentId,
+                 employeeId: data.employeeId
+               });
+             } else {
+               // Sinon c'est juste une création de badge (nouveau stock)
+               await badgeService.createBadge(data.nfcId);
+             }
+          } else {
+             throw new Error("NFC ID requis pour créer un badge");
+          }
+
           await get().fetchBadges();
           set({ loadingAction: null });
         } catch (error: any) {
@@ -256,8 +304,12 @@ export const useBadgeStore = create<BadgeStore>()((
       updateBadge: async (data: Partial<Badge> & { id: string }) => {
         set({ loadingAction: 'update', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Mise à jour de badge:', data);
+          // Mise à jour générique (ex: nfcId ou statut si supporté par patch)
+          if (data.nfcId) {
+             await badgeService.updateBadge(data.id, { nfcId: data.nfcId });
+          }
+          // Si d'autres champs, on peut devoir faire d'autres appels ou adapter le service
+          
           await get().fetchBadges();
           set({ loadingAction: null });
         } catch (error: any) {
@@ -275,8 +327,7 @@ export const useBadgeStore = create<BadgeStore>()((
       deleteBadge: async (id: string) => {
         set({ loadingAction: 'delete', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Suppression de badge:', id);
+          await badgeService.deleteBadge(id);
           await get().fetchBadges();
           set({ loadingAction: null });
         } catch (error: any) {
@@ -294,8 +345,8 @@ export const useBadgeStore = create<BadgeStore>()((
       printBadge: async (id: string) => {
         set({ loadingAction: 'print', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Impression de badge:', id);
+          // Simulation d'impression (pas d'endpoint backend fourni)
+          await new Promise(resolve => setTimeout(resolve, 1000));
           set({ loadingAction: null });
         } catch (error: any) {
           set({ 
@@ -312,8 +363,7 @@ export const useBadgeStore = create<BadgeStore>()((
       reportLost: async (id: string) => {
         set({ loadingAction: 'update', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Déclaration badge perdu:', id);
+          await badgeService.updateStatus(id, 'lost');
           await get().fetchBadges();
           set({ loadingAction: null });
         } catch (error: any) {
@@ -331,8 +381,7 @@ export const useBadgeStore = create<BadgeStore>()((
       reportDamaged: async (id: string) => {
         set({ loadingAction: 'update', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Déclaration badge endommagé:', id);
+          await badgeService.updateStatus(id, 'damaged');
           await get().fetchBadges();
           set({ loadingAction: null });
         } catch (error: any) {
@@ -350,8 +399,7 @@ export const useBadgeStore = create<BadgeStore>()((
       reactivateBadge: async (id: string) => {
         set({ loadingAction: 'update', error: null });
         try {
-          // TODO: Remplacer par un appel API réel
-          console.log('Réactivation de badge:', id);
+          await badgeService.updateStatus(id, 'active');
           await get().fetchBadges();
           set({ loadingAction: null });
         } catch (error: any) {

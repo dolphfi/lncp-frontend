@@ -9,7 +9,7 @@
  * - Gestion d'état avec Zustand
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, 
   Eye, 
@@ -20,7 +20,9 @@ import {
   Printer,
   CreditCard,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Search,
+  Check
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
@@ -40,14 +42,21 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '../../ui/dialog';
 import { Alert, AlertDescription } from '../../ui/alert';
+import { Label } from '../../ui/label';
+import { Input } from '../../ui/input';
+import { Switch } from '../../ui/switch';
+import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
 import { toast } from 'react-toastify';
 
 // Import du store
 import { useBadgeStore, Badge } from '../../../stores/badgesStore';
 import { useRoomStore } from '../../../stores/roomStore';
 import { useClassroomStore } from '../../../stores/classroomStore';
+import { useStudentStore } from '../../../stores/studentStore';
+import { useEmployeeStore } from '../../../stores/employeeStore';
 
 // Import du hook de debouncing
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -60,8 +69,16 @@ export const BadgesManagement: React.FC = () => {
   // État local
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   
+  // État création
+  const [nfcId, setNfcId] = useState('');
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [targetType, setTargetType] = useState<'student' | 'employee'>('student');
+  const [personSearch, setPersonSearch] = useState('');
+  const [selectedPerson, setSelectedPerson] = useState<any>(null);
+
   // Store
   const {
     badges,
@@ -71,6 +88,7 @@ export const BadgesManagement: React.FC = () => {
     pagination,
     stats,
     fetchBadges,
+    createBadge,
     deleteBadge,
     printBadge,
     reportLost,
@@ -84,13 +102,80 @@ export const BadgesManagement: React.FC = () => {
 
   const { fetchAll: fetchClassrooms } = useClassroomStore();
   const { rooms, fetchRooms } = useRoomStore();
+  const { allStudents, fetchStudents } = useStudentStore();
+  const { allEmployees, fetchEmployees } = useEmployeeStore();
   
   // Chargement initial
   useEffect(() => {
     fetchBadges();
     fetchRooms();
     fetchClassrooms(1, 50);
-  }, [fetchBadges, fetchRooms, fetchClassrooms]);
+    // Précharger pour l'assignation
+    fetchStudents();
+    fetchEmployees();
+  }, [fetchBadges, fetchRooms, fetchClassrooms, fetchStudents, fetchEmployees]);
+
+  // Filtrage des personnes pour la recherche (assignation)
+  const filteredPersons = useMemo(() => {
+    const searchLower = personSearch.toLowerCase();
+    if (!searchLower && !selectedPerson) return []; 
+
+    const source = (targetType === 'student' ? allStudents : allEmployees) as any[];
+    
+    return source.filter((p: any) => {
+      const firstName = p.firstName || '';
+      const lastName = p.lastName || '';
+      const id = targetType === 'student' ? (p.studentId || p.matricule) : (p.employeeId || p.id);
+      
+      return (
+        firstName.toLowerCase().includes(searchLower) ||
+        lastName.toLowerCase().includes(searchLower) ||
+        (id && id.toLowerCase().includes(searchLower))
+      );
+    }).slice(0, 10);
+  }, [personSearch, targetType, allStudents, allEmployees, selectedPerson]);
+
+  const handleSelectPerson = (person: any) => {
+    setSelectedPerson(person);
+    setPersonSearch(`${person.firstName} ${person.lastName}`);
+  };
+
+  const handleCreateSubmit = async () => {
+    if (!nfcId.trim()) {
+      toast.error("L'ID NFC est obligatoire");
+      return;
+    }
+
+    try {
+      const payload: Partial<Badge> = {
+        nfcId: nfcId.trim(),
+      };
+
+      if (isAssigning) {
+        if (!selectedPerson) {
+          toast.error("Veuillez sélectionner une personne à assigner");
+          return;
+        }
+        // studentId ou employeeId selon le type
+        if (targetType === 'student') {
+          payload.studentId = selectedPerson.id;
+        } else {
+          payload.employeeId = selectedPerson.id;
+        }
+      }
+
+      await createBadge(payload);
+      toast.success("Badge créé avec succès");
+      setShowCreateDialog(false);
+      // Reset form
+      setNfcId('');
+      setIsAssigning(false);
+      setSelectedPerson(null);
+      setPersonSearch('');
+    } catch (error) {
+      // Erreur gérée par le store
+    }
+  };
 
   // Configuration des colonnes
   const columns: Column<Badge>[] = [
@@ -256,7 +341,7 @@ export const BadgesManagement: React.FC = () => {
           <Button variant="outline" onClick={() => toast.info('Impression en masse en développement')} disabled={loading}>
             <Printer className="h-4 w-4 mr-2" />Imprimer tout
           </Button>
-          <Button onClick={() => toast.info('Création en développement')} disabled={loading}>
+          <Button onClick={() => setShowCreateDialog(true)} disabled={loading}>
             <Plus className="h-4 w-4 mr-2" />Nouveau Badge
           </Button>
         </div>
@@ -339,6 +424,136 @@ export const BadgesManagement: React.FC = () => {
       
       {/* DIALOGS */}
       
+      {/* Dialog Création Badge */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="overflow-visible">
+          <DialogHeader>
+            <DialogTitle>Nouveau Badge</DialogTitle>
+            <DialogDescription>Enregistrer un nouveau badge NFC dans le système.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="nfcId">ID NFC (Scanner le badge)</Label>
+              <div className="relative">
+                <Input 
+                  id="nfcId" 
+                  value={nfcId}
+                  onChange={(e) => setNfcId(e.target.value)}
+                  placeholder="En attente de scan..."
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      // Si on n'assigne pas, on peut soumettre direct
+                      if (!isAssigning && nfcId) {
+                        handleCreateSubmit();
+                      }
+                    }
+                  }}
+                  className="pl-10 font-mono text-lg tracking-wider"
+                />
+                <CreditCard className="absolute left-3 top-3 h-5 w-5 text-muted-foreground animate-pulse" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Placez le badge sur le lecteur. L'ID s'affichera automatiquement.
+              </p>
+            </div>
+            
+            <div className="flex items-center space-x-2 pt-2">
+              <Switch 
+                id="assign-mode" 
+                checked={isAssigning}
+                onCheckedChange={setIsAssigning}
+              />
+              <Label htmlFor="assign-mode">Assigner immédiatement à une personne ?</Label>
+            </div>
+
+            {isAssigning && (
+              <div className="space-y-4 pl-2 border-l-2 border-slate-200 dark:border-slate-700 ml-1 mt-2">
+                 {/* Choix du Type */}
+                <div className="space-y-2">
+                  <Label>Type de personne</Label>
+                  <RadioGroup 
+                    defaultValue="student" 
+                    value={targetType} 
+                    onValueChange={(val: string) => {
+                      setTargetType(val as 'student' | 'employee');
+                      setSelectedPerson(null);
+                      setPersonSearch('');
+                    }}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="student" id="rb-student" />
+                      <Label htmlFor="rb-student">Étudiant</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="employee" id="rb-employee" />
+                      <Label htmlFor="rb-employee">Employé</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {/* Recherche et Sélection */}
+                <div className="space-y-2 relative">
+                  <Label>Rechercher {targetType === 'student' ? 'un étudiant' : 'un employé'}</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder={targetType === 'student' ? "Nom, prénom ou matricule..." : "Nom, prénom ou ID..."}
+                      value={personSearch}
+                      onChange={(e) => {
+                        setPersonSearch(e.target.value);
+                        if (selectedPerson) {
+                          setSelectedPerson(null); 
+                        }
+                      }}
+                      className="pl-8"
+                    />
+                    {selectedPerson && (
+                      <div className="absolute right-2 top-2 text-green-600">
+                        <Check className="h-5 w-5" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Liste des suggestions */}
+                  {!selectedPerson && personSearch && filteredPersons.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-950 border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {filteredPersons.map((person: any) => (
+                        <div 
+                          key={person.id}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer flex flex-col border-b last:border-0"
+                          onClick={() => handleSelectPerson(person)}
+                        >
+                          <span className="font-medium">{person.firstName} {person.lastName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {targetType === 'student' 
+                              ? `Mat: ${person.studentId || person.matricule}` 
+                              : `ID: ${person.employeeId || 'N/A'}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!selectedPerson && personSearch && filteredPersons.length === 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white p-2 text-sm text-muted-foreground border rounded-md shadow-lg">
+                      Aucun résultat trouvé
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Annuler</Button>
+            <Button onClick={handleCreateSubmit} disabled={loadingAction === 'create'}>
+              {loadingAction === 'create' ? 'Création...' : 'Créer le badge'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog de suppression */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>

@@ -64,6 +64,8 @@ import { useScheduleStore } from '../../../stores/scheduleStore';
 import { Schedule, DayOfWeek, VacationType } from '../../../types/schedule';
 import { DAY_OF_WEEK_OPTIONS, VACATION_OPTIONS, CreateScheduleFormData } from '../../../schemas/scheduleSchema';
 import ScheduleForm from '../../forms/ScheduleForm';
+import AdminScheduleView from './AdminScheduleView';
+import noteService from '../../../services/notes/noteService';
 
 /**
  * Page de gestion des horaires (ADMIN/DIRECTOR)
@@ -95,6 +97,30 @@ export const ScheduleManagement: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<Schedule | null>(null);
   const [scheduleToEdit, setScheduleToEdit] = useState<Schedule | null>(null);
+  const [classrooms, setClassrooms] = useState<any[]>([]);
+  const [selectedClassroom, setSelectedClassroom] = useState<string | null>(null);
+  const [loadingClassrooms, setLoadingClassrooms] = useState(false);
+
+  // Charger les classes disponibles
+  useEffect(() => {
+    const loadClassrooms = async () => {
+      setLoadingClassrooms(true);
+      try {
+        const data = await noteService.getAllClassrooms();
+        setClassrooms(data);
+        // Sélectionner la première classe par défaut
+        if (data.length > 0) {
+          setSelectedClassroom(data[0].id);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des classes:', error);
+        toast.error('Impossible de charger les classes');
+      } finally {
+        setLoadingClassrooms(false);
+      }
+    };
+    loadClassrooms();
+  }, []);
 
   // Charger les horaires au montage
   useEffect(() => {
@@ -352,12 +378,19 @@ export const ScheduleManagement: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Tableau des horaires */}
-      <Card>
+      {/* Vue Calendrier par Classe */}
+      <AdminScheduleView
+        classrooms={classrooms}
+        selectedClassroom={selectedClassroom}
+        onClassroomChange={setSelectedClassroom}
+      />
+
+      {/* Tableau des horaires (Liste complète pour gestion) */}
+      <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Liste des Horaires</CardTitle>
+          <CardTitle>Liste des Horaires (Gestion)</CardTitle>
           <CardDescription>
-            {schedules.length} horaire(s) trouvé(s)
+            {schedules.length} horaire(s) trouvé(s) - Vue de gestion pour création/modification/suppression
           </CardDescription>
         </CardHeader>
 

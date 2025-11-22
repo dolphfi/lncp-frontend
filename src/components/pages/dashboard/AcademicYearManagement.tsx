@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAcademicYearStore } from '../../../stores/academicYearStore';
-import { CreateAcademicYearDTO } from '../../../services/academicYearService';
+import { CreateAcademicYearDTO, StatutAnneeAcademique } from '../../../services/academicYearService';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -21,9 +21,12 @@ const academicYearSchema = z.object({
 }).refine((data) => {
   const debut = new Date(data.dateDebut);
   const fin = new Date(data.dateFin);
-  return debut < fin;
+  const diffTime = Math.abs(fin.getTime() - debut.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+  // On tolère un an (365 ou 366 jours) + une petite marge si besoin, disons 380 jours max pour être large mais cohérent
+  return debut < fin && diffDays <= 380;
 }, {
-  message: "La date de fin doit être postérieure à la date de début",
+  message: "La période ne doit pas dépasser un an et la fin doit être après le début",
   path: ["dateFin"]
 });
 
@@ -56,7 +59,7 @@ export default function AcademicYearManagement() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<AcademicYearFormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting }, reset } = useForm<AcademicYearFormData>({
     resolver: zodResolver(academicYearSchema),
     defaultValues: {
       label: '',
@@ -64,6 +67,20 @@ export default function AcademicYearManagement() {
       dateFin: ''
     }
   });
+
+  const dateDebut = watch('dateDebut');
+  const dateFin = watch('dateFin');
+
+  // Calcul automatique du libellé
+  useEffect(() => {
+    if (dateDebut && dateFin) {
+      const startYear = new Date(dateDebut).getFullYear();
+      const endYear = new Date(dateFin).getFullYear();
+      if (!isNaN(startYear) && !isNaN(endYear)) {
+        setValue('label', `${startYear}-${endYear}`);
+      }
+    }
+  }, [dateDebut, dateFin, setValue]);
 
   // Charger les données au montage
   useEffect(() => {
@@ -179,17 +196,22 @@ export default function AcademicYearManagement() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">
                       {year.label}
                     </h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Du {new Date(year.dateDebut).toLocaleDateString()} 
-                      au {new Date(year.dateFin).toLocaleDateString()}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Du {new Date(year.dateDebut).toLocaleDateString()} 
+                        au {new Date(year.dateFin).toLocaleDateString()}
+                      </p>
+                      <Badge variant="secondary" className="text-xs">
+                        {year.statut}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {currentAcademicYear?.id === year.id ? (
                       <Badge variant="default" className="bg-green-600">
                         Courante
                       </Badge>
-                    ) : (
+                    ) : year.statut === StatutAnneeAcademique.PLANIFIEE && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -220,29 +242,32 @@ export default function AcademicYearManagement() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <FormField label="Libellé" required error={errors.label?.message}>
+            <FormField label="Libellé (Généré automatiquement)" required error={errors.label?.message}>
               <Input
                 {...register('label')}
-                placeholder="Ex: 2025-2026"
-                className="h-9"
+                placeholder="Année-Année"
+                className="h-9 bg-gray-100"
+                readOnly
               />
             </FormField>
 
-            <FormField label="Date de début" required error={errors.dateDebut?.message}>
-              <Input
-                type="date"
-                {...register('dateDebut')}
-                className="h-9"
-              />
-            </FormField>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Date de début" required error={errors.dateDebut?.message}>
+                <Input
+                  type="date"
+                  {...register('dateDebut')}
+                  className="h-9"
+                />
+              </FormField>
 
-            <FormField label="Date de fin" required error={errors.dateFin?.message}>
-              <Input
-                type="date"
-                {...register('dateFin')}
-                className="h-9"
-              />
-            </FormField>
+              <FormField label="Date de fin" required error={errors.dateFin?.message}>
+                <Input
+                  type="date"
+                  {...register('dateFin')}
+                  className="h-9"
+                />
+              </FormField>
+            </div>
 
             <div className="flex justify-end gap-2 pt-4">
               <Button
