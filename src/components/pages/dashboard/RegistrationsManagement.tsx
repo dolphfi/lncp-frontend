@@ -1,22 +1,17 @@
 /**
  * =====================================================
- * PAGE DE GESTION DES INSCRIPTIONS
+ * PAGE DE GESTION DES ADMISSIONS
  * =====================================================
- * Cette page centralise toute la gestion des inscriptions :
- * - Liste avec DataTable
- * - Formulaire d'ajout/édition
- * - Actions CRUD
- * - Gestion d'état avec Zustand
  */
 
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Eye, 
-  Trash2, 
   CheckCircle,
   AlertCircle,
-  Users
+  Users,
+  FileText
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
@@ -33,118 +28,117 @@ import {
 import { 
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '../../ui/dialog';
 import { Alert, AlertDescription } from '../../ui/alert';
-import { toast } from 'react-toastify';
 
 // Import des types
-import { Student } from '../../../types/student';
+import { Admission, AdmissionStatus, AdmissionType } from '../../../types/admission';
 
 // Import du store
-import { useRegistrationStore } from '../../../stores/registrationStore';
-import { useRoomStore } from '../../../stores/roomStore';
-import { useClassroomStore } from '../../../stores/classroomStore';
+import { useAdmissionStore } from '../../../stores/admissionStore';
 
 // Import du hook de debouncing
 import { useDebounce } from '../../../hooks/useDebounce';
+import { AddAdmissionModal } from '../../forms/AddAdmissionModal';
 
 // =====================================================
-// COMPOSANT PRINCIPAL DE GESTION DES INSCRIPTIONS
+// COMPOSANT PRINCIPAL DE GESTION DES ADMISSIONS
 // =====================================================
 export const RegistrationsManagement: React.FC = () => {
   
   // État local
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
-  const [selectedRegistration, setSelectedRegistration] = useState<Student | null>(null);
+  const [selectedAdmission, setSelectedAdmission] = useState<Admission | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Store
   const {
-    registrations,
+    admissions,
+    meta,
     loading,
     error,
-    loadingAction,
-    pagination,
-    filters,
-    stats,
-    fetchRegistrations,
-    deleteRegistration,
-    setFilters,
-    setSortOptions,
-    changePage,
+    fetchAdmissions,
     clearError
-  } = useRegistrationStore();
-
-  const { fetchAll: fetchClassrooms } = useClassroomStore();
-  const { rooms, fetchRooms } = useRoomStore();
+  } = useAdmissionStore();
   
   // Chargement initial
   useEffect(() => {
-    fetchRegistrations();
-    fetchRooms();
-    fetchClassrooms(1, 50);
-  }, [fetchRegistrations, fetchRooms, fetchClassrooms]);
+    fetchAdmissions();
+  }, [fetchAdmissions]);
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  // Filtrage local simple pour l'instant
+  const filteredAdmissions = React.useMemo(() => {
+    if (!debouncedSearchTerm) return admissions;
+    const lower = debouncedSearchTerm.toLowerCase();
+    return admissions.filter(a => 
+      a.firstName.toLowerCase().includes(lower) || 
+      a.lastName.toLowerCase().includes(lower) ||
+      (a.numeroDossier && a.numeroDossier.toLowerCase().includes(lower))
+    );
+  }, [admissions, debouncedSearchTerm]);
 
   // Configuration des colonnes
-  const columns: Column<Student>[] = [
+  const columns: Column<Admission>[] = [
+    {
+      key: 'numeroDossier',
+      label: 'Dossier',
+      sortable: true,
+      width: '150px',
+      render: (value: string) => <span className="font-mono font-medium">{value || '-'}</span>
+    },
     {
       key: 'firstName',
-      label: 'Élève',
+      label: 'Candidat',
       sortable: true,
-      searchable: true,
       width: '250px',
-      render: (firstName: string, registration: Student) => (
+      render: (firstName: string, admission: Admission) => (
         <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
-            {registration.avatar ? (
-              <img src={registration.avatar} alt={`${registration.firstName} ${registration.lastName}`} className="w-10 h-10 rounded-full object-cover border-2 border-gray-200" />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-semibold text-sm">
-                {registration.firstName?.charAt(0)}{registration.lastName?.charAt(0)}
-              </div>
-            )}
+            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+              {admission.firstName?.charAt(0)}{admission.lastName?.charAt(0)}
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{registration.firstName} {registration.lastName}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{registration.studentId}</p>
+          <div>
+            <p className="text-sm font-medium">{admission.firstName} {admission.lastName}</p>
+            <p className="text-xs text-gray-500">{admission.email}</p>
           </div>
         </div>
       )
     },
     {
-      key: 'gender',
-      label: 'Sexe',
-      width: '90px',
-      render: (gender: 'male' | 'female') => <Badge variant="outline" className="text-xs">{gender === 'male' ? '👨' : '👩'}</Badge>
-    },
-    {
-      key: 'roomName',
-      label: 'Salle',
-      sortable: true,
-      width: '200px',
-      render: (roomName: string | undefined, registration: Student) => {
-        if (roomName && registration.grade) return <Badge variant="outline" className="text-xs whitespace-nowrap">{registration.grade} - {roomName}</Badge>;
-        if (registration.grade) return <Badge variant="secondary" className="text-xs whitespace-nowrap">{registration.grade} - Non assignée</Badge>;
-        return <span className="text-xs text-gray-400 whitespace-nowrap">Non assignée</span>;
-      }
+      key: 'type',
+      label: 'Type',
+      width: '100px',
+      render: (type: AdmissionType) => (
+        <Badge variant={type === AdmissionType.ON_SITE ? 'default' : 'outline'}>
+          {type === AdmissionType.ON_SITE ? 'Sur Place' : 'En Ligne'}
+        </Badge>
+      )
     },
     {
       key: 'status',
       label: 'Statut',
       sortable: true,
-      width: '100px',
-      render: (status: string) => {
-        const variant = status === 'active' ? 'default' : status === 'inactive' ? 'secondary' : 'destructive';
-        const label = status === 'active' ? 'Actif' : status === 'inactive' ? 'Inactif' : 'Suspendu';
-        return <Badge variant={variant} className="text-xs">{label}</Badge>;
+      width: '120px',
+      render: (status: AdmissionStatus) => {
+        let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+        switch (status) {
+          case AdmissionStatus.ACCEPTED: variant = "default"; break; // Utiliser default (souvent vert ou primaire)
+          case AdmissionStatus.REJECTED: variant = "destructive"; break;
+          case AdmissionStatus.PENDING: variant = "secondary"; break;
+          case AdmissionStatus.DRAFT: variant = "outline"; break;
+        }
+        return <Badge variant={variant}>{status}</Badge>;
       }
     },
     {
-      key: 'enrollmentDate',
-      label: 'Inscription',
+      key: 'createdAt',
+      label: 'Date',
       sortable: true,
       width: '120px',
       render: (date: string) => <span className="text-sm">{new Date(date).toLocaleDateString('fr-FR')}</span>
@@ -152,113 +146,102 @@ export const RegistrationsManagement: React.FC = () => {
   ];
   
   // Actions de ligne
-  const rowActions: RowAction<Student>[] = [
+  const rowActions: RowAction<Admission>[] = [
     {
       label: "Voir",
       icon: <Eye className="h-4 w-4" />,
-      onClick: (registration) => { setSelectedRegistration(registration); setShowViewDialog(true); }
-    },
-    {
-      label: "Supprimer",
-      icon: <Trash2 className="h-4 w-4" />,
-      onClick: (registration) => { setSelectedRegistration(registration); setShowDeleteDialog(true); },
-      variant: "destructive"
+      onClick: (admission) => { setSelectedAdmission(admission); setShowViewDialog(true); }
     }
   ];
   
-  // Gestionnaires
-  const handleDeleteRegistration = async () => {
-    if (!selectedRegistration) return;
-    try {
-      await deleteRegistration(selectedRegistration.id);
-      setShowDeleteDialog(false);
-      setSelectedRegistration(null);
-      toast.success('Inscription supprimée avec succès');
-    } catch (error) {
-      toast.error('Erreur lors de la suppression');
-    }
-  };
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  
-  useEffect(() => {
-    setFilters({ search: debouncedSearchTerm });
-  }, [debouncedSearchTerm, setFilters]);
-  
-  const handleSearch = (searchValue: string) => setSearchTerm(searchValue);
-  const handleSort = (sort: { field: string; order: 'asc' | 'desc' }) => setSortOptions({ field: sort.field as keyof Student, order: sort.order });
-  
+  const handleSearch = (val: string) => setSearchTerm(val);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestion des Inscriptions</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Gérez les inscriptions des élèves</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestion des Admissions</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Gérez les demandes d'admission</p>
         </div>
-        <Button onClick={() => toast.info('Fonctionnalité en développement')} disabled={loading}>
-          <Plus className="h-4 w-4 mr-2" />Nouvelle Inscription
+        <Button onClick={() => setShowAddDialog(true)}>
+          <Plus className="h-4 w-4 mr-2" />Nouvelle Admission
         </Button>
       </div>
       
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error.message}<Button variant="link" size="sm" onClick={clearError} className="ml-2 h-auto p-0">Fermer</Button></AlertDescription>
+          <AlertDescription>{error}<Button variant="link" size="sm" onClick={clearError} className="ml-2 h-auto p-0">Fermer</Button></AlertDescription>
         </Alert>
       )}
       
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Card><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground">Total</p><p className="text-xl font-bold">{stats.total}</p></div><Users className="h-4 w-4 text-muted-foreground" /></div></CardContent></Card>
-          <Card><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground">Actifs</p><p className="text-xl font-bold text-green-600">{stats.active}</p></div><CheckCircle className="h-4 w-4 text-green-500" /></div></CardContent></Card>
-          <Card><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground">Classes</p><p className="text-xl font-bold text-purple-600">{Object.keys(stats.byGrade).length}</p></div></div></CardContent></Card>
-        </div>
-      )}
+      {/* Stats rapides */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Card><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground">Total</p><p className="text-xl font-bold">{admissions.length}</p></div><Users className="h-4 w-4 text-muted-foreground" /></div></CardContent></Card>
+        <Card><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground">Acceptées</p><p className="text-xl font-bold text-green-600">{admissions.filter(a => a.status === AdmissionStatus.ACCEPTED).length}</p></div><CheckCircle className="h-4 w-4 text-green-500" /></div></CardContent></Card>
+        <Card><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground">En attente</p><p className="text-xl font-bold text-orange-600">{admissions.filter(a => a.status === AdmissionStatus.PENDING).length}</p></div><FileText className="h-4 w-4 text-orange-500" /></div></CardContent></Card>
+      </div>
       
       <DataTable
-        data={registrations}
+        data={filteredAdmissions}
         columns={columns}
         loading={loading}
         rowActions={rowActions}
-        pagination={pagination}
-        onPageChange={changePage}
-        onSort={handleSort}
+        pagination={{
+          page: meta?.page || 1,
+          limit: meta?.limit || 50,
+          total: meta?.total || filteredAdmissions.length,
+          totalPages: meta?.pageCount || 1
+        }}
+        onPageChange={() => {}}
+        onSort={() => {}} // Tri local par défaut de DataTable si non géré par le parent
         onSearch={handleSearch}
-        currentFilters={filters}
-        rooms={rooms}
-        searchPlaceholder="Rechercher..."
-        emptyStateMessage="Aucune inscription trouvée"
-        title="Liste des Inscriptions"
-        description={`${pagination.total} inscriptions`}
+        searchPlaceholder="Rechercher un candidat..."
+        emptyStateMessage="Aucune admission trouvée"
+        title="Liste des demandes"
+        description={`${filteredAdmissions.length} demandes`}
       />
       
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Supprimer l'inscription</DialogTitle><DialogDescription>Êtes-vous sûr ?</DialogDescription></DialogHeader>
-          {selectedRegistration && (
-            <div className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p><strong>Nom :</strong> {selectedRegistration.firstName} {selectedRegistration.lastName}</p>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => { setShowDeleteDialog(false); setSelectedRegistration(null); }} disabled={loadingAction === 'delete'}>Annuler</Button>
-                <Button variant="destructive" onClick={handleDeleteRegistration} disabled={loadingAction === 'delete'}>
-                  {loadingAction === 'delete' ? 'Suppression...' : 'Supprimer'}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <AddAdmissionModal open={showAddDialog} onOpenChange={setShowAddDialog} />
       
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
         <DialogContent className="max-w-4xl">
-          <DialogHeader><DialogTitle>Détails de l'inscription</DialogTitle></DialogHeader>
-          {selectedRegistration && (
+          <DialogHeader><DialogTitle>Détails du dossier</DialogTitle></DialogHeader>
+          {selectedAdmission && (
             <div className="space-y-4">
-              <div><h3 className="text-xl font-semibold">{selectedRegistration.firstName} {selectedRegistration.lastName}</h3><p className="text-sm text-muted-foreground">{selectedRegistration.studentId}</p></div>
-              <Button onClick={() => { setShowViewDialog(false); setSelectedRegistration(null); }}>Fermer</Button>
+              <div className="flex justify-between border-b pb-4">
+                <div>
+                  <h3 className="text-xl font-semibold">{selectedAdmission.firstName} {selectedAdmission.lastName}</h3>
+                  <p className="text-sm text-muted-foreground">{selectedAdmission.numeroDossier}</p>
+                </div>
+                <Badge>{selectedAdmission.status}</Badge>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-sm text-gray-500">Contact</h4>
+                  <p>{selectedAdmission.email}</p>
+                  <p>{selectedAdmission.phone || '-'}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm text-gray-500">Informations</h4>
+                  <p>Sexe: {selectedAdmission.sexe || '-'}</p>
+                  <p>Né(e) le: {selectedAdmission.dateOfBirth ? new Date(selectedAdmission.dateOfBirth).toLocaleDateString() : '-'}</p>
+                </div>
+              </div>
+
+              {selectedAdmission.documentsFournis && selectedAdmission.documentsFournis.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-sm text-gray-500 mb-2">Documents</h4>
+                  <ul className="list-disc pl-5">
+                    {selectedAdmission.documentsFournis.map((doc, idx) => (
+                      <li key={idx}><a href={doc.path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{doc.type}</a></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <Button onClick={() => { setShowViewDialog(false); setSelectedAdmission(null); }}>Fermer</Button>
             </div>
           )}
         </DialogContent>

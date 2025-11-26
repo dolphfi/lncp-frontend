@@ -7,41 +7,68 @@ import {
   X,
   Plus,
 } from "lucide-react";
+import { toast } from "react-toastify";
+import { admissionService } from "../../../services/admissions/admissionService";
 
 const Admissions = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    grade: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.grade) {
+      toast.error("Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Nous créons un brouillon d'admission
+      await admissionService.createDraft({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        notes: `Demande d'inscription pour la classe : ${formData.grade}. Téléphone: ${formData.phone}`
+      });
+      
+      toast.success("Votre demande d'inscription a été envoyée avec succès !");
+      setIsModalOpen(false);
+      setFormData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        grade: "",
+      });
+    } catch (error: any) {
+      console.error("Erreur lors de l'inscription:", error);
+      toast.error(error.response?.data?.message || "Une erreur est survenue lors de l'envoi de la demande.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <section
       id="admissions"
       className="min-h-[calc(100vh-64px)] relative overflow-hidden bg-white"
     >
-      {/* Background Image */}
-      {/* <div className="absolute inset-0">
-        <img
-          src="/school.png"
-          alt="Background"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-blue-900/90" />
-      </div> */}
-
-      {/* Decorative overlays */}
-      {/* <div className="absolute top-0 left-0 right-0 w-full z-20">
-        <img
-          src="/overlay-top.png"
-          alt="Paper decoration"
-          className="w-full object-cover"
-        />
-      </div>
-      <div className="absolute bottom-0 left-0 right-0 w-full z-20">
-        <img
-          src="/overlay-bottom.png"
-          alt="Paper decoration"
-          className="w-full object-cover"
-        />
-      </div> */}
-
       <div className="relative z-10 px-6 md:px-16 lg:px-32 pt-24 pb-20">
         {/* Header */}
         <div className="text-center mb-16">
@@ -126,7 +153,10 @@ const Admissions = () => {
 
           {/* CTA Button */}
           <div className="text-center mt-12">
-            <button className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full px-6 py-3 text-xs hover:shadow-lg hover:shadow-blue-200 transition-all duration-300">
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full px-6 py-3 text-xs hover:shadow-lg hover:shadow-blue-200 transition-all duration-300"
+            >
               <Download className="w-4 h-4" />
               Formulaire d'Inscription
             </button>
@@ -147,25 +177,49 @@ const Admissions = () => {
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
               Formulaire d'Inscription
             </h2>
-            <form className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom complet
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Entrez votre nom complet"
-                />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Prénom <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Prénom"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nom <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Nom"
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
+                  Email <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Entrez votre email"
+                  placeholder="email@exemple.com"
+                  required
                 />
               </div>
               <div>
@@ -174,30 +228,40 @@ const Admissions = () => {
                 </label>
                 <input
                   type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Entrez votre numéro de téléphone"
+                  placeholder="+509 0000-0000"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Niveau souhaité
+                  Niveau souhaité <span className="text-red-500">*</span>
                 </label>
-                <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <select 
+                  name="grade"
+                  value={formData.grade}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
                   <option value="">Sélectionnez un niveau</option>
-                  <option value="6eme">6ème</option>
-                  <option value="5eme">5ème</option>
-                  <option value="4eme">4ème</option>
-                  <option value="3eme">3ème</option>
-                  <option value="2nde">2nde</option>
-                  <option value="1ere">1ère</option>
-                  <option value="terminale">Terminale</option>
+                  <option value="NS1">NS1 (S3)</option>
+                  <option value="NS2">NS2 (S4)</option>
+                  <option value="NS3">NS3 (Philo)</option>
+                  <option value="NS4">NS4 (Philo)</option>
+                  <option value="7eme">7ème AF</option>
+                  <option value="8eme">8ème AF</option>
+                  <option value="9eme">9ème AF</option>
                 </select>
               </div>
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg px-6 py-3 hover:shadow-lg hover:shadow-blue-200 transition-all duration-300"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg px-6 py-3 hover:shadow-lg hover:shadow-blue-200 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Soumettre l'inscription
+                {loading ? "Envoi en cours..." : "Soumettre l'inscription"}
               </button>
             </form>
           </div>

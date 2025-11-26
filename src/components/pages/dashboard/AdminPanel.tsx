@@ -2505,6 +2505,7 @@ const SettingsTab: React.FC = () => {
         uploadHeader,
         setFilters,
         clearFilters,
+        updateSettingByKey,
     } = useSettingStore();
 
     const [showAddDialog, setShowAddDialog] = useState(false);
@@ -2555,6 +2556,15 @@ const SettingsTab: React.FC = () => {
             // Mode personnalisé : réinitialiser le formulaire
             setSelectedKey('');
             setFormData({ key: '', value: '', label: '', description: '', group: 'GENERAL' });
+        } else if (key === 'ADMISSION_PERIODE') {
+            setSelectedKey(key);
+            setFormData({
+                key,
+                value: 'YES',
+                label: "Periode d'admission",
+                description: "La periode d'admission",
+                group: 'ACADEMIQUE' as any,
+            });
         } else {
             // Clé prédéfinie : remplir automatiquement
             setSelectedKey(key);
@@ -2686,6 +2696,61 @@ const SettingsTab: React.FC = () => {
                 </Card>
             </div>
 
+            {/* Contrôle de la période d'admission */}
+            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                        <Activity className="h-5 w-5" />
+                        Période d'Admission
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-blue-900 dark:text-blue-200">Statut actuel</p>
+                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                                {allSettings.find(s => s.key === 'ADMISSION_PERIODE')?.value === 'YES' 
+                                    ? '🟢 Ouverte - Les inscriptions sont acceptées' 
+                                    : '🔴 Fermée - Aucune inscription possible'}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                                {allSettings.find(s => s.key === 'ADMISSION_PERIODE')?.value === 'YES' ? 'Ouverte' : 'Fermée'}
+                            </span>
+                            <Switch
+                                checked={allSettings.find(s => s.key === 'ADMISSION_PERIODE')?.value === 'YES'}
+                                onCheckedChange={async (checked) => {
+                                    const setting = allSettings.find(s => s.key === 'ADMISSION_PERIODE');
+                                    try {
+                                        if (setting) {
+                                            await updateSettingByKey('ADMISSION_PERIODE', { 
+                                                value: checked ? 'YES' : 'NO',
+                                                label: "Période d'admission",
+                                                description: "Contrôle l'ouverture des admissions",
+                                                group: 'ACADEMIQUE' as any
+                                            });
+                                        } else {
+                                            await createSetting({
+                                                key: 'ADMISSION_PERIODE',
+                                                value: checked ? 'YES' : 'NO',
+                                                label: "Période d'admission",
+                                                description: "Contrôle l'ouverture des admissions",
+                                                group: 'ACADEMIQUE' as any
+                                            });
+                                        }
+                                        toast.success(`Période d'admission ${checked ? 'ouverte' : 'fermée'}`);
+                                        await fetchSettings();
+                                    } catch (error: any) {
+                                        toast.error(error.message || "Erreur lors de la modification");
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Filtres */}
             <div className="flex gap-4">
                 <div className="flex-1">
@@ -2816,6 +2881,7 @@ const SettingsTab: React.FC = () => {
                                     <SelectItem value="SCHOOL_LOGO_URL">🖼️ Logo URL</SelectItem>
                                     <SelectItem value="SCHOOL_ENTETE_URL">📄 En-tête URL</SelectItem>
                                     <SelectItem value="CURRENT_ACADEMIC_YEAR">📅 Année académique</SelectItem>
+                                    <SelectItem value="ADMISSION_PERIODE">📅 Période d'admission</SelectItem>
                                     <SelectItem value="MOYENNE_PASSAGE">📊 Moyenne de passage</SelectItem>
                                     <SelectItem value="MOYENNE_REPECHAGE">📈 Moyenne repêchage</SelectItem>
                                     <SelectItem value="INSTITUTION_FEE">💰 Frais d'inscription</SelectItem>
@@ -2881,8 +2947,9 @@ const SettingsTab: React.FC = () => {
                             <Select
                                 value={formData.group}
                                 onValueChange={(value) => setFormData({ ...formData, group: value as any })}
+                                disabled={selectedKey !== '' && selectedKey !== '_CUSTOM_'}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className={selectedKey !== '' && selectedKey !== '_CUSTOM_' ? "bg-gray-100" : ""}>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
