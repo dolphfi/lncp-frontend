@@ -391,6 +391,23 @@ export const Monitoring: React.FC = () => {
   // =====================================================
   // RENDU DU COMPOSANT
   // =====================================================
+  const securityScore =
+    (securityConfig.emailNotifications ? 1 : 0) +
+    (securityConfig.autoBackup ? 1 : 0) +
+    (securityConfig.sessionTimeout <= 20 ? 1 : 0) +
+    (securityConfig.maxLoginAttempts <= 5 ? 1 : 0);
+
+  let securityLevel: 'Faible' | 'Moyen' | 'Élevé' = 'Moyen';
+  let securityBadgeClasses = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+
+  if (securityScore >= 3) {
+    securityLevel = 'Élevé';
+    securityBadgeClasses = 'bg-green-50 text-green-700 border-green-200';
+  } else if (securityScore <= 1) {
+    securityLevel = 'Faible';
+    securityBadgeClasses = 'bg-red-50 text-red-700 border-red-200';
+  }
+
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
       {/* En-tête */}
@@ -1379,32 +1396,15 @@ export const Monitoring: React.FC = () => {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-sm font-medium">Mode Maintenance</Label>
+                    <Label className="text-sm font-medium">Niveau de Sécurité</Label>
                     <p className="text-xs text-gray-500">
-                      {maintenanceMode
-                        ? '🔴 Activé - Seuls les SUPER_ADMIN/ADMIN peuvent se connecter'
-                        : '🟢 Désactivé - Accès normal'}
+                      Basé sur les notifications, sauvegardes automatiques,
+                      timeout de session et tentatives max de connexion.
                     </p>
                   </div>
-                  <Switch
-                    checked={maintenanceMode}
-                    disabled={maintenanceLoading}
-                    onCheckedChange={async (checked: boolean) => {
-                      try {
-                        if (checked) {
-                          await enableMaintenance();
-                          toast.success('Mode maintenance activé');
-                        } else {
-                          await disableMaintenance();
-                          toast.success('Mode maintenance désactivé');
-                        }
-                      } catch (error: any) {
-                        toast.error(
-                          error.message || 'Erreur lors de la modification'
-                        );
-                      }
-                    }}
-                  />
+                  <Badge variant="outline" className={securityBadgeClasses}>
+                    {securityLevel}
+                  </Badge>
                 </div>
 
                 <div className="flex items-center justify-between">
