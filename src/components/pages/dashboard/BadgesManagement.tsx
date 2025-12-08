@@ -10,10 +10,10 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Plus, 
-  Eye, 
-  Trash2, 
+import {
+  Plus,
+  Eye,
+  Trash2,
   CheckCircle,
   AlertCircle,
   X,
@@ -26,17 +26,17 @@ import {
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
-import { 
-  DataTable, 
-  Column, 
-  RowAction 
+import {
+  DataTable,
+  Column,
+  RowAction
 } from '../../ui/data-table';
 import { Badge as BadgeUI } from '../../ui/badge';
-import { 
-  Card, 
+import {
+  Card,
   CardContent
 } from '../../ui/card';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -65,13 +65,13 @@ import { useDebounce } from '../../../hooks/useDebounce';
 // COMPOSANT PRINCIPAL DE GESTION DES BADGES
 // =====================================================
 export const BadgesManagement: React.FC = () => {
-  
+
   // État local
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
-  
+
   // État création
   const [nfcId, setNfcId] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
@@ -104,7 +104,7 @@ export const BadgesManagement: React.FC = () => {
   const { rooms, fetchRooms } = useRoomStore();
   const { allStudents, fetchStudents } = useStudentStore();
   const { allEmployees, fetchEmployees } = useEmployeeStore();
-  
+
   // Chargement initial
   useEffect(() => {
     fetchBadges();
@@ -118,15 +118,15 @@ export const BadgesManagement: React.FC = () => {
   // Filtrage des personnes pour la recherche (assignation)
   const filteredPersons = useMemo(() => {
     const searchLower = personSearch.toLowerCase();
-    if (!searchLower && !selectedPerson) return []; 
+    if (!searchLower && !selectedPerson) return [];
 
     const source = (targetType === 'student' ? allStudents : allEmployees) as any[];
-    
+
     return source.filter((p: any) => {
       const firstName = p.firstName || '';
       const lastName = p.lastName || '';
       const id = targetType === 'student' ? (p.studentId || p.matricule) : (p.employeeId || p.id);
-      
+
       return (
         firstName.toLowerCase().includes(searchLower) ||
         lastName.toLowerCase().includes(searchLower) ||
@@ -220,7 +220,11 @@ export const BadgesManagement: React.FC = () => {
       sortable: true,
       width: '150px',
       render: (classroomName: string) => (
-        <BadgeUI variant="outline" className="text-xs">{classroomName}</BadgeUI>
+        classroomName && classroomName !== '-' ? (
+          <BadgeUI variant="outline" className="text-xs">{classroomName}</BadgeUI>
+        ) : (
+          <span className="text-gray-400 text-xs">—</span>
+        )
       )
     },
     {
@@ -235,7 +239,8 @@ export const BadgesManagement: React.FC = () => {
           lost: { variant: 'destructive' as const, label: 'Perdu', icon: AlertTriangle, color: 'text-red-600' },
           damaged: { variant: 'outline' as const, label: 'Endommagé', icon: AlertCircle, color: 'text-orange-600' }
         };
-        const config = configs[status];
+        // Fallback to 'inactive' if status is undefined or not in configs
+        const config = configs[status] || configs['inactive'];
         const Icon = config.icon;
         return (
           <BadgeUI variant={config.variant} className="text-xs flex items-center gap-1 w-fit">
@@ -265,7 +270,7 @@ export const BadgesManagement: React.FC = () => {
       )
     }
   ];
-  
+
   // Actions de ligne
   const rowActions: RowAction<Badge>[] = [
     {
@@ -305,7 +310,7 @@ export const BadgesManagement: React.FC = () => {
       variant: "destructive"
     }
   ];
-  
+
   // Gestionnaires
   const handleDeleteBadge = async () => {
     if (!selectedBadge) return;
@@ -318,17 +323,17 @@ export const BadgesManagement: React.FC = () => {
       toast.error('Erreur lors de la suppression');
     }
   };
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  
+
   useEffect(() => {
     setFilters({ search: debouncedSearchTerm });
   }, [debouncedSearchTerm, setFilters]);
-  
+
   const handleSearch = (searchValue: string) => setSearchTerm(searchValue);
   const handleSort = (sort: { field: string; order: 'asc' | 'desc' }) => setSortOptions({ field: sort.field as keyof Badge, order: sort.order });
-  
+
   return (
     <div className="space-y-6">
       {/* EN-TÊTE AVEC ACTIONS */}
@@ -346,7 +351,7 @@ export const BadgesManagement: React.FC = () => {
           </Button>
         </div>
       </div>
-      
+
       {/* Affichage des erreurs */}
       {error && (
         <Alert variant="destructive" className="mb-4">
@@ -354,7 +359,7 @@ export const BadgesManagement: React.FC = () => {
           <AlertDescription>{error.message}<Button variant="link" size="sm" onClick={clearError} className="ml-2 h-auto p-0">Fermer</Button></AlertDescription>
         </Alert>
       )}
-      
+
       {/* Statistiques */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -404,7 +409,7 @@ export const BadgesManagement: React.FC = () => {
           </Card>
         </div>
       )}
-      
+
       {/* Table des badges */}
       <DataTable
         data={badges}
@@ -421,9 +426,9 @@ export const BadgesManagement: React.FC = () => {
         title="Liste des Badges"
         description={`${pagination.total} badges`}
       />
-      
+
       {/* DIALOGS */}
-      
+
       {/* Dialog Création Badge */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="overflow-visible">
@@ -435,8 +440,8 @@ export const BadgesManagement: React.FC = () => {
             <div className="space-y-2">
               <Label htmlFor="nfcId">ID NFC (Scanner le badge)</Label>
               <div className="relative">
-                <Input 
-                  id="nfcId" 
+                <Input
+                  id="nfcId"
                   value={nfcId}
                   onChange={(e) => setNfcId(e.target.value)}
                   placeholder="En attente de scan..."
@@ -458,10 +463,10 @@ export const BadgesManagement: React.FC = () => {
                 Placez le badge sur le lecteur. L'ID s'affichera automatiquement.
               </p>
             </div>
-            
+
             <div className="flex items-center space-x-2 pt-2">
-              <Switch 
-                id="assign-mode" 
+              <Switch
+                id="assign-mode"
                 checked={isAssigning}
                 onCheckedChange={setIsAssigning}
               />
@@ -470,12 +475,12 @@ export const BadgesManagement: React.FC = () => {
 
             {isAssigning && (
               <div className="space-y-4 pl-2 border-l-2 border-slate-200 dark:border-slate-700 ml-1 mt-2">
-                 {/* Choix du Type */}
+                {/* Choix du Type */}
                 <div className="space-y-2">
                   <Label>Type de personne</Label>
-                  <RadioGroup 
-                    defaultValue="student" 
-                    value={targetType} 
+                  <RadioGroup
+                    defaultValue="student"
+                    value={targetType}
                     onValueChange={(val: string) => {
                       setTargetType(val as 'student' | 'employee');
                       setSelectedPerson(null);
@@ -499,13 +504,13 @@ export const BadgesManagement: React.FC = () => {
                   <Label>Rechercher {targetType === 'student' ? 'un étudiant' : 'un employé'}</Label>
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input 
+                    <Input
                       placeholder={targetType === 'student' ? "Nom, prénom ou matricule..." : "Nom, prénom ou ID..."}
                       value={personSearch}
                       onChange={(e) => {
                         setPersonSearch(e.target.value);
                         if (selectedPerson) {
-                          setSelectedPerson(null); 
+                          setSelectedPerson(null);
                         }
                       }}
                       className="pl-8"
@@ -516,20 +521,20 @@ export const BadgesManagement: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Liste des suggestions */}
                   {!selectedPerson && personSearch && filteredPersons.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-950 border rounded-md shadow-lg max-h-48 overflow-y-auto">
                       {filteredPersons.map((person: any) => (
-                        <div 
+                        <div
                           key={person.id}
                           className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer flex flex-col border-b last:border-0"
                           onClick={() => handleSelectPerson(person)}
                         >
                           <span className="font-medium">{person.firstName} {person.lastName}</span>
                           <span className="text-xs text-muted-foreground">
-                            {targetType === 'student' 
-                              ? `Mat: ${person.studentId || person.matricule}` 
+                            {targetType === 'student'
+                              ? `Mat: ${person.studentId || person.matricule}`
                               : `ID: ${person.employeeId || 'N/A'}`}
                           </span>
                         </div>
@@ -577,7 +582,7 @@ export const BadgesManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog de visualisation */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
         <DialogContent className="max-w-2xl">
@@ -600,7 +605,7 @@ export const BadgesManagement: React.FC = () => {
                   <p className="text-xs text-gray-500">{selectedBadge.classroomName}</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">N° Badge</p>
@@ -635,7 +640,7 @@ export const BadgesManagement: React.FC = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="flex justify-end gap-2">
                 {selectedBadge.status !== 'active' && (
                   <Button variant="outline" onClick={async () => {

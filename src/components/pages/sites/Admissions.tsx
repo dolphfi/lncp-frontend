@@ -1,67 +1,18 @@
-import React, { useState } from "react";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FileText,
   Calendar,
   CheckCircle,
   Download,
-  X,
   Plus,
 } from "lucide-react";
-import { toast } from "react-toastify";
-import { admissionService } from "../../../services/admissions/admissionService";
 
 const Admissions = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    grade: "",
-  });
+  const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.grade) {
-      toast.error("Veuillez remplir tous les champs obligatoires");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Nous créons un brouillon d'admission
-      await admissionService.createDraft({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        notes: `Demande d'inscription pour la classe : ${formData.grade}. Téléphone: ${formData.phone}`
-      });
-      
-      toast.success("Votre demande d'inscription a été envoyée avec succès !");
-      setIsModalOpen(false);
-      setFormData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        grade: "",
-      });
-    } catch (error: any) {
-      console.error("Erreur lors de l'inscription:", error);
-      toast.error(error.response?.data?.message || "Une erreur est survenue lors de l'envoi de la demande.");
-    } finally {
-      setLoading(false);
-    }
+  const handleApplyClick = () => {
+    navigate('/admission/apply');
   };
 
   return (
@@ -114,11 +65,11 @@ const Admissions = () => {
                 ))}
               </ul>
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleApplyClick}
                 className="mt-4 flex items-center bg-blue-500/10 text-blue-600 text-xs py-2 px-6 rounded-full hover:bg-blue-500/20 transition-all duration-300 border border-blue-500/20 hover:border-blue-500/40"
               >
                 <Plus className="h-3 w-3 mr-2" />
-                <span>Inscrire</span>
+                <span>Commencer l'inscription</span>
               </button>
             </div>
 
@@ -154,119 +105,15 @@ const Admissions = () => {
           {/* CTA Button */}
           <div className="text-center mt-12">
             <button 
-              onClick={() => setIsModalOpen(true)}
+              onClick={handleApplyClick}
               className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full px-6 py-3 text-xs hover:shadow-lg hover:shadow-blue-200 transition-all duration-300"
             >
               <Download className="w-4 h-4" />
-              Formulaire d'Inscription
+              Remplir le dossier en ligne
             </button>
           </div>
         </div>
       </div>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm  z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 relative">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-            >
-              <X className="w-6 h-6" />
-            </button>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Formulaire d'Inscription
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Prénom <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Prénom"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nom <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Nom"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="email@exemple.com"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Téléphone
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="+509 0000-0000"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Niveau souhaité <span className="text-red-500">*</span>
-                </label>
-                <select 
-                  name="grade"
-                  value={formData.grade}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Sélectionnez un niveau</option>
-                  <option value="NS1">NS1 (S3)</option>
-                  <option value="NS2">NS2 (S4)</option>
-                  <option value="NS3">NS3 (Philo)</option>
-                  <option value="NS4">NS4 (Philo)</option>
-                  <option value="7eme">7ème AF</option>
-                  <option value="8eme">8ème AF</option>
-                  <option value="9eme">9ème AF</option>
-                </select>
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg px-6 py-3 hover:shadow-lg hover:shadow-blue-200 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {loading ? "Envoi en cours..." : "Soumettre l'inscription"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </section>
   );
 };

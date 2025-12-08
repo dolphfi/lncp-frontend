@@ -40,6 +40,7 @@ export interface Admission {
   commune?: string;
   sectionCommunale?: string;
   vacation?: string;
+  classe?: string;
   nomMere?: string;
   prenomMere?: string;
   statutMere?: string;
@@ -70,6 +71,10 @@ export interface AdmissionDraft {
   lastName?: string;
   email?: string;
   phone?: string;
+  sexe?: string;
+  dateOfBirth?: string;
+  lieuDeNaissance?: string;
+  communeDeNaissance?: string;
   formData?: any;
   uploadedFiles?: string[];
   status: string;
@@ -96,6 +101,7 @@ export interface CreateOnSiteAdmissionDTO {
   commune: string;
   sectionCommunale?: string;
   vacation: string;
+  classe?: string;
   nomMere: string;
   prenomMere: string;
   statutMere: string;
