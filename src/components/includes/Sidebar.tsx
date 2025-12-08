@@ -392,7 +392,7 @@ const AppSidebar = () => {
         items: [
           {
             to: "/admin_panel",
-            label: "Paramètres",
+            label: "Paramètres(Admin)",
             icon: Settings,
             subItems: [
               { to: "/admin_panel", label: "Panel Admin" },

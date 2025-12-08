@@ -31,7 +31,10 @@ import {
   RotateCcw,
   Download,
   Bell,
-  BellOff
+  BellOff,
+  Upload,
+  Trash2,
+  Key
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
@@ -52,9 +55,62 @@ import {
   Alert,
   AlertDescription
 } from '../../ui/alert';
+import { Label } from '../../ui/label';
+import { Input } from '../../ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../../ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from '../../ui/dialog';
 
 import { useMonitoringStore } from '../../../stores/monitoringStore';
+import { useSettingStore } from '../../../stores/settingStore';
 import type { Alert as MonitoringAlert, ServiceHealth, AlertSeverity } from '../../../types/monitoring';
+import { toast } from 'react-toastify';
+
+interface SystemLog {
+  id: string;
+  level: 'info' | 'warning' | 'error' | 'critical';
+  message: string;
+  user?: string;
+  timestamp: string;
+  module: string;
+}
+
+interface BackupInfo {
+  id: string;
+  filename: string;
+  size: string;
+  type: 'full' | 'incremental';
+  status: 'completed' | 'failed' | 'in_progress';
+  createdAt: string;
+  duration: string;
+}
+
+interface SystemConfig {
+  schoolName: string;
+  schoolAddress: string;
+  schoolPhone: string;
+  schoolEmail: string;
+  academicYear: string;
+  maxStudentsPerClass: number;
+  backupFrequency: 'daily' | 'weekly' | 'monthly';
+  maintenanceMode: boolean;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  autoBackup: boolean;
+  sessionTimeout: number;
+  maxLoginAttempts: number;
+}
 
 // =====================================================
 // COMPOSANT PRINCIPAL
@@ -92,15 +148,133 @@ export const Monitoring: React.FC = () => {
     clearError
   } = useMonitoringStore();
 
+  const {
+    maintenanceMode,
+    maintenanceLoading,
+    enableMaintenance,
+    disableMaintenance,
+    fetchMaintenanceStatus
+  } = useSettingStore();
+
+  const [logsData, setLogsData] = useState<SystemLog[]>([]);
+  const [backupList, setBackupList] = useState<BackupInfo[]>([]);
+  const [showBackupDialog, setShowBackupDialog] = useState(false);
+  const [securityConfig, setSecurityConfig] = useState<SystemConfig>({
+    schoolName: 'Lycée National Charlemagne Péralte',
+    schoolAddress: "123 Rue de l'Éducation, Port-au-Prince, Haïti",
+    schoolPhone: '+509 1234-5678',
+    schoolEmail: 'contact@lncp.edu.ht',
+    academicYear: '2024-2025',
+    maxStudentsPerClass: 35,
+    backupFrequency: 'daily',
+    maintenanceMode: false,
+    emailNotifications: true,
+    smsNotifications: false,
+    autoBackup: true,
+    sessionTimeout: 30,
+    maxLoginAttempts: 5
+  });
+
   // Effet pour charger les données initiales
   useEffect(() => {
     refreshAllData();
-    
+
     // Demander la permission pour les notifications
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, [refreshAllData]);
+
+  useEffect(() => {
+    fetchMaintenanceStatus();
+  }, [fetchMaintenanceStatus]);
+
+  useEffect(() => {
+    const now = new Date();
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+
+    const systemLogs: SystemLog[] = [
+      {
+        id: '1',
+        level: 'info',
+        message: 'Système de monitoring démarré avec succès',
+        user: 'system',
+        timestamp: formatDate(new Date(now.getTime() - 5 * 60000)),
+        module: 'system'
+      },
+      {
+        id: '2',
+        level: 'info',
+        message: 'Chargement des métriques système',
+        user: 'system',
+        timestamp: formatDate(new Date(now.getTime() - 4 * 60000)),
+        module: 'metrics'
+      },
+      {
+        id: '3',
+        level: 'info',
+        message: 'Chargement des alertes actives',
+        user: 'system',
+        timestamp: formatDate(new Date(now.getTime() - 3 * 60000)),
+        module: 'alerts'
+      },
+      {
+        id: '4',
+        level: 'info',
+        message: 'Synchronisation des services',
+        user: 'system',
+        timestamp: formatDate(new Date(now.getTime() - 2 * 60000)),
+        module: 'services'
+      },
+      {
+        id: '5',
+        level: 'info',
+        message: 'Dashboard de surveillance chargé',
+        user: 'admin',
+        timestamp: formatDate(new Date(now.getTime() - 1 * 60000)),
+        module: 'ui'
+      }
+    ];
+
+    setLogsData(systemLogs);
+
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    setBackupList([
+      {
+        id: '1',
+        filename: `backup_${today.getFullYear()}_${String(
+          today.getMonth() + 1
+        ).padStart(2, '0')}_${String(today.getDate()).padStart(2, '0')}_020000.sql`,
+        size: '2.5 GB',
+        type: 'full',
+        status: 'completed',
+        createdAt: formatDate(new Date(today.setHours(2, 0, 0, 0))),
+        duration: '15 min'
+      },
+      {
+        id: '2',
+        filename: `backup_${yesterday.getFullYear()}_${String(
+          yesterday.getMonth() + 1
+        ).padStart(2, '0')}_${String(yesterday.getDate()).padStart(2, '0')}_020000.sql`,
+        size: '2.3 GB',
+        type: 'full',
+        status: 'completed',
+        createdAt: formatDate(new Date(yesterday.setHours(2, 0, 0, 0))),
+        duration: '12 min'
+      }
+    ]);
+  }, []);
 
   // Effet pour le rafraîchissement automatique
   useEffect(() => {
@@ -115,18 +289,18 @@ export const Monitoring: React.FC = () => {
 
   // Effet pour détecter les nouvelles alertes critiques
   useEffect(() => {
-    const criticalAlerts = alerts.filter(alert => 
+    const criticalAlerts = alerts.filter(alert =>
       alert.severity === 'critical' && alert.status === 'active'
     );
-    
+
     // Vérifier s'il y a de nouvelles alertes critiques
-    const newCriticalAlerts = criticalAlerts.filter(alert => 
+    const newCriticalAlerts = criticalAlerts.filter(alert =>
       !notifications.some(notif => notif.id === alert.id)
     );
-    
+
     if (newCriticalAlerts.length > 0) {
       setNotifications(prev => [...prev, ...newCriticalAlerts]);
-      
+
       // Notification browser si supportée
       if ('Notification' in window && Notification.permission === 'granted') {
         newCriticalAlerts.forEach(alert => {
@@ -147,7 +321,7 @@ export const Monitoring: React.FC = () => {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    
+
     if (days > 0) return `${days}j ${hours}h`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
@@ -168,7 +342,7 @@ export const Monitoring: React.FC = () => {
       high: 'bg-orange-100 text-orange-800',
       critical: 'bg-red-100 text-red-800'
     };
-    
+
     return <Badge className={variants[severity]}>{severity.toUpperCase()}</Badge>;
   };
 
@@ -179,14 +353,14 @@ export const Monitoring: React.FC = () => {
       error: 'bg-red-100 text-red-800',
       maintenance: 'bg-yellow-100 text-yellow-800'
     };
-    
+
     const labels = {
       running: 'En marche',
       stopped: 'Arrêté',
       error: 'Erreur',
       maintenance: 'Maintenance'
     };
-    
+
     return <Badge className={variants[status as keyof typeof variants]}>
       {labels[status as keyof typeof labels]}
     </Badge>;
@@ -199,6 +373,21 @@ export const Monitoring: React.FC = () => {
     return 'bg-green-500';
   };
 
+  const getLogLevelBadge = (level: string) => {
+    switch (level) {
+      case 'info':
+        return <Badge className="bg-blue-100 text-blue-800">Info</Badge>;
+      case 'warning':
+        return <Badge className="bg-yellow-100 text-yellow-800">Avertissement</Badge>;
+      case 'error':
+        return <Badge className="bg-red-100 text-red-800">Erreur</Badge>;
+      case 'critical':
+        return <Badge className="bg-red-600 text-white">Critique</Badge>;
+      default:
+        return <Badge variant="outline">{level}</Badge>;
+    }
+  };
+
   // =====================================================
   // RENDU DU COMPOSANT
   // =====================================================
@@ -206,7 +395,7 @@ export const Monitoring: React.FC = () => {
     <div className="container mx-auto px-4 py-6 space-y-6">
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
             Surveillance Système
           </h1>
@@ -215,15 +404,15 @@ export const Monitoring: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 mr-2">
             <Switch
               checked={isRealTimeEnabled}
               onCheckedChange={setRealTimeEnabled}
             />
             <span className="text-sm">Temps réel</span>
           </div>
-          
+
           {/* Bouton de notifications */}
           <div className="relative">
             <Button
@@ -239,7 +428,7 @@ export const Monitoring: React.FC = () => {
                 </Badge>
               )}
             </Button>
-            
+
             {/* Dropdown des notifications */}
             {showNotifications && (
               <div className="absolute right-0 top-12 w-80 bg-white border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
@@ -255,7 +444,7 @@ export const Monitoring: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-                
+
                 {notifications.length > 0 ? (
                   <div className="max-h-64 overflow-y-auto">
                     {notifications.map((notif) => (
@@ -289,7 +478,7 @@ export const Monitoring: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           <Button
             variant="outline"
             onClick={() => {
@@ -302,7 +491,7 @@ export const Monitoring: React.FC = () => {
                 services,
                 stats
               };
-              
+
               const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
@@ -346,12 +535,36 @@ export const Monitoring: React.FC = () => {
 
       {/* Onglets principaux */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          <TabsTrigger value="metrics">Métriques</TabsTrigger>
-          <TabsTrigger value="alerts">Alertes</TabsTrigger>
-          <TabsTrigger value="services">Services</TabsTrigger>
-          <TabsTrigger value="events">Événements</TabsTrigger>
+        {/* Menu mobile - Select dropdown */}
+        <div className="lg:hidden">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="overview">Vue d'ensemble</SelectItem>
+              <SelectItem value="metrics">Métriques</SelectItem>
+              <SelectItem value="alerts">Alertes</SelectItem>
+              <SelectItem value="services">Services</SelectItem>
+              <SelectItem value="events">Événements</SelectItem>
+              <SelectItem value="logs">Logs</SelectItem>
+              <SelectItem value="backup">Sauvegardes</SelectItem>
+              <SelectItem value="security">Sécurité</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Menu desktop - Tabs */}
+        <TabsList className="hidden lg:grid w-full grid-cols-8 h-auto">
+          <TabsTrigger value="overview" className="text-xs xl:text-sm py-2">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="metrics" className="text-xs xl:text-sm py-2">Métriques</TabsTrigger>
+          <TabsTrigger value="alerts" className="text-xs xl:text-sm py-2">Alertes</TabsTrigger>
+          <TabsTrigger value="services" className="text-xs xl:text-sm py-2">Services</TabsTrigger>
+          <TabsTrigger value="events" className="text-xs xl:text-sm py-2">Événements</TabsTrigger>
+          <TabsTrigger value="logs" className="text-xs xl:text-sm py-2">Logs</TabsTrigger>
+          <TabsTrigger value="backup" className="text-xs xl:text-sm py-2">Sauvegardes</TabsTrigger>
+          <TabsTrigger value="security" className="text-xs xl:text-sm py-2">Sécurité</TabsTrigger>
+          {/* // ici */}
         </TabsList>
 
         {/* Vue d'ensemble */}
@@ -421,6 +634,39 @@ export const Monitoring: React.FC = () => {
             </div>
           )}
 
+          {/* Logs et sauvegardes rapides */}
+          {(logsData.length > 0 || backupList.length > 0) && (
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Erreurs Aujourd'hui</CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">
+                    {logsData.filter(l => l.level === 'error' || l.level === 'critical').length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Erreurs critiques</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Dernière Sauvegarde</CardTitle>
+                  <Database className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {backupList.length > 0 ? 'OK' : 'Aucune'}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {backupList.length > 0 ? backupList[0].createdAt : 'Sauvegarde requise'}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Métriques système rapides */}
           {systemMetrics && (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
@@ -437,8 +683,8 @@ export const Monitoring: React.FC = () => {
                       <span>Utilisation</span>
                       <span>{systemMetrics.cpu.usage.toFixed(1)}%</span>
                     </div>
-                    <Progress 
-                      value={systemMetrics.cpu.usage} 
+                    <Progress
+                      value={systemMetrics.cpu.usage}
                       className="h-2"
                     />
                   </div>
@@ -458,8 +704,8 @@ export const Monitoring: React.FC = () => {
                       <span>Utilisée</span>
                       <span>{systemMetrics.memory.percentage.toFixed(1)}%</span>
                     </div>
-                    <Progress 
-                      value={systemMetrics.memory.percentage} 
+                    <Progress
+                      value={systemMetrics.memory.percentage}
                       className="h-2"
                     />
                   </div>
@@ -479,8 +725,8 @@ export const Monitoring: React.FC = () => {
                       <span>Utilisé</span>
                       <span>{systemMetrics.disk.percentage.toFixed(1)}%</span>
                     </div>
-                    <Progress 
-                      value={systemMetrics.disk.percentage} 
+                    <Progress
+                      value={systemMetrics.disk.percentage}
                       className="h-2"
                     />
                   </div>
@@ -571,7 +817,7 @@ export const Monitoring: React.FC = () => {
                   <div className="text-sm text-purple-800">Bande passante</div>
                 </div>
               </div>
-              
+
               <div className="mt-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Ping vers Google DNS (8.8.8.8)</span>
@@ -878,19 +1124,19 @@ export const Monitoring: React.FC = () => {
                         {index < systemEvents.length - 1 && (
                           <div className="absolute left-4 top-8 w-0.5 h-full bg-gray-200"></div>
                         )}
-                        
+
                         {/* Icône de l'événement */}
                         <div className={`
                           w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold z-10
-                          ${event.type === 'error' ? 'bg-red-500' : 
-                            event.type === 'warning' ? 'bg-yellow-500' : 
-                            event.type === 'security' ? 'bg-purple-500' : 'bg-blue-500'}
+                          ${event.type === 'error' ? 'bg-red-500' :
+                            event.type === 'warning' ? 'bg-yellow-500' :
+                              event.type === 'security' ? 'bg-purple-500' : 'bg-blue-500'}
                         `}>
-                          {event.type === 'error' ? '!' : 
-                           event.type === 'warning' ? '⚠' : 
-                           event.type === 'security' ? '🔒' : 'ℹ'}
+                          {event.type === 'error' ? '!' :
+                            event.type === 'warning' ? '⚠' :
+                              event.type === 'security' ? '🔒' : 'ℹ'}
                         </div>
-                        
+
                         {/* Contenu de l'événement */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-2">
@@ -902,15 +1148,15 @@ export const Monitoring: React.FC = () => {
                               </span>
                             </div>
                           </div>
-                          
+
                           <p className="text-sm text-gray-600 mb-2">{event.description}</p>
-                          
+
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             <span>Source: {event.source}</span>
                             {event.userId && <span>Utilisateur: {event.userId}</span>}
                             {event.ipAddress && <span>IP: {event.ipAddress}</span>}
                           </div>
-                          
+
                           {event.metadata && (
                             <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
                               <pre className="whitespace-pre-wrap">
@@ -922,7 +1168,7 @@ export const Monitoring: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                  
+
                   {/* Pagination ou Load More */}
                   <div className="flex justify-center pt-4">
                     <Button variant="outline" onClick={() => fetchSystemEvents()}>
@@ -938,6 +1184,333 @@ export const Monitoring: React.FC = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Logs système */}
+        <TabsContent value="logs" className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h2 className="text-lg sm:text-xl font-semibold">Logs Système</h2>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Select>
+                <SelectTrigger className="w-32 text-xs sm:text-sm">
+                  <SelectValue placeholder="Niveau" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  <SelectItem value="info">Info</SelectItem>
+                  <SelectItem value="warning">Avertissement</SelectItem>
+                  <SelectItem value="error">Erreur</SelectItem>
+                  <SelectItem value="critical">Critique</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                className="flex-1 sm:flex-none text-xs sm:text-sm"
+              >
+                <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Exporter</span>
+                <span className="sm:hidden">Export</span>
+              </Button>
+            </div>
+          </div>
+
+          <Card>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Niveau</TableHead>
+                    <TableHead>Message</TableHead>
+                    <TableHead>Module</TableHead>
+                    <TableHead>Utilisateur</TableHead>
+                    <TableHead>Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {logsData.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell>{getLogLevelBadge(log.level)}</TableCell>
+                      <TableCell className="max-w-md truncate">{log.message}</TableCell>
+                      <TableCell>{log.module}</TableCell>
+                      <TableCell>{log.user || 'Système'}</TableCell>
+                      <TableCell>{log.timestamp}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Sauvegardes */}
+        <TabsContent value="backup" className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h2 className="text-lg sm:text-xl font-semibold">Gestion des Sauvegardes</h2>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button
+                onClick={() => setShowBackupDialog(true)}
+                className="flex-1 sm:flex-none text-xs sm:text-sm"
+              >
+                <Database className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Nouvelle Sauvegarde</span>
+                <span className="sm:hidden">Nouvelle</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 sm:flex-none text-xs sm:text-sm"
+              >
+                <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Restaurer
+              </Button>
+            </div>
+          </div>
+
+          <Card>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fichier</TableHead>
+                    <TableHead>Taille</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {backupList.map((backup) => (
+                    <TableRow key={backup.id}>
+                      <TableCell className="font-mono text-sm">
+                        {backup.filename}
+                      </TableCell>
+                      <TableCell>{backup.size}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            backup.type === 'full' ? 'default' : 'secondary'
+                          }
+                        >
+                          {backup.type === 'full' ? 'Complète' : 'Incrémentale'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {backup.status === 'completed' ? (
+                          <Badge className="bg-green-100 text-green-800">
+                            Terminée
+                          </Badge>
+                        ) : backup.status === 'failed' ? (
+                          <Badge className="bg-red-100 text-red-800">
+                            Échouée
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-yellow-100 text-yellow-800">
+                            En cours
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{backup.createdAt}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Dialog open={showBackupDialog} onOpenChange={setShowBackupDialog}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Nouvelle sauvegarde</DialogTitle>
+                <DialogDescription>
+                  Cette action simulera la création d'une nouvelle sauvegarde
+                  du système.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  Fonctionnalité de démonstration pour le monitoring. Intégrez
+                  ici votre logique réelle de sauvegarde lorsque l'API sera
+                  disponible.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowBackupDialog(false)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      toast.success('Sauvegarde lancée (simulation)');
+                      setShowBackupDialog(false);
+                    }}
+                  >
+                    Valider
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        {/* Sécurité */}
+        <TabsContent value="security" className="space-y-4 sm:space-y-6">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Paramètres de Sécurité
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">Mode Maintenance</Label>
+                    <p className="text-xs text-gray-500">
+                      {maintenanceMode
+                        ? '🔴 Activé - Seuls les SUPER_ADMIN/ADMIN peuvent se connecter'
+                        : '🟢 Désactivé - Accès normal'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={maintenanceMode}
+                    disabled={maintenanceLoading}
+                    onCheckedChange={async (checked: boolean) => {
+                      try {
+                        if (checked) {
+                          await enableMaintenance();
+                          toast.success('Mode maintenance activé');
+                        } else {
+                          await disableMaintenance();
+                          toast.success('Mode maintenance désactivé');
+                        }
+                      } catch (error: any) {
+                        toast.error(
+                          error.message || 'Erreur lors de la modification'
+                        );
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">Notifications Email</Label>
+                    <p className="text-xs text-gray-500">
+                      Alertes de sécurité par email
+                    </p>
+                  </div>
+                  <Switch
+                    checked={securityConfig.emailNotifications}
+                    onCheckedChange={(checked: boolean) =>
+                      setSecurityConfig({
+                        ...securityConfig,
+                        emailNotifications: checked
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">Sauvegarde Automatique</Label>
+                    <p className="text-xs text-gray-500">Sauvegarde quotidienne</p>
+                  </div>
+                  <Switch
+                    checked={securityConfig.autoBackup}
+                    onCheckedChange={(checked: boolean) =>
+                      setSecurityConfig({
+                        ...securityConfig,
+                        autoBackup: checked
+                      })
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  Authentification
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">
+                    Timeout de Session (minutes)
+                  </Label>
+                  <Input
+                    type="number"
+                    value={securityConfig.sessionTimeout}
+                    onChange={(e) =>
+                      setSecurityConfig({
+                        ...securityConfig,
+                        sessionTimeout: parseInt(e.target.value)
+                      })
+                    }
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">
+                    Tentatives de Connexion Max
+                  </Label>
+                  <Input
+                    type="number"
+                    value={securityConfig.maxLoginAttempts}
+                    onChange={(e) =>
+                      setSecurityConfig({
+                        ...securityConfig,
+                        maxLoginAttempts: parseInt(e.target.value)
+                      })
+                    }
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">
+                    Fréquence de Sauvegarde
+                  </Label>
+                  <Select
+                    value={securityConfig.backupFrequency}
+                    onValueChange={(
+                      value: 'daily' | 'weekly' | 'monthly'
+                    ) =>
+                      setSecurityConfig({
+                        ...securityConfig,
+                        backupFrequency: value
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Quotidienne</SelectItem>
+                      <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                      <SelectItem value="monthly">Mensuelle</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
