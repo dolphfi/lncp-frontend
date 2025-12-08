@@ -9,7 +9,7 @@
  * - Gestion d'état avec Zustand
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus,
   Eye,
@@ -60,6 +60,8 @@ import { useEmployeeStore } from '../../../stores/employeeStore';
 
 // Import du hook de debouncing
 import { useDebounce } from '../../../hooks/useDebounce';
+import { config } from '../../../config/environment';
+import { io } from 'socket.io-client';
 
 // =====================================================
 // COMPOSANT PRINCIPAL DE GESTION DES BADGES
@@ -74,10 +76,16 @@ export const BadgesManagement: React.FC = () => {
 
   // État création
   const [nfcId, setNfcId] = useState('');
+  const [lastNfcScanAt, setLastNfcScanAt] = useState<number | null>(null);
+  const [duplicateScanAt, setDuplicateScanAt] = useState<number | null>(null);
+  const [alreadyAssignedInfo, setAlreadyAssignedInfo] = useState<{ name?: string; type?: 'student' | 'employee' } | null>(null);
+  const [alreadyAssignedAt, setAlreadyAssignedAt] = useState<number | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [targetType, setTargetType] = useState<'student' | 'employee'>('student');
   const [personSearch, setPersonSearch] = useState('');
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
+
+  const lastNfcIdRef = useRef<string | null>(null);
 
   // Store
   const {
@@ -114,6 +122,75 @@ export const BadgesManagement: React.FC = () => {
     fetchStudents();
     fetchEmployees();
   }, [fetchBadges, fetchRooms, fetchClassrooms, fetchStudents, fetchEmployees]);
+
+  useEffect(() => {
+    if (!showCreateDialog) return;
+
+    const socket = io(`${config.API_BASE_URL}/nfc`, {
+      transports: ['websocket'],
+      withCredentials: true,
+    });
+
+    socket.on('nfc-scan', (payload: any) => {
+      if (payload && payload.nfcId) {
+        if (lastNfcIdRef.current && lastNfcIdRef.current === payload.nfcId) {
+          setDuplicateScanAt(Date.now());
+        }
+
+        lastNfcIdRef.current = payload.nfcId;
+        setNfcId(payload.nfcId);
+        setLastNfcScanAt(Date.now());
+
+        if (payload.alreadyAssigned) {
+          setAlreadyAssignedInfo({ name: payload.assignedToName, type: payload.assignedToType });
+          setAlreadyAssignedAt(Date.now());
+        } else {
+          setAlreadyAssignedInfo(null);
+          setAlreadyAssignedAt(null);
+        }
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [showCreateDialog]);
+
+  useEffect(() => {
+    if (!lastNfcScanAt) return;
+
+    const timeout = setTimeout(() => {
+      setLastNfcScanAt(null);
+    }, 3000);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [lastNfcScanAt]);
+
+  useEffect(() => {
+    if (!duplicateScanAt) return;
+
+    const timeout = setTimeout(() => {
+      setDuplicateScanAt(null);
+    }, 3000);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [duplicateScanAt]);
+
+  useEffect(() => {
+    if (!alreadyAssignedAt) return;
+
+    const timeout = setTimeout(() => {
+      setAlreadyAssignedAt(null);
+    }, 4000);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [alreadyAssignedAt]);
 
   // Filtrage des personnes pour la recherche (assignation)
   const filteredPersons = useMemo(() => {
@@ -459,6 +536,26 @@ export const BadgesManagement: React.FC = () => {
                 />
                 <CreditCard className="absolute left-3 top-3 h-5 w-5 text-muted-foreground animate-pulse" />
               </div>
+              {lastNfcScanAt && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  UID reçu
+                </p>
+              )}
+              {duplicateScanAt && (
+                <p className="text-xs text-amber-600 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Badge déjà scanné
+                </p>
+              )}
+              {alreadyAssignedAt && alreadyAssignedInfo && (
+                <p className="text-xs text-blue-600 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {alreadyAssignedInfo.name
+                    ? `Badge déjà enregistré pour ${alreadyAssignedInfo.name}`
+                    : 'Badge déjà enregistré dans le système'}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Placez le badge sur le lecteur. L'ID s'affichera automatiquement.
               </p>
