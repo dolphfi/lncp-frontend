@@ -10,11 +10,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Eye, 
+import {
+  Plus,
+  Eye,
   Edit,
-  Trash2, 
+  Trash2,
   CheckCircle,
   AlertCircle,
   Trophy,
@@ -25,17 +25,17 @@ import {
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
-import { 
-  DataTable, 
-  Column, 
-  RowAction 
+import {
+  DataTable,
+  Column,
+  RowAction
 } from '../../ui/data-table';
 import { Badge } from '../../ui/badge';
-import { 
-  Card, 
+import {
+  Card,
   CardContent
 } from '../../ui/card';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -47,17 +47,17 @@ import { toast } from 'react-toastify';
 
 // Import des types
 import { Test } from '../../../types/test';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
+import {
+  Table,
+  TableBody,
+  TableCell,
   TableHead,
   TableHeader,
   TableRow
 } from '../../ui/table';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -82,7 +82,7 @@ import { useDebounce } from '../../../hooks/useDebounce';
 // COMPOSANT PRINCIPAL DE GESTION DES CONCOURS
 // =====================================================
 export const TestManagement: React.FC = () => {
-  
+
   // État local
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
@@ -93,7 +93,7 @@ export const TestManagement: React.FC = () => {
   const [showDeleteTestDialog, setShowDeleteTestDialog] = useState(false);
   const [selectedTest, setSelectedTest] = useState<Test | null>(null);
   const [selectedMatiere, setSelectedMatiere] = useState<any>(null);
-  
+
   // État du formulaire d'ajout
   const [formData, setFormData] = useState({
     postulant: '',
@@ -107,11 +107,11 @@ export const TestManagement: React.FC = () => {
     ],
     remarks: ''
   });
-  
+
   // État pour le combobox des postulants
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [postulantSearch, setPostulantSearch] = useState('');
-  
+
   // État du formulaire d'ajout de matière
   const [testFormData, setTestFormData] = useState({
     nom: '',
@@ -121,7 +121,7 @@ export const TestManagement: React.FC = () => {
     duree: '',
     type: 'Écrit'
   });
-  
+
   // Liste des postulants (normalement récupérée depuis une API)
   const postulants = [
     'Jean Dupont',
@@ -135,8 +135,8 @@ export const TestManagement: React.FC = () => {
     'Thomas Girard',
     'Léa Fournier'
   ];
-  
-  // Liste des matières/évaluations pour l'onglet Test
+
+  // Liste des épreuve/évaluations pour l'onglet Test
   const allMatieres = React.useMemo(() => [
     { id: 1, nom: 'Mathématiques', ponderation: '30%', coefficient: 3, sur: 20, duree: '2h', type: 'Écrit' },
     { id: 2, nom: 'Français', ponderation: '25%', coefficient: 2, sur: 20, duree: '1h30', type: 'Écrit' },
@@ -144,25 +144,25 @@ export const TestManagement: React.FC = () => {
     { id: 4, nom: 'Anglais', ponderation: '10%', coefficient: 1, sur: 10, duree: '1h', type: 'Oral' },
     { id: 5, nom: 'Histoire-Géographie', ponderation: '10%', coefficient: 1, sur: 100, duree: '1h', type: 'Écrit' }
   ], []);
-  
+
   // États de recherche
   const [searchTerm, setSearchTerm] = useState('');
   const [matiereSearchTerm, setMatiereSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const debouncedMatiereSearchTerm = useDebounce(matiereSearchTerm, 300);
-  
-  // Filtrage des matières basé sur la recherche
+
+  // Filtrage des épreuve basé sur la recherche
   const matieres = React.useMemo(() => {
     if (!debouncedMatiereSearchTerm) {
       return allMatieres;
     }
-    
+
     return allMatieres.filter(matiere =>
       matiere.nom.toLowerCase().includes(debouncedMatiereSearchTerm.toLowerCase()) ||
       matiere.type.toLowerCase().includes(debouncedMatiereSearchTerm.toLowerCase())
     );
   }, [debouncedMatiereSearchTerm, allMatieres]);
-  
+
   // Store
   const {
     tests,
@@ -179,7 +179,7 @@ export const TestManagement: React.FC = () => {
     changePage,
     clearError
   } = useTestStore();
-  
+
   // Chargement initial
   useEffect(() => {
     fetchTests();
@@ -251,12 +251,12 @@ export const TestManagement: React.FC = () => {
       )
     }
   ];
-  
-  // Configuration des colonnes pour les matières
+
+  // Configuration des colonnes pour les épreuve
   const subjectColumns: Column<any>[] = [
     {
       key: 'nom',
-      label: 'Matière',
+      label: 'Épreuve',
       sortable: true,
       searchable: true,
       width: '200px',
@@ -322,7 +322,7 @@ export const TestManagement: React.FC = () => {
       )
     }
   ];
-  
+
   // Actions de ligne pour les résultats
   const resultRowActions: RowAction<Test>[] = [
     {
@@ -337,14 +337,14 @@ export const TestManagement: React.FC = () => {
       variant: "destructive"
     }
   ];
-  
-  // Actions de ligne pour les matières
+
+  // Actions de ligne pour les épreuve
   const subjectRowActions: RowAction<any>[] = [
     {
       label: "Modifier",
       icon: <Edit className="h-4 w-4" />,
-      onClick: (matiere) => { 
-        setSelectedMatiere(matiere); 
+      onClick: (matiere) => {
+        setSelectedMatiere(matiere);
         setTestFormData({
           nom: matiere.nom,
           ponderation: matiere.ponderation.replace('%', ''),
@@ -353,28 +353,28 @@ export const TestManagement: React.FC = () => {
           duree: matiere.duree,
           type: matiere.type
         });
-        setShowEditTestDialog(true); 
+        setShowEditTestDialog(true);
       }
     },
     {
       label: "Voir",
       icon: <Eye className="h-4 w-4" />,
-      onClick: (matiere) => { 
-        setSelectedMatiere(matiere); 
-        setShowViewTestDialog(true); 
+      onClick: (matiere) => {
+        setSelectedMatiere(matiere);
+        setShowViewTestDialog(true);
       }
     },
     {
       label: "Supprimer",
       icon: <Trash2 className="h-4 w-4" />,
-      onClick: (matiere) => { 
-        setSelectedMatiere(matiere); 
-        setShowDeleteTestDialog(true); 
+      onClick: (matiere) => {
+        setSelectedMatiere(matiere);
+        setShowDeleteTestDialog(true);
       },
       variant: "destructive"
     }
   ];
-  
+
   // Gestionnaires
   const handleDeleteTest = async () => {
     if (!selectedTest) return;
@@ -382,20 +382,20 @@ export const TestManagement: React.FC = () => {
       await deleteTest(selectedTest.id);
       setShowDeleteDialog(false);
       setSelectedTest(null);
-      toast.success('Test supprimé avec succès');
+      toast.success('Épreuve supprimé avec succès');
     } catch (error) {
       toast.error('Erreur lors de la suppression');
     }
   };
-  
+
   useEffect(() => {
     setFilters({ search: debouncedSearchTerm });
   }, [debouncedSearchTerm, setFilters]);
-  
+
   const handleSearch = (searchValue: string) => setSearchTerm(searchValue);
   const handleMatiereSearch = (searchValue: string) => setMatiereSearchTerm(searchValue);
   const handleSort = (sort: { field: string; order: 'asc' | 'desc' }) => setSortOptions({ field: sort.field as keyof Test, order: sort.order });
-  
+
   // Gestionnaires du formulaire d'ajout
   const handleSubmitResult = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -403,13 +403,13 @@ export const TestManagement: React.FC = () => {
       // Calculer la moyenne
       const totalNotes = formData.notes.reduce((sum, item) => sum + item.note, 0);
       const moyenne = totalNotes / formData.notes.length;
-      
+
       await createTest({
         ...formData,
         moyenne,
         notes: formData.notes
       });
-      
+
       // Réinitialiser le formulaire et fermer le dialog
       setFormData({
         postulant: '',
@@ -431,39 +431,39 @@ export const TestManagement: React.FC = () => {
       toast.error('Erreur lors de l\'ajout du résultat');
     }
   };
-  
+
   const handleNoteChange = (index: number, value: number) => {
     const newNotes = [...formData.notes];
     newNotes[index].note = value;
     setFormData({ ...formData, notes: newNotes });
   };
-  
+
   // Gestionnaires pour le combobox des postulants
   const filteredPostulants = postulants.filter(postulant =>
     postulant.toLowerCase().includes(postulantSearch.toLowerCase())
   );
-  
+
   const handlePostulantSelect = (postulant: string) => {
     setFormData({ ...formData, postulant });
     setPostulantSearch(postulant);
     setShowSuggestions(false);
   };
-  
+
   const handlePostulantInputChange = (value: string) => {
     setPostulantSearch(value);
     setFormData({ ...formData, postulant: value });
     setShowSuggestions(true);
   };
-  
+
   // Gestionnaire pour l'ajout de matière
   const handleSubmitTest = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      console.log('Ajout de matière:', testFormData);
-      
-      // TODO: Ajouter la logique pour sauvegarder la matière
+      console.log('Ajout d\'épreuve:', testFormData);
+
+      // TODO: Ajouter la logique pour sauvegarder l'épreuve
       // Ici on pourrait appeler une API ou mettre à jour un store
-      
+
       // Réinitialiser le formulaire et fermer le dialog
       setTestFormData({
         nom: '',
@@ -474,44 +474,44 @@ export const TestManagement: React.FC = () => {
         type: 'Écrit'
       });
       setShowAddTestDialog(false);
-      toast.success('Matière ajoutée avec succès');
+      toast.success('Épreuve ajoutée avec succès');
     } catch (error) {
-      toast.error('Erreur lors de l\'ajout de la matière');
+      toast.error('Erreur lors de l\'ajout de l\'épreuve');
     }
   };
-  
+
   // Gestionnaire pour la modification de matière
   const handleEditTest = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      console.log('Modification de matière:', { ...selectedMatiere, ...testFormData });
-      
-      // TODO: Ajouter la logique pour modifier la matière
-      
+      console.log('Modification d\'épreuve:', { ...selectedMatiere, ...testFormData });
+
+      // TODO: Ajouter la logique pour modifier l'épreuve
+
       setShowEditTestDialog(false);
       setSelectedMatiere(null);
-      toast.success('Matière modifiée avec succès');
+      toast.success('Épreuve modifiée avec succès');
     } catch (error) {
-      toast.error('Erreur lors de la modification de la matière');
+      toast.error('Erreur lors de la modification de l\'épreuve');
     }
   };
-  
-  // Gestionnaire pour la suppression de matière
+
+  // Gestionnaire pour la suppression d'épreuve
   const handleDeleteMatiere = async () => {
     if (!selectedMatiere) return;
     try {
-      console.log('Suppression de matière:', selectedMatiere);
-      
-      // TODO: Ajouter la logique pour supprimer la matière
-      
+      console.log('Suppression d\'épreuve:', selectedMatiere);
+
+      // TODO: Ajouter la logique pour supprimer l'épreuve
+
       setShowDeleteTestDialog(false);
       setSelectedMatiere(null);
-      toast.success('Matière supprimée avec succès');
+      toast.success('Épreuve supprimée avec succès');
     } catch (error) {
-      toast.error('Erreur lors de la suppression de la matière');
+      toast.error('Erreur lors de la suppression de l\'épreuve');
     }
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -520,33 +520,33 @@ export const TestManagement: React.FC = () => {
           <p className="text-sm text-gray-500 dark:text-gray-400">Gérez les résultats des concours d'entrée</p>
         </div>
       </div>
-      
+
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error.message}<Button variant="link" size="sm" onClick={clearError} className="ml-2 h-auto p-0">Fermer</Button></AlertDescription>
         </Alert>
       )}
-      
+
       <Card className="overflow-hidden">
         <Tabs defaultValue="resultats" className="w-full">
           <TabsList className="w-fit h-auto p-0 bg-transparent rounded-none justify-start">
-            <TabsTrigger 
-              value="resultats" 
+            <TabsTrigger
+              value="resultats"
               className="px-4 py-3 rounded-none rounded-tl-lg border-r border-gray-200 data-[state=active]:bg-white data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-b-blue-500 data-[state=active]:text-blue-600 flex items-center gap-2"
             >
               <FileText className="h-4 w-4" />
               Résultats
             </TabsTrigger>
-            <TabsTrigger 
-              value="test" 
+            <TabsTrigger
+              value="test"
               className="px-4 py-3 rounded-none data-[state=active]:bg-white data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-b-blue-500 data-[state=active]:text-blue-600 flex items-center gap-2"
             >
               <BookOpen className="h-4 w-4" />
-              Test
+              Épreuve
             </TabsTrigger>
           </TabsList>
-          
+
           <CardContent className="p-6 border-t border-gray-200">
             <TabsContent value="resultats" className="space-y-4 mt-6">
               <div className="flex justify-between items-center">
@@ -559,7 +559,7 @@ export const TestManagement: React.FC = () => {
                   Ajouter résultat
                 </Button>
               </div>
-              
+
               {/* Statistiques des résultats */}
               {stats && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -574,7 +574,7 @@ export const TestManagement: React.FC = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card>
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between">
@@ -586,7 +586,7 @@ export const TestManagement: React.FC = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card>
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between">
@@ -598,7 +598,7 @@ export const TestManagement: React.FC = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card>
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between">
@@ -612,7 +612,7 @@ export const TestManagement: React.FC = () => {
                   </Card>
                 </div>
               )}
-              
+
               <DataTable
                 data={tests}
                 columns={resultColumns}
@@ -628,20 +628,20 @@ export const TestManagement: React.FC = () => {
                 description=""
               />
             </TabsContent>
-            
+
             <TabsContent value="test" className="space-y-4 mt-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-semibold">Liste des matières</h3>
-                  <p className="text-sm text-gray-500">{matieres.length} matières configurées</p>
+                  <h3 className="text-lg font-semibold">Liste des épreuve</h3>
+                  <p className="text-sm text-gray-500">{matieres.length} épreuve configurées</p>
                 </div>
                 <Button onClick={() => setShowAddTestDialog(true)} size="sm">
                   <Plus className="h-4 w-4 mr-2" />
-                  Ajouter test
+                  Ajouter Épreuve
                 </Button>
               </div>
-              
-              {/* Statistiques des matières */}
+
+              {/* Statistiques des épreuve */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <Card>
                   <CardContent className="p-3">
@@ -654,7 +654,7 @@ export const TestManagement: React.FC = () => {
                     </div>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
@@ -666,7 +666,7 @@ export const TestManagement: React.FC = () => {
                     </div>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
@@ -680,7 +680,7 @@ export const TestManagement: React.FC = () => {
                     </div>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
@@ -698,15 +698,15 @@ export const TestManagement: React.FC = () => {
                   </CardContent>
                 </Card>
               </div>
-              
+
               <DataTable
                 data={matieres}
                 columns={subjectColumns}
                 loading={false}
                 rowActions={subjectRowActions}
                 pagination={{ page: 1, limit: 10, total: matieres.length, totalPages: Math.ceil(matieres.length / 10) }}
-                onPageChange={() => {}}
-                onSort={() => {}}
+                onPageChange={() => { }}
+                onSort={() => { }}
                 onSearch={handleMatiereSearch}
                 searchPlaceholder="Rechercher une matière..."
                 emptyStateMessage="Aucune matière trouvée"
@@ -717,12 +717,12 @@ export const TestManagement: React.FC = () => {
           </CardContent>
         </Tabs>
       </Card>
-      
+
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer le test</DialogTitle>
-            <DialogDescription>Êtes-vous sûr de vouloir supprimer ce test ? Cette action est irréversible.</DialogDescription>
+            <DialogTitle>Supprimer l'épreuve</DialogTitle>
+            <DialogDescription>Êtes-vous sûr de vouloir supprimer cette épreuve ? Cette action est irréversible.</DialogDescription>
           </DialogHeader>
           {selectedTest && (
             <div className="space-y-4">
@@ -743,11 +743,11 @@ export const TestManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-      
+
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
         <DialogContent className="max-w-3xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>Détails du test</DialogTitle>
+            <DialogTitle>Détails de l'épreuve</DialogTitle>
           </DialogHeader>
           {selectedTest && (
             <div className="space-y-6 overflow-y-auto max-h-[60vh] pr-2">
@@ -762,7 +762,7 @@ export const TestManagement: React.FC = () => {
                         <p><strong>Type de concours :</strong> {selectedTest.testType || 'Concours d\'entrée'}</p>
                       </div>
                     </div>
-                    
+
                     {selectedTest.remarks && (
                       <>
                         <div className="w-px bg-gray-300 dark:bg-gray-600"></div>
@@ -777,14 +777,14 @@ export const TestManagement: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-              
+
               {selectedTest.notes && selectedTest.notes.length > 0 && (
                 <div>
                   <div className="border rounded-lg overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="font-semibold border-r border-gray-200 dark:border-gray-700">Matières</TableHead>
+                          <TableHead className="font-semibold border-r border-gray-200 dark:border-gray-700">épreuve</TableHead>
                           <TableHead className="font-semibold text-center">Notes</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -808,7 +808,7 @@ export const TestManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog d'ajout de résultat */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className="max-w-2xl max-h-[80vh]">
@@ -845,7 +845,7 @@ export const TestManagement: React.FC = () => {
                   )}
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="grade">Classe visée</Label>
                 <Select value={formData.grade} onValueChange={(value) => setFormData({ ...formData, grade: value })}>
@@ -860,7 +860,7 @@ export const TestManagement: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="testType">Type de concours</Label>
                 <Input
@@ -870,9 +870,9 @@ export const TestManagement: React.FC = () => {
                   placeholder="Ex: Concours d'entrée"
                 />
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="testDate">Date du test</Label>
+                <Label htmlFor="testDate">Date de l'épreuve</Label>
                 <Input
                   id="testDate"
                   type="date"
@@ -882,14 +882,14 @@ export const TestManagement: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-4">
               <Label>Notes par matière</Label>
               <div className="border rounded-lg overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="font-semibold border-r border-gray-200 dark:border-gray-700">Matières</TableHead>
+                      <TableHead className="font-semibold border-r border-gray-200 dark:border-gray-700">épreuve</TableHead>
                       <TableHead className="font-semibold text-center">Notes (/20)</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -917,7 +917,7 @@ export const TestManagement: React.FC = () => {
                 </Table>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="remarks">Remarques (optionnel)</Label>
               <Textarea
@@ -928,7 +928,7 @@ export const TestManagement: React.FC = () => {
                 rows={3}
               />
             </div>
-            
+
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
                 Annuler
@@ -940,18 +940,18 @@ export const TestManagement: React.FC = () => {
           </form>
         </DialogContent>
       </Dialog>
-      
-      {/* Dialog d'ajout de matière/test */}
+
+      {/* Dialog d'ajout des épreuves/test */}
       <Dialog open={showAddTestDialog} onOpenChange={setShowAddTestDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Ajouter une nouvelle matière</DialogTitle>
+            <DialogTitle>Ajouter une nouvelle épreuve</DialogTitle>
             <DialogDescription>Configurez les paramètres de la nouvelle épreuve</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitTest} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="nom">Nom de la matière</Label>
+                <Label htmlFor="nom">Nom de l'épreuve</Label>
                 <Input
                   id="nom"
                   value={testFormData.nom}
@@ -960,7 +960,7 @@ export const TestManagement: React.FC = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="ponderation">Pondération (%)</Label>
                 <Select value={testFormData.ponderation} onValueChange={(value) => setTestFormData({ ...testFormData, ponderation: value })}>
@@ -979,7 +979,7 @@ export const TestManagement: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="coefficient">Coefficient</Label>
                 <Input
@@ -992,7 +992,7 @@ export const TestManagement: React.FC = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="sur">Note sur</Label>
                 <Input
@@ -1005,7 +1005,7 @@ export const TestManagement: React.FC = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="duree">Durée</Label>
                 <Input
@@ -1016,7 +1016,7 @@ export const TestManagement: React.FC = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="type">Type d'épreuve</Label>
                 <Select value={testFormData.type} onValueChange={(value) => setTestFormData({ ...testFormData, type: value })}>
@@ -1031,30 +1031,30 @@ export const TestManagement: React.FC = () => {
                 </Select>
               </div>
             </div>
-            
+
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowAddTestDialog(false)}>
                 Annuler
               </Button>
               <Button type="submit">
-                Ajouter la matière
+                Ajouter l'épreuve
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog de modification de matière */}
       <Dialog open={showEditTestDialog} onOpenChange={setShowEditTestDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Modifier la matière</DialogTitle>
+            <DialogTitle>Modifier l'épreuve</DialogTitle>
             <DialogDescription>Modifiez les paramètres de l'épreuve</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditTest} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-nom">Nom de la matière</Label>
+                <Label htmlFor="edit-nom">Nom de l'épreuve</Label>
                 <Input
                   id="edit-nom"
                   value={testFormData.nom}
@@ -1063,7 +1063,7 @@ export const TestManagement: React.FC = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-ponderation">Pondération (%)</Label>
                 <Select value={testFormData.ponderation} onValueChange={(value) => setTestFormData({ ...testFormData, ponderation: value })}>
@@ -1082,7 +1082,7 @@ export const TestManagement: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-coefficient">Coefficient</Label>
                 <Input
@@ -1095,7 +1095,7 @@ export const TestManagement: React.FC = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-sur">Note sur</Label>
                 <Input
@@ -1108,7 +1108,7 @@ export const TestManagement: React.FC = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-duree">Durée</Label>
                 <Input
@@ -1119,7 +1119,7 @@ export const TestManagement: React.FC = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-type">Type d'épreuve</Label>
                 <Select value={testFormData.type} onValueChange={(value) => setTestFormData({ ...testFormData, type: value })}>
@@ -1134,20 +1134,20 @@ export const TestManagement: React.FC = () => {
                 </Select>
               </div>
             </div>
-            
+
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowEditTestDialog(false)}>
                 Annuler
               </Button>
               <Button type="submit">
-                Modifier la matière
+                Modifier l'épreuve
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-      
-      {/* Dialog de visualisation de matière */}
+
+      {/* Dialog de visualisation de l'épreuve */}
       <Dialog open={showViewTestDialog} onOpenChange={setShowViewTestDialog}>
         <DialogContent className="max-w-3xl">
           <DialogHeader className="pb-6">
@@ -1232,7 +1232,7 @@ export const TestManagement: React.FC = () => {
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                        <span className="text-sm text-gray-600 dark:text-gray-300">Matière</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-300">Épreuve</span>
                         <span className="font-medium">{selectedMatiere.nom}</span>
                       </div>
                       <div className="flex items-center gap-3">
@@ -1256,7 +1256,7 @@ export const TestManagement: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-              
+
               <div className="flex justify-end pt-4">
                 <Button onClick={() => setShowViewTestDialog(false)} className="px-6">
                   Fermer
@@ -1266,18 +1266,18 @@ export const TestManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog de suppression de matière */}
       <Dialog open={showDeleteTestDialog} onOpenChange={setShowDeleteTestDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer la matière</DialogTitle>
-            <DialogDescription>Êtes-vous sûr de vouloir supprimer cette matière ? Cette action est irréversible.</DialogDescription>
+            <DialogTitle>Supprimer l'épreuve</DialogTitle>
+            <DialogDescription>Êtes-vous sûr de vouloir supprimer cette épreuve ? Cette action est irréversible.</DialogDescription>
           </DialogHeader>
           {selectedMatiere && (
             <div className="space-y-4">
               <div className="p-4 bg-gray-50 rounded-lg">
-                <p><strong>Matière :</strong> {selectedMatiere.nom}</p>
+                <p><strong>Épreuve :</strong> {selectedMatiere.nom}</p>
                 <p><strong>Type :</strong> {selectedMatiere.type}</p>
                 <p><strong>Pondération :</strong> {selectedMatiere.ponderation}</p>
               </div>
