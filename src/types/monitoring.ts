@@ -35,6 +35,20 @@ export interface SystemMetrics {
   };
 }
 
+export interface NetworkCheck {
+  target: string;
+  host: string;
+  latencyMs: number;
+  status: 'UP' | 'DOWN';
+}
+
+export interface NetworkHealth {
+  averageLatencyMs: number;
+  availabilityPercent: number;
+  bandwidthGbps: number;
+  checks: NetworkCheck[];
+}
+
 // =====================================================
 // MÉTRIQUES APPLICATION
 // =====================================================
@@ -153,7 +167,10 @@ export interface MonitoringStats {
   activeAlerts: number;
   criticalAlerts: number;
   systemUptime: number;        // Temps de fonctionnement système en secondes
-  averageResponseTime: number; // Temps de réponse moyen
+  averageResponseTime: number; // Temps de réponse moyen (ms)
+  minResponseTime?: number;   // Temps de réponse minimal (ms)
+  maxResponseTime?: number;   // Temps de réponse maximal (ms)
+  serverErrorsToday?: number; // Nombre d'erreurs serveur (5xx) aujourd'hui
   totalEvents: number;
   servicesUp: number;
   servicesDown: number;

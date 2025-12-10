@@ -6,7 +6,7 @@
  * Complète AdminPanel avec métriques de performance et alertes
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -74,6 +74,8 @@ import {
 
 import { useMonitoringStore } from '../../../stores/monitoringStore';
 import { useSettingStore } from '../../../stores/settingStore';
+import { config } from '../../../config/environment';
+import { io } from 'socket.io-client';
 import type { Alert as MonitoringAlert, ServiceHealth, AlertSeverity } from '../../../types/monitoring';
 import { toast } from 'react-toastify';
 
@@ -120,6 +122,20 @@ export const Monitoring: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [notifications, setNotifications] = useState<MonitoringAlert[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [networkRates, setNetworkRates] = useState<{
+    inBytesPerSec: number;
+    outBytesPerSec: number;
+    inPacketsPerSec: number;
+    outPacketsPerSec: number;
+  } | null>(null);
+
+  const lastNetworkSnapshotRef = useRef<{
+    timestampMs: number;
+    bytesIn: number;
+    bytesOut: number;
+    packetsIn: number;
+    packetsOut: number;
+  } | null>(null);
 
   // Store Zustand
   const {
@@ -129,6 +145,7 @@ export const Monitoring: React.FC = () => {
     services,
     systemEvents,
     stats,
+    networkHealth,
     loading,
     error,
     isRealTimeEnabled,
@@ -276,9 +293,13 @@ export const Monitoring: React.FC = () => {
     ]);
   }, []);
 
-  // Effet pour le rafraîchissement automatique
+  // Effet pour le rafraîchissement automatique (mode non temps réel)
   useEffect(() => {
-    if (!autoRefresh || !isRealTimeEnabled) return;
+    // Pas de rafraîchissement auto si désactivé
+    if (!autoRefresh) return;
+
+    // Quand le mode temps réel est activé, on laisse uniquement Socket.IO mettre à jour les données
+    if (isRealTimeEnabled) return;
 
     const interval = setInterval(() => {
       refreshAllData();
@@ -286,6 +307,57 @@ export const Monitoring: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [autoRefresh, isRealTimeEnabled, refreshAllData]);
+
+  // Connexion Socket.IO pour le temps réel
+  useEffect(() => {
+    if (!isRealTimeEnabled) return;
+
+    const socket = io(`${config.API_BASE_URL}/monitoring`, {
+      transports: ['websocket'],
+      withCredentials: true,
+    });
+
+    socket.on('monitoring:snapshot', (payload: any) => {
+      useMonitoringStore.setState((state) => ({
+        ...state,
+        systemMetrics: payload.systemMetrics ?? state.systemMetrics,
+        applicationMetrics: payload.applicationMetrics ?? state.applicationMetrics,
+        alerts: payload.alerts ?? state.alerts,
+        services: payload.services ?? state.services,
+        systemEvents: payload.systemEvents ?? state.systemEvents,
+        stats: payload.stats ?? state.stats,
+      }));
+
+      const currentNetworkSnapshot = {
+        timestampMs: Date.now(),
+        bytesIn: payload.systemMetrics.network.bytesIn,
+        bytesOut: payload.systemMetrics.network.bytesOut,
+        packetsIn: payload.systemMetrics.network.packetsIn,
+        packetsOut: payload.systemMetrics.network.packetsOut,
+      };
+
+      if (lastNetworkSnapshotRef.current) {
+        const timeDiffMs = currentNetworkSnapshot.timestampMs - lastNetworkSnapshotRef.current.timestampMs;
+        const inBytesDiff = currentNetworkSnapshot.bytesIn - lastNetworkSnapshotRef.current.bytesIn;
+        const outBytesDiff = currentNetworkSnapshot.bytesOut - lastNetworkSnapshotRef.current.bytesOut;
+        const inPacketsDiff = currentNetworkSnapshot.packetsIn - lastNetworkSnapshotRef.current.packetsIn;
+        const outPacketsDiff = currentNetworkSnapshot.packetsOut - lastNetworkSnapshotRef.current.packetsOut;
+
+        setNetworkRates({
+          inBytesPerSec: inBytesDiff / (timeDiffMs / 1000),
+          outBytesPerSec: outBytesDiff / (timeDiffMs / 1000),
+          inPacketsPerSec: inPacketsDiff / (timeDiffMs / 1000),
+          outPacketsPerSec: outPacketsDiff / (timeDiffMs / 1000),
+        });
+      }
+
+      lastNetworkSnapshotRef.current = currentNetworkSnapshot;
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [isRealTimeEnabled]);
 
   // Effet pour détecter les nouvelles alertes critiques
   useEffect(() => {
@@ -407,7 +479,6 @@ export const Monitoring: React.FC = () => {
     securityLevel = 'Faible';
     securityBadgeClasses = 'bg-red-50 text-red-700 border-red-200';
   }
-
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
       {/* En-tête */}
@@ -425,7 +496,14 @@ export const Monitoring: React.FC = () => {
           <div className="flex items-center gap-2 mr-2">
             <Switch
               checked={isRealTimeEnabled}
-              onCheckedChange={setRealTimeEnabled}
+              onCheckedChange={(checked) => {
+                setRealTimeEnabled(checked);
+                toast.success(
+                  checked
+                    ? 'Mode temps réel activé'
+                    : 'Mode temps réel désactivé'
+                );
+              }}
             />
             <span className="text-sm">Temps réel</span>
           </div>
@@ -645,6 +723,9 @@ export const Monitoring: React.FC = () => {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Moyenne sur 24h
+                    {typeof stats.minResponseTime === 'number' && typeof stats.maxResponseTime === 'number' && (
+                      <> — Min {stats.minResponseTime}ms / Max {stats.maxResponseTime}ms</>
+                    )}
                   </p>
                 </CardContent>
               </Card>
@@ -652,7 +733,7 @@ export const Monitoring: React.FC = () => {
           )}
 
           {/* Logs et sauvegardes rapides */}
-          {(logsData.length > 0 || backupList.length > 0) && (
+          {stats && (
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -661,9 +742,9 @@ export const Monitoring: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-red-600">
-                    {logsData.filter(l => l.level === 'error' || l.level === 'critical').length}
+                    {stats.serverErrorsToday ?? 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">Erreurs critiques</p>
+                  <p className="text-xs text-muted-foreground">Erreurs serveur (5xx) aujourd'hui</p>
                 </CardContent>
               </Card>
 
@@ -704,6 +785,11 @@ export const Monitoring: React.FC = () => {
                       value={systemMetrics.cpu.usage}
                       className="h-2"
                     />
+                    {systemMetrics.cpu.temperature && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Température: {systemMetrics.cpu.temperature}°C
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -758,14 +844,29 @@ export const Monitoring: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Entrant</span>
-                      <span>{formatBytes(systemMetrics.network.bytesIn)}</span>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <div className="flex justify-between items-baseline">
+                        <span>Entrant</span>
+                        <span>{formatBytes(systemMetrics.network.bytesIn)}</span>
+                      </div>
+                      {networkRates && (
+                        <div className="flex justify-end text-xs text-muted-foreground mt-0.5">
+                          ~{formatBytes(networkRates.inBytesPerSec)}/s • {Math.round(networkRates.inPacketsPerSec)} paq/s
+                        </div>
+                      )}
                     </div>
-                    <div className="flex justify-between">
-                      <span>Sortant</span>
-                      <span>{formatBytes(systemMetrics.network.bytesOut)}</span>
+
+                    <div>
+                      <div className="flex justify-between items-baseline">
+                        <span>Sortant</span>
+                        <span>{formatBytes(systemMetrics.network.bytesOut)}</span>
+                      </div>
+                      {networkRates && (
+                        <div className="flex justify-end text-xs text-muted-foreground mt-0.5">
+                          ~{formatBytes(networkRates.outBytesPerSec)}/s • {Math.round(networkRates.outPacketsPerSec)} paq/s
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -821,33 +922,120 @@ export const Monitoring: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">12ms</div>
-                  <div className="text-sm text-green-800">Latence moyenne</div>
-                </div>
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">99.9%</div>
-                  <div className="text-sm text-blue-800">Disponibilité</div>
+                  <div className="text-xs text-blue-800 mb-1">Débit entrant</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {networkRates
+                      ? `${formatBytes(networkRates.inBytesPerSec)}/s`
+                      : systemMetrics
+                        ? formatBytes(systemMetrics.network.bytesIn)
+                        : 'N/A'}
+                  </div>
+                  {systemMetrics && (
+                    <div className="text-xs text-blue-700 mt-1">
+                      Total: {formatBytes(systemMetrics.network.bytesIn)}
+                    </div>
+                  )}
                 </div>
+
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-xs text-green-800 mb-1">Débit sortant</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {networkRates
+                      ? `${formatBytes(networkRates.outBytesPerSec)}/s`
+                      : systemMetrics
+                        ? formatBytes(systemMetrics.network.bytesOut)
+                        : 'N/A'}
+                  </div>
+                  {systemMetrics && (
+                    <div className="text-xs text-green-700 mt-1">
+                      Total: {formatBytes(systemMetrics.network.bytesOut)}
+                    </div>
+                  )}
+                </div>
+
                 <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <div className="text-2xl font-bold text-purple-600">1.2GB/s</div>
-                  <div className="text-sm text-purple-800">Bande passante</div>
+                  <div className="text-xs text-purple-800 mb-1">Paquets</div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {networkRates
+                      ? `${Math.round(networkRates.inPacketsPerSec)} / ${Math.round(networkRates.outPacketsPerSec)} paq/s`
+                      : systemMetrics
+                        ? `${systemMetrics.network.packetsIn} / ${systemMetrics.network.packetsOut} paquets`
+                        : 'N/A'}
+                  </div>
+                  {systemMetrics && (
+                    <div className="text-xs text-purple-700 mt-1">
+                      In / Out cumulés
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="mt-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Ping vers Google DNS (8.8.8.8)</span>
-                  <Badge className="bg-green-100 text-green-800">8ms</Badge>
+              {/* Résumé global des sondes réseau */}
+              {networkHealth && (
+                <div className="mt-4 text-xs text-gray-600 flex flex-wrap gap-4">
+                  <div>
+                    <span className="font-medium">Latence moyenne globale :</span>{' '}
+                    {Math.round(networkHealth.averageLatencyMs)}ms
+                  </div>
+                  <div>
+                    <span className="font-medium">Disponibilité :</span>{' '}
+                    {networkHealth.availabilityPercent.toFixed(1)}%
+                  </div>
+                  <div>
+                    <span className="font-medium">Cibles UP :</span>{' '}
+                    {networkHealth.checks.filter(c => c.status === 'UP').length}/{networkHealth.checks.length}
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Ping vers Cloudflare (1.1.1.1)</span>
-                  <Badge className="bg-green-100 text-green-800">12ms</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Connexion base de données</span>
-                  <Badge className="bg-green-100 text-green-800">2ms</Badge>
-                </div>
+              )}
+
+              {/* Détail des pings par cible */}
+              <div className="mt-3 space-y-2">
+                {(networkHealth?.checks && networkHealth.checks.length > 0) ? (
+                  networkHealth.checks.map((check) => {
+                    const isUp = check.status === 'UP' && check.latencyMs > 0;
+                    let label: string;
+                    if (check.target === 'Base de données') {
+                      label = 'Connexion base de données';
+                    } else if (check.target === 'Redis') {
+                      label = 'Connexion cache Redis';
+                    } else {
+                      label = `Ping vers ${check.target} (${check.host})`;
+                    }
+
+                    let description: string | null = null;
+                    if (check.target === 'Google DNS' || check.target === 'Cloudflare') {
+                      description = 'Vérifie la connectivité Internet / DNS vers l\'extérieur.';
+                    } else if (check.target === 'Base de données') {
+                      description = 'Vérifie la latence entre l\'API et la base de données.';
+                    } else if (check.target === 'Redis') {
+                      description = 'Vérifie la latence entre l\'API et le cache Redis.';
+                    }
+
+                    return (
+                      <div
+                        key={`${check.target}-${check.host}`}
+                        className="flex items-center justify-between gap-4"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{label}</div>
+                          {description && (
+                            <div className="text-xs text-gray-500 truncate">
+                              {description}
+                            </div>
+                          )}
+                        </div>
+                        <Badge className={isUp ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                          {isUp
+                            ? `UP · ${Math.round(check.latencyMs)}ms`
+                            : 'DOWN'}
+                        </Badge>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-sm text-gray-500">Aucune donnée de latence réseau disponible</div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -1513,6 +1701,6 @@ export const Monitoring: React.FC = () => {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+    </div >
   );
 };

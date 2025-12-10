@@ -71,11 +71,13 @@ export interface ResetPasswordData {
 }
 
 export interface AuthResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_in: number;
-  user: User;
+  access_token?: string;
+  refresh_token?: string;
+  token_type?: string;
+  expires_in?: number;
+  user?: User;
+  twoFactorRequired?: boolean;
+  twoFactorUserId?: string;
 }
 
 export interface User {
@@ -91,6 +93,16 @@ export interface User {
   email_verified_at?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface TrustedDevice {
+  id: string;
+  userAgent: string;
+  ipAddress: string;
+  location?: string;
+  trustedAt: string;
+  lastUsedAt: string;
+  expiresAt: string;
 }
 
 export interface RefreshTokenResponse {
@@ -142,8 +154,17 @@ class AuthService {
       async (error: AxiosError) => {
         const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
         const status = error.response?.status;
+        const url = originalRequest?.url || '';
 
-        if (status === 401 && !originalRequest._retry) {
+        // Ne pas tenter de refresh pour les erreurs 401 sur les endpoints d'auth initiaux
+        const isAuthInitialEndpoint =
+          url.includes('/auth/login') ||
+          url.includes('/auth/2fa/login') ||
+          url.includes('/auth/register') ||
+          url.includes('/auth/forgot-password') ||
+          url.includes('/auth/reset-password');
+
+        if (status === 401 && !originalRequest._retry && !isAuthInitialEndpoint) {
           originalRequest._retry = true;
           try {
             await this.refreshToken();
@@ -175,20 +196,30 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      const response: AxiosResponse<AuthResponse> = await authApi.post('/auth/login', {
+      const response: AxiosResponse<any> = await authApi.post('/auth/login', {
         email: credentials.email,
         password: credentials.password,
       });
       console.log('AuthService - Réponse login:', response.data);
-      
+
+      if (response.data && response.data.message === 'TWO_FACTOR_AUTHENTICATION_REQUIRED') {
+        const twoFactorResponse: AuthResponse = {
+          twoFactorRequired: true,
+          twoFactorUserId: response.data.userId,
+        };
+        return twoFactorResponse;
+      }
+
+      const data: AuthResponse = response.data;
+
       // Stocker les tokens
-      this.setTokens(response.data.access_token, response.data.refresh_token);
-      
+      this.setTokens(data.access_token!, data.refresh_token!);
+
       // Déduire le user depuis le token si non fourni par l'API
-      if (!response.data.user) {
-        const payload = decodeJwtPayload<{ sub?: string; email?: string; role?: string }>(response.data.access_token);
+      if (!data.user) {
+        const payload = decodeJwtPayload<{ sub?: string; email?: string; role?: string }>(data.access_token);
         if (payload) {
-          response.data.user = {
+          data.user = {
             id: payload.sub || '',
             email: payload.email || credentials.email,
             first_name: '',
@@ -201,7 +232,7 @@ class AuthService {
           } as User;
         } else {
           // Fallback minimal
-          response.data.user = {
+          data.user = {
             id: '',
             email: credentials.email,
             first_name: '',
@@ -216,14 +247,83 @@ class AuthService {
       }
 
       // Persister le user déduit ou retourné par l'API
-      if (response.data.user) {
-        this.setUser(response.data.user);
+      if (data.user) {
+        this.setUser(data.user);
       }
 
       // Programmer auto-refresh
       this.ensureAutoRefresh();
-      
-      return response.data;
+
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async setup2FA(): Promise<{ qrCodeDataUrl: string; backupCodes: string[] }> {
+    const token = this.getAccessToken();
+    if (!token) {
+      throw new Error('Aucun token d\'accès disponible');
+    }
+    const response: AxiosResponse<{ qrCodeDataUrl: string; backupCodes: string[] }> = await authApi.get('/auth/2fa/setup');
+    return response.data;
+  }
+
+  async enable2FA(twoFactorCode: string): Promise<{ message: string }> {
+    const token = this.getAccessToken();
+    if (!token) {
+      throw new Error('Aucun token d\'accès disponible');
+    }
+    const response: AxiosResponse<{ message: string }> = await authApi.post('/auth/2fa/enable', {
+      twoFactorCode,
+    });
+    return response.data;
+  }
+
+  async disable2FA(): Promise<{ message: string }> {
+    const token = this.getAccessToken();
+    if (!token) {
+      throw new Error('Aucun token d\'accès disponible');
+    }
+    const response: AxiosResponse<{ message: string }> = await authApi.post('/auth/2fa/disable');
+    return response.data;
+  }
+
+  async twoFactorLogin(params: { userId: string; twoFactorCode: string }): Promise<AuthResponse> {
+    try {
+      const response: AxiosResponse<AuthResponse> = await authApi.post('/auth/2fa/login', {
+        userId: params.userId,
+        twoFactorCode: params.twoFactorCode,
+      });
+
+      const data: AuthResponse = response.data;
+
+      this.setTokens(data.access_token!, data.refresh_token!);
+
+      if (!data.user) {
+        const payload = decodeJwtPayload<{ sub?: string; email?: string; role?: string }>(data.access_token);
+        if (payload) {
+          data.user = {
+            id: payload.sub || '',
+            email: payload.email || '',
+            first_name: '',
+            last_name: '',
+            role: payload.role || 'USER',
+            is_active: true,
+            permissions: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          } as User;
+        }
+      }
+
+      if (data.user) {
+        this.setUser(data.user);
+      }
+
+      this.ensureAutoRefresh();
+
+      return data;
     } catch (error) {
       throw error;
     }
@@ -235,14 +335,18 @@ class AuthService {
   async register(userData: RegisterData): Promise<AuthResponse> {
     try {
       const response: AxiosResponse<AuthResponse> = await authApi.post('/auth/register', userData);
-      
-      // Stocker les tokens
-      this.setTokens(response.data.access_token, response.data.refresh_token);
-      
-      // Stocker les informations utilisateur
-      this.setUser(response.data.user);
-      
-      return response.data;
+      const data = response.data;
+
+      if (data.access_token && data.refresh_token) {
+        this.setTokens(data.access_token, data.refresh_token);
+        this.ensureAutoRefresh();
+      }
+
+      if (data.user) {
+        this.setUser(data.user);
+      }
+
+      return data;
     } catch (error) {
       throw error;
     }
@@ -285,7 +389,7 @@ class AuthService {
       this.setAccessToken(response.data.access_token);
       // Reprogrammer le refresh
       this.scheduleRefreshFromAccessToken(response.data.access_token);
-      
+
       return response.data.access_token;
     } catch (error) {
       // Si le refresh échoue, déconnecter l'utilisateur
@@ -339,7 +443,7 @@ class AuthService {
 
       // Mettre à jour les informations utilisateur
       this.setUser(response.data);
-      
+
       return response.data;
     } catch (error) {
       throw error;
@@ -356,6 +460,35 @@ class AuthService {
     }
     const response = await authApi.get('/users/me');
     return response.data;
+  }
+
+  /**
+   * Appareils de confiance de l'utilisateur connecté
+   */
+  async getTrustedDevices(): Promise<TrustedDevice[]> {
+    const token = this.getAccessToken();
+    if (!token) {
+      throw new Error('Aucun token d\'accès disponible');
+    }
+    const response: AxiosResponse<TrustedDevice[]> = await authApi.get('/users/me/trusted-devices');
+    return response.data;
+  }
+
+  async removeTrustedDevice(deviceId: string): Promise<TrustedDevice[]> {
+    const token = this.getAccessToken();
+    if (!token) {
+      throw new Error('Aucun token d\'accès disponible');
+    }
+    const response: AxiosResponse<TrustedDevice[]> = await authApi.delete(`/users/me/trusted-devices/${deviceId}`);
+    return response.data;
+  }
+
+  async clearTrustedDevices(): Promise<void> {
+    const token = this.getAccessToken();
+    if (!token) {
+      throw new Error('Aucun token d\'accès disponible');
+    }
+    await authApi.delete('/users/me/trusted-devices');
   }
 
   /**
@@ -412,7 +545,7 @@ class AuthService {
 
       // Mettre à jour les informations utilisateur
       this.setUser(response.data);
-      
+
       return response.data;
     } catch (error) {
       throw error;
@@ -558,7 +691,7 @@ class AuthService {
     localStorage.removeItem('isAuthenticated'); // Pour la compatibilité avec l'ancien système
     try {
       document.dispatchEvent(new CustomEvent('auth:cleared'));
-    } catch {}
+    } catch { }
   }
 }
 
