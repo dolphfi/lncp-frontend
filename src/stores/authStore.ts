@@ -8,13 +8,13 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import authService, { 
-  LoginCredentials, 
-  RegisterData, 
-  ForgotPasswordData, 
-  ResetPasswordData, 
-  User, 
-  ApiError 
+import authService, {
+  LoginCredentials,
+  RegisterData,
+  ForgotPasswordData,
+  ResetPasswordData,
+  User,
+  ApiError
 } from '../services/authService';
 import { toast } from 'react-toastify';
 
@@ -23,7 +23,7 @@ interface AuthState {
   // État des données
   user: User | null;
   isAuthenticated: boolean;
-  
+
   // États de chargement
   loading: {
     login: boolean;
@@ -34,22 +34,22 @@ interface AuthState {
     profile: boolean;
     refreshToken: boolean;
   };
-  
+
   // Erreurs
   error: ApiError | null;
-  
+
   // Actions d'authentification
   login: (credentials: LoginCredentials) => Promise<boolean>;
   register: (userData: RegisterData) => Promise<boolean>;
   logout: () => Promise<void>;
   forgotPassword: (data: ForgotPasswordData) => Promise<boolean>;
   resetPassword: (data: ResetPasswordData) => Promise<boolean>;
-  
+
   // Actions de profil
   getProfile: () => Promise<void>;
   updateProfile: (userData: Partial<User>) => Promise<boolean>;
   refreshToken: () => Promise<boolean>;
-  
+
   // Actions utilitaires
   checkAuth: () => void;
   clearError: () => void;
@@ -89,14 +89,22 @@ export const useAuthStore = create<AuthState>()(
 
           try {
             const response = await authService.login(credentials);
-            
+
+            if (!response.user) {
+              set((state) => {
+                state.loading.login = false;
+              });
+              toast.error('Connexion incomplète: aucune information utilisateur retournée.');
+              return false;
+            }
+
             set((state) => {
-              state.user = response.user;
+              state.user = response.user!;
               state.isAuthenticated = true;
               state.loading.login = false;
             });
 
-            toast.success(`Bienvenue ${response.user.first_name} !`);
+            toast.success(`Bienvenue ${response.user.first_name || response.user.email} !`);
             return true;
 
           } catch (error: any) {
@@ -118,9 +126,18 @@ export const useAuthStore = create<AuthState>()(
 
           try {
             const response = await authService.register(userData);
-            
+
+            if (!response.user) {
+              set((state) => {
+                state.loading.register = false;
+                // On ne marque pas l'utilisateur comme connecté si aucune info user n'est renvoyée
+              });
+              toast.success('Compte créé avec succès ! Veuillez vérifier votre email pour activer votre compte.');
+              return true;
+            }
+
             set((state) => {
-              state.user = response.user;
+              state.user = response.user!;
               state.isAuthenticated = true;
               state.loading.register = false;
             });
@@ -146,7 +163,7 @@ export const useAuthStore = create<AuthState>()(
 
           try {
             await authService.logout();
-            
+
             set((state) => {
               state.user = null;
               state.isAuthenticated = false;
@@ -180,7 +197,7 @@ export const useAuthStore = create<AuthState>()(
 
           try {
             const response = await authService.forgotPassword(data);
-            
+
             set((state) => {
               state.loading.forgotPassword = false;
             });
@@ -207,7 +224,7 @@ export const useAuthStore = create<AuthState>()(
 
           try {
             const response = await authService.resetPassword(data);
-            
+
             set((state) => {
               state.loading.resetPassword = false;
             });
@@ -236,7 +253,7 @@ export const useAuthStore = create<AuthState>()(
 
           try {
             const user = await authService.getProfile();
-            
+
             set((state) => {
               state.user = user;
               state.isAuthenticated = true;
@@ -264,7 +281,7 @@ export const useAuthStore = create<AuthState>()(
 
           try {
             const updatedUser = await authService.updateProfile(userData);
-            
+
             set((state) => {
               state.user = updatedUser;
               state.loading.profile = false;
@@ -291,7 +308,7 @@ export const useAuthStore = create<AuthState>()(
 
           try {
             await authService.refreshToken();
-            
+
             set((state) => {
               state.loading.refreshToken = false;
             });
@@ -314,7 +331,7 @@ export const useAuthStore = create<AuthState>()(
         checkAuth: () => {
           const isAuth = authService.isAuthenticated();
           const user = authService.getUser();
-          
+
           set((state) => {
             state.isAuthenticated = isAuth;
             state.user = user;

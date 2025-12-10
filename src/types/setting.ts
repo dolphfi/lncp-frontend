@@ -11,6 +11,7 @@
 // =====================================================
 
 export enum SettingKey {
+<<<<<<< HEAD
     // GENERAL
     SCHOOL_NAME = 'SCHOOL_NAME',
     SCHOOL_ACRONYM = 'SCHOOL_ACRONYM',
@@ -27,21 +28,38 @@ export enum SettingKey {
     MOYENNE_REPECHAGE = 'MOYENNE_REPECHAGE',
     MOYENNE_PASSAGE_CONCOURS = 'MOYENNE_PASSAGE_CONCOURS',
     MOYENNE_REPECHAGE_CONCOURS = 'MOYENNE_REPECHAGE_CONCOURS',
+=======
+  // GENERAL
+  SCHOOL_NAME = 'SCHOOL_NAME',
+  SCHOOL_ACRONYM = 'SCHOOL_ACRONYM',
+  SCHOOL_ADDRESS = 'SCHOOL_ADDRESS',
+  SCHOOL_PHONE = 'SCHOOL_PHONE',
+  SCHOOL_EMAIL = 'SCHOOL_EMAIL',
+  SCHOOL_LOGO_URL = 'SCHOOL_LOGO_URL',
+  SCHOOL_ENTETE_URL = 'SCHOOL_ENTETE_URL',
+  BACKUP_FREQUENCY = 'BACKUP_FREQUENCY',
+  BACKUP_AUTO_ENABLED = 'BACKUP_AUTO_ENABLED',
 
-    // FINANCIER
-    INSTITUTION_FEE = 'INSTITUTION_FEE',
-    PAYPAL_HTG_TO_USD_RATE = 'PAYPAL_HTG_TO_USD_RATE',
+  // ACADEMIQUE
+  CURRENT_ACADEMIC_YEAR = 'CURRENT_ACADEMIC_YEAR',
+  MOYENNE_PASSAGE = 'MOYENNE_PASSAGE',
+  MOYENNE_REPECHAGE = 'MOYENNE_REPECHAGE',
+>>>>>>> 97f45216a4b1f0295bf2d30b367e9aacf9b1e23e
 
-    // COMMUNICATION
-    DEFAULT_EMAIL_SENDER = 'DEFAULT_EMAIL_SENDER',
-    SMS_GATEWAY_API_KEY = 'SMS_GATEWAY_API_KEY',
+  // FINANCIER
+  INSTITUTION_FEE = 'INSTITUTION_FEE',
+  PAYPAL_HTG_TO_USD_RATE = 'PAYPAL_HTG_TO_USD_RATE',
+
+  // COMMUNICATION
+  DEFAULT_EMAIL_SENDER = 'DEFAULT_EMAIL_SENDER',
+  SMS_GATEWAY_API_KEY = 'SMS_GATEWAY_API_KEY',
 }
 
 export enum SettingsGroup {
-    GENERAL = 'GENERAL',
-    ACADEMIQUE = 'ACADEMIQUE',
-    FINANCIER = 'FINANCIER',
-    COMMUNICATION = 'COMMUNICATION',
+  GENERAL = 'GENERAL',
+  ACADEMIQUE = 'ACADEMIQUE',
+  FINANCIER = 'FINANCIER',
+  COMMUNICATION = 'COMMUNICATION',
 }
 
 // Type pour rétrocompatibilité
@@ -133,7 +151,12 @@ export const SETTING_KEY_LABELS: Record<SettingKey, string> = {
   [SettingKey.SCHOOL_EMAIL]: "Email de l'école",
   [SettingKey.SCHOOL_LOGO_URL]: "URL du logo",
   [SettingKey.SCHOOL_ENTETE_URL]: "URL de l'en-tête",
+<<<<<<< HEAD
   [SettingKey.BACKUP_FREQUENCY]: "Fréquence de sauvegarde",
+=======
+  [SettingKey.BACKUP_FREQUENCY]: 'Fréquence de sauvegarde',
+  [SettingKey.BACKUP_AUTO_ENABLED]: 'Sauvegarde automatique',
+>>>>>>> 97f45216a4b1f0295bf2d30b367e9aacf9b1e23e
   [SettingKey.CURRENT_ACADEMIC_YEAR]: "Année académique courante",
   [SettingKey.MOYENNE_PASSAGE]: "Moyenne de passage",
   [SettingKey.MOYENNE_REPECHAGE]: "Moyenne de repêchage",
@@ -153,7 +176,12 @@ export const SETTING_KEY_DESCRIPTIONS: Record<SettingKey, string> = {
   [SettingKey.SCHOOL_EMAIL]: "Adresse email de contact",
   [SettingKey.SCHOOL_LOGO_URL]: "Lien vers le logo de l'école",
   [SettingKey.SCHOOL_ENTETE_URL]: "Lien vers l'en-tête des documents",
+<<<<<<< HEAD
   [SettingKey.BACKUP_FREQUENCY]: "Fréquence des sauvegardes automatiques",
+=======
+  [SettingKey.BACKUP_FREQUENCY]: 'Fréquence des sauvegardes automatiques (DAILY, WEEKLY, MONTHLY).',
+  [SettingKey.BACKUP_AUTO_ENABLED]: 'Active ou désactive les sauvegardes automatiques planifiées.',
+>>>>>>> 97f45216a4b1f0295bf2d30b367e9aacf9b1e23e
   [SettingKey.CURRENT_ACADEMIC_YEAR]: "Identifiant de l'année en cours",
   [SettingKey.MOYENNE_PASSAGE]: "Note minimale pour passer (ex: 50)",
   [SettingKey.MOYENNE_REPECHAGE]: "Note minimale pour le repêchage (ex: 40)",
@@ -174,6 +202,10 @@ export const SETTING_KEY_GROUPS: Record<SettingKey, SettingsGroup> = {
   [SettingKey.SCHOOL_LOGO_URL]: SettingsGroup.GENERAL,
   [SettingKey.SCHOOL_ENTETE_URL]: SettingsGroup.GENERAL,
   [SettingKey.BACKUP_FREQUENCY]: SettingsGroup.GENERAL,
+<<<<<<< HEAD
+=======
+  [SettingKey.BACKUP_AUTO_ENABLED]: SettingsGroup.GENERAL,
+>>>>>>> 97f45216a4b1f0295bf2d30b367e9aacf9b1e23e
   [SettingKey.CURRENT_ACADEMIC_YEAR]: SettingsGroup.ACADEMIQUE,
   [SettingKey.MOYENNE_PASSAGE]: SettingsGroup.ACADEMIQUE,
   [SettingKey.MOYENNE_REPECHAGE]: SettingsGroup.ACADEMIQUE,

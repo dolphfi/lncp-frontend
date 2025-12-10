@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { Save } from 'lucide-react';
 import { 
   Dialog, 
   DialogContent, 
@@ -9,8 +10,9 @@ import {
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { CreateOnSiteAdmissionDTO } from '../../types/admission';
+import { CreateOnSiteAdmissionDTO, AdmissionDraft } from '../../types/admission';
 import { useAdmissionStore } from '../../stores/admissionStore';
+import { admissionService } from '../../services/admissions/admissionService';
 import { studentsService, Responsable } from '../../services/students/studentsService';
 import { toast } from 'react-toastify';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
@@ -20,11 +22,12 @@ import '../../styles/phone-input.css';
 interface AddAdmissionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  draft?: AdmissionDraft;
 }
 
-export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOpenChange }) => {
-  const { createOnSiteAdmission, loadingAction } = useAdmissionStore();
-  const { register, handleSubmit, control, formState: { errors }, reset, watch, setValue, clearErrors } = useForm<CreateOnSiteAdmissionDTO>();
+export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOpenChange, draft }) => {
+  const { createOnSiteAdmission, createDraft, updateDraft, finalizeDraft, loadingAction } = useAdmissionStore();
+  const { register, handleSubmit, control, formState: { errors, dirtyFields }, reset, watch, setValue, clearErrors, getValues } = useForm<CreateOnSiteAdmissionDTO>();
   
   // États pour la gestion des responsables
   const [responsableMode, setResponsableMode] = useState<'create' | 'select'>('create');
@@ -37,26 +40,137 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
   // Observer pour l'affichage conditionnel
   const handicap = watch('handicap');
 
-  // Charger les responsables au montage si le modal est ouvert
+  // Pré-remplissage si mode brouillon avec chargement complet
   useEffect(() => {
-    if (open && responsableMode === 'select') {
-      const loadResponsables = async () => {
+    const loadDraftData = async () => {
+      if (open && draft?.id) {
         try {
-          const data = await studentsService.getResponsables();
-          setResponsables(data);
-          setFilteredResponsables(data);
-        } catch (error) {
-          console.error('Erreur chargement responsables:', error);
-          toast.error('Impossible de charger la liste des responsables');
-        }
-      };
-      loadResponsables();
-    }
-  }, [open, responsableMode]);
+          // Appel à l'API pour avoir le brouillon complet
+          const fullDraft = await admissionService.getDraftById(draft.id);
+          console.log('DEBUG - Données du brouillon complet reçues:', fullDraft);
+          
+          // Fonction récursive pour aplatir et récupérer les données perdues dans les imbrications
+          const flattenFormData = (data: any): any => {
+            let result = { ...data };
+            
+            // Si on trouve un champ 'formData' imbriqué
+            if (data.formData) {
+              let nestedData = data.formData;
+              if (typeof nestedData === 'string') {
+                try {
+                  nestedData = JSON.parse(nestedData);
+                } catch (e) {
+                  console.error("Erreur parsing nested formData", e);
+                  nestedData = {};
+                }
+              }
+              
+              // Appel récursif pour aller chercher plus loin
+              const deepResult = flattenFormData(nestedData);
+              
+              // Fusion intelligente : on récupère les données profondes si les actuelles sont vides
+              Object.keys(deepResult).forEach(key => {
+                 if (key === 'formData') return;
+                 
+                 const currentVal = result[key];
+                 const deepVal = deepResult[key];
+                 
+                 // Si la valeur actuelle est "falsy" (vide, null, undefined) 
+                 // mais que la valeur profonde existe, on restaure la profonde.
+                 // Attention aux booléens false, mais ici ce sont surtout des strings.
+                 if ((currentVal === undefined || currentVal === null || currentVal === '') && deepVal !== undefined && deepVal !== null && deepVal !== '') {
+                   result[key] = deepVal;
+                 }
+                 // Si la clé n'existe pas du tout dans le niveau actuel, on la prend
+                 if (!(key in result)) {
+                   result[key] = deepVal;
+                 }
+              });
+            }
+            
+            // On supprime le champ formData imbriqué une fois traité
+            delete result.formData;
+            return result;
+          };
 
-  // Réinitialiser les champs du responsable quand on passe en mode 'create'
-  useEffect(() => {
-    if (responsableMode === 'create') {
+          // On traite le formData racine
+          let rootFormData = fullDraft.formData || {};
+          if (typeof rootFormData === 'string') {
+             try { rootFormData = JSON.parse(rootFormData); } catch (e) { rootFormData = {}; }
+          }
+          
+          const flattenedData = flattenFormData(rootFormData);
+          console.log('DEBUG - Données aplaties et récupérées:', flattenedData);
+    
+          let sexeVal = (fullDraft as any).sexe || flattenedData.sexe;
+          // Normalisation pour matcher les options du select
+          if (sexeVal === 'M' || sexeVal === 'Male' || sexeVal === 'Masculin') sexeVal = 'Homme';
+          if (sexeVal === 'F' || sexeVal === 'Female' || sexeVal === 'Féminin') sexeVal = 'Femme';
+    
+          const initialData: any = {
+            ...flattenedData, // On utilise les données nettoyées
+            
+            // Les valeurs racines restent prioritaires si elles existent
+            firstName: fullDraft.firstName || flattenedData.firstName,
+            lastName: fullDraft.lastName || flattenedData.lastName,
+            email: fullDraft.email || flattenedData.email,
+            phone: fullDraft.phone || flattenedData.phone,
+            dateOfBirth: fullDraft.dateOfBirth || flattenedData.dateOfBirth,
+            lieuDeNaissance: fullDraft.lieuDeNaissance || flattenedData.lieuDeNaissance,
+            communeDeNaissance: fullDraft.communeDeNaissance || flattenedData.communeDeNaissance,
+            sexe: sexeVal,
+          };
+          
+          console.log('DEBUG - Données initiales pour reset:', initialData);
+          console.log('DEBUG - Sexe trouvé:', initialData.sexe);
+          
+          // Si le brouillon a un responsableId stocké dans formData
+          if (initialData.responsableId) {
+            console.log('DEBUG - responsableId trouvé, passage en mode SELECT', initialData.responsableId);
+            setResponsableMode('select');
+            setSelectedResponsableId(initialData.responsableId);
+          } else {
+            console.log('DEBUG - Pas de responsableId, passage en mode CREATE');
+            setResponsableMode('create');
+          }
+    
+          reset(initialData);
+          
+          // Forcer la valeur du sexe si elle existe (fix potentiel)
+          if (initialData.sexe) {
+            setValue('sexe', initialData.sexe);
+          }
+          // On force aussi les autres champs principaux par sécurité
+          if (initialData.firstName) setValue('firstName', initialData.firstName);
+          if (initialData.lastName) setValue('lastName', initialData.lastName);
+          if (initialData.email) setValue('email', initialData.email);
+          if (initialData.phone) setValue('phone', initialData.phone);
+          if (initialData.dateOfBirth) setValue('dateOfBirth', typeof initialData.dateOfBirth === 'string' ? initialData.dateOfBirth.split('T')[0] : initialData.dateOfBirth);
+          if (initialData.lieuDeNaissance) setValue('lieuDeNaissance', initialData.lieuDeNaissance);
+          if (initialData.communeDeNaissance) setValue('communeDeNaissance', initialData.communeDeNaissance);
+          
+        } catch (error) {
+          console.error("Erreur lors du chargement du brouillon complet", error);
+          toast.error("Erreur lors du chargement des données du brouillon");
+        }
+  
+      } else if (open && !draft) {
+        reset({
+          firstName: '', lastName: '', email: '', phone: '', 
+          responsableMode: 'create'
+        } as any);
+        setResponsableMode('create');
+        setSelectedResponsableId('');
+      }
+    };
+
+    loadDraftData();
+  }, [open, draft, reset, setValue]);
+
+  // Handler explicite pour le changement de mode (remplace les useEffects dangereux)
+  const handleModeChange = (mode: 'create' | 'select') => {
+    setResponsableMode(mode);
+    if (mode === 'create') {
       setValue('responsableFirstName', '');
       setValue('responsableLastName', '');
       setValue('responsableEmail', '');
@@ -69,7 +183,75 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
       // En mode select, on efface les erreurs potentielles de validation strictes
       clearErrors(['responsableNif', 'responsableNinu']);
     }
-  }, [responsableMode, setValue, clearErrors]);
+  };
+  
+  // Charger les responsables au montage si le modal est ouvert (toujours, pour permettre la récupération auto)
+  useEffect(() => {
+    if (open) {
+      const loadResponsables = async () => {
+        try {
+          const data = await studentsService.getResponsables();
+          setResponsables(data);
+          setFilteredResponsables(data);
+        } catch (error) {
+          console.error('Erreur chargement responsables:', error);
+          toast.error('Impossible de charger la liste des responsables');
+        }
+      };
+      loadResponsables();
+    }
+  }, [open]);
+
+  // Sécurité : Si on a un ID responsable mais pas les détails (ex: rechargement brouillon), on remplit quand la liste arrive
+  // ET NOUVEAU : Si on a les détails mais pas l'ID (brouillon legacy), on essaie de matcher.
+  useEffect(() => {
+    if (open && responsables.length > 0) {
+        const currentValues = getValues();
+        
+        // Cas 1: ID présent, on remplit si vide
+        if (responsableMode === 'select' && selectedResponsableId) {
+           if (!currentValues.responsableLastName) {
+              const responsable = responsables.find(r => r.id === selectedResponsableId);
+              if (responsable) {
+                  setValue('responsableFirstName', responsable.user.firstName);
+                  setValue('responsableLastName', responsable.user.lastName);
+                  setValue('responsableEmail', responsable.user.email);
+                  setValue('responsablePhone', responsable.user.phone || '');
+                  setValue('lienParente', responsable.lienParente);
+                  setValue('responsableNif', formatNif(responsable.nif || ''));
+                  setValue('responsableNinu', responsable.ninu || '');
+              }
+           }
+        }
+        
+        // Cas 2: ID absent, mais Nom/Prénom présents -> on tente de retrouver le responsable existant
+        else if (responsableMode === 'create' && !selectedResponsableId) {
+           const fName = currentValues.responsableFirstName;
+           const lName = currentValues.responsableLastName;
+           
+           if (fName && lName) {
+             const match = responsables.find(r => 
+               r.user.firstName?.toLowerCase() === fName.toLowerCase() && 
+               r.user.lastName?.toLowerCase() === lName.toLowerCase()
+             );
+             if (match) {
+                console.log('DEBUG - Responsable retrouvé par nom/prénom (Recovery):', match.id);
+                setResponsableMode('select');
+                setSelectedResponsableId(match.id);
+                
+                // Remplissage direct pour éviter problèmes de closure
+                setValue('responsableFirstName', match.user.firstName);
+                setValue('responsableLastName', match.user.lastName);
+                setValue('responsableEmail', match.user.email);
+                setValue('responsablePhone', match.user.phone || '');
+                setValue('lienParente', match.lienParente);
+                setValue('responsableNif', formatNif(match.nif || ''));
+                setValue('responsableNinu', match.ninu || '');
+             }
+           }
+        }
+    }
+  }, [responsables, selectedResponsableId, responsableMode, open]);
 
   // Filtrer les responsables
   useEffect(() => {
@@ -110,6 +292,133 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
     if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
     if (digits.length <= 9) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
     return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 9)}-${digits.slice(9, 10)}`;
+  };
+
+  const handleSaveDraft = async () => {
+    setErrorMessage(null);
+    try {
+      const data = getValues();
+      
+      // Validation minimale pour le brouillon
+      if (!data.firstName || !data.lastName || !data.sexe) {
+        toast.error("Pour enregistrer un brouillon, veuillez au moins renseigner le Prénom, le Nom et le Sexe de l'élève.");
+        return;
+      }
+      
+      // On ajoute manuellement responsableId car il n'est pas géré par register (select hors form)
+      // et on veut le sauvegarder pour restaurer la sélection
+      const formData: any = { 
+        ...data,
+        responsableId: responsableMode === 'select' ? selectedResponsableId : undefined
+      };
+
+      if (formData.responsableNif) {
+        formData.responsableNif = formData.responsableNif.replace(/-/g, '');
+      }
+
+      // Traitement des fichiers
+      const fileFields = [
+        'photoInscription', 
+        'acteNaissance', 
+        'bulletinPrecedent', 
+        'certificatMedical', 
+        'justificatifDomicile', 
+        'carteIdentiteParent'
+      ];
+
+      fileFields.forEach(field => {
+        if (formData[field] && formData[field].length > 0) {
+          formData[field] = formData[field][0];
+        } else {
+          delete formData[field];
+        }
+      });
+
+      // NOTE: Pour le brouillon, on NE supprime PAS les infos du responsable même en mode select
+      // On veut sauvegarder tout l'état pour pouvoir le restaurer tel quel.
+      // Le nettoyage anti-doublon ne concerne que la soumission finale (createOnSiteAdmission).
+
+      if (draft?.id) {
+        // Pour une mise à jour, on ne renvoie PAS les champs racines s'ils n'ont pas changé
+        // afin d'éviter les erreurs de validation "Doublon" du backend.
+        const rootFieldsToCheck = [
+           'firstName', 'lastName', 'email', 'phone', 
+           'dateOfBirth', 'lieuDeNaissance', 'communeDeNaissance', 'sexe'
+        ];
+        
+        rootFieldsToCheck.forEach(field => {
+           // dirtyFields indique si un champ a été touché par l'utilisateur
+           if (!dirtyFields[field as keyof CreateOnSiteAdmissionDTO]) {
+              delete formData[field];
+           }
+        });
+
+        await updateDraft(draft.id, formData);
+        toast.success('Brouillon mis à jour avec succès');
+      } else {
+        await createDraft(formData);
+        toast.success('Brouillon enregistré avec succès');
+      }
+      
+      reset();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Erreur sauvegarde brouillon:', error);
+      toast.error("Erreur lors de l'enregistrement du brouillon");
+    }
+  };
+
+  const handleFinalizeDraft = async () => {
+    handleSubmit(async (data) => {
+        setErrorMessage(null);
+        try {
+            if (!draft?.id) return;
+
+            const formData: any = { 
+              ...data,
+              responsableId: responsableMode === 'select' ? selectedResponsableId : undefined,
+              status: 'READY_TO_SUBMIT' // On marque comme prêt
+            };
+            
+            if (formData.responsableNif) {
+              formData.responsableNif = formData.responsableNif.replace(/-/g, '');
+            }
+            
+            // Pour finaliser, on envoie TOUT (pas de nettoyage de champs vides, c'est une soumission)
+            const fileFields = [
+              'photoInscription', 'acteNaissance', 'bulletinPrecedent', 
+              'certificatMedical', 'justificatifDomicile', 'carteIdentiteParent'
+            ];
+            fileFields.forEach(field => {
+              if (formData[field] && formData[field].length > 0) {
+                 formData[field] = formData[field][0];
+              } else {
+                 delete formData[field];
+              }
+            });
+
+            // 1. Mise à jour pour valider et changer le statut
+            await updateDraft(draft.id, formData);
+            
+            // 2. Finalisation
+            await finalizeDraft(draft.id);
+            
+            toast.success('Admission créée avec succès depuis le brouillon');
+            reset();
+            onOpenChange(false);
+            
+        } catch (error: any) {
+            console.error('Erreur finalisation:', error);
+            const msg = error.response?.data?.message || error.message || "Erreur lors de la finalisation";
+            if (Array.isArray(msg)) {
+                setErrorMessage(msg.join('\n'));
+                toast.error("Veuillez compléter tous les champs requis.");
+            } else {
+                setErrorMessage(typeof msg === 'string' ? msg : JSON.stringify(msg));
+                toast.error("Erreur lors de la finalisation");
+            }
+        }
+    })();
   };
 
   const onSubmit = async (data: CreateOnSiteAdmissionDTO) => {
@@ -179,7 +488,7 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
     }}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto w-full">
         <DialogHeader>
-          <DialogTitle>Nouvelle Admission Sur Site</DialogTitle>
+          <DialogTitle>{draft ? 'Modifier Brouillon' : 'Nouvelle Admission Sur Site'}</DialogTitle>
         </DialogHeader>
         
         {errorMessage && (
@@ -414,7 +723,7 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
                 <input 
                   type="radio" 
                   checked={responsableMode === 'create'} 
-                  onChange={() => setResponsableMode('create')}
+                  onChange={() => handleModeChange('create')}
                   className="w-4 h-4 text-blue-600"
                 />
                 <span>Créer un nouveau</span>
@@ -423,7 +732,7 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
                 <input 
                   type="radio" 
                   checked={responsableMode === 'select'} 
-                  onChange={() => setResponsableMode('select')}
+                  onChange={() => handleModeChange('select')}
                   className="w-4 h-4 text-blue-600"
                 />
                 <span>Sélectionner existant</span>
@@ -609,10 +918,34 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
           </div>
 
           <div className="flex justify-end gap-4 pt-6 border-t mt-8 sticky bottom-0 bg-white py-4 z-10">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-            <Button type="submit" disabled={loadingAction === 'create'}>
-              {loadingAction === 'create' ? 'Création en cours...' : 'Enregistrer l\'admission'}
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleSaveDraft} 
+              className="mr-auto border-blue-200 text-blue-700 hover:bg-blue-50"
+              disabled={loadingAction === 'create' || loadingAction === 'update'}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {draft ? 'Enregistrer les modifications' : 'Enregistrer en brouillon'}
             </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            
+            {draft && (
+              <Button 
+                type="button" 
+                onClick={handleFinalizeDraft} 
+                disabled={loadingAction === 'create' || loadingAction === 'update' || loadingAction === 'finalize'}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                Finaliser l'admission
+              </Button>
+            )}
+
+            {!draft && (
+              <Button type="submit" disabled={loadingAction === 'create'}>
+                {loadingAction === 'create' ? 'Création en cours...' : 'Enregistrer l\'admission'}
+              </Button>
+            )}
           </div>
         </form>
       </DialogContent>

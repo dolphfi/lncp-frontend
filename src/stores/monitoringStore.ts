@@ -9,6 +9,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
+import monitoringService from '../services/monitoring/monitoringService';
 import type {
   SystemMetrics,
   ApplicationMetrics,
@@ -23,7 +24,8 @@ import type {
   AlertSeverity,
   AlertStatus,
   AlertCategory,
-  ServiceStatus
+  ServiceStatus,
+  NetworkHealth,
 } from '../types/monitoring';
 
 // =====================================================
@@ -39,14 +41,17 @@ interface MonitoringStore {
   systemEvents: SystemEvent[];
   historicalData: HistoricalData[];
   stats: MonitoringStats | null;
+  networkHealth: NetworkHealth | null;
   config: MonitoringConfig;
-  
+  eventsPage: number;
+  hasMoreEvents: boolean;
+
   // États de l'interface
   loading: boolean;
   error: string | null;
   isRealTimeEnabled: boolean;
   filters: MonitoringFilters;
-  
+
   // Actions de données
   fetchSystemMetrics: () => Promise<void>;
   fetchApplicationMetrics: () => Promise<void>;
@@ -54,28 +59,29 @@ interface MonitoringStore {
   fetchServices: () => Promise<void>;
   fetchPerformanceMetrics: () => Promise<void>;
   fetchSystemEvents: () => Promise<void>;
+  loadMoreEvents: () => Promise<void>;
   fetchHistoricalData: (period: string) => Promise<void>;
   fetchStats: () => Promise<void>;
-  
+
   // Actions d'alertes
   acknowledgeAlert: (alertId: string) => Promise<void>;
   resolveAlert: (alertId: string) => Promise<void>;
   createAlert: (alert: Omit<Alert, 'id' | 'timestamp'>) => Promise<void>;
-  
+
   // Actions de services
   restartService: (serviceId: string) => Promise<void>;
   stopService: (serviceId: string) => Promise<void>;
   startService: (serviceId: string) => Promise<void>;
-  
+
   // Actions de configuration
   updateConfig: (config: Partial<MonitoringConfig>) => Promise<void>;
-  
+
   // Actions d'interface
   setFilters: (filters: Partial<MonitoringFilters>) => void;
   clearFilters: () => void;
   setRealTimeEnabled: (enabled: boolean) => void;
   clearError: () => void;
-  
+
   // Actions utilitaires
   refreshAllData: () => Promise<void>;
   exportData: (type: 'alerts' | 'events' | 'metrics') => Promise<void>;
@@ -243,6 +249,205 @@ const mockStats: MonitoringStats = {
   lastUpdate: new Date().toISOString()
 };
 
+const mapSystemMetricsFromApi = (metrics: any): SystemMetrics => {
+  const cpuUsage = metrics?.system?.cpu?.usagePercent ?? 0;
+  const cores = metrics?.system?.cpu?.cores ?? 1;
+  const temperature = metrics?.system?.cpu?.temperatureC;
+
+  const usedGb = metrics?.system?.memory?.usedGb ?? 0;
+  const totalGb = metrics?.system?.memory?.totalGb ?? 1;
+  const usedMb = usedGb * 1024;
+  const totalMb = totalGb * 1024;
+  const memoryPercent = totalMb > 0 ? (usedMb / totalMb) * 100 : 0;
+
+  const diskUsed = metrics?.system?.disk?.usedGb ?? 0;
+  const diskTotal = metrics?.system?.disk?.totalGb ?? 1;
+  const diskPercent = diskTotal > 0 ? (diskUsed / diskTotal) * 100 : 0;
+
+  const net = metrics?.system?.network ?? {};
+
+  return {
+    id: 'system',
+    timestamp: metrics?.timestamp ?? new Date().toISOString(),
+    cpu: {
+      usage: Number(cpuUsage.toFixed(1)),
+      cores,
+      temperature,
+    },
+    memory: {
+      used: Math.round(usedMb),
+      total: Math.round(totalMb),
+      percentage: Number(memoryPercent.toFixed(1)),
+    },
+    disk: {
+      used: diskUsed,
+      total: diskTotal,
+      percentage: Number(diskPercent.toFixed(1)),
+    },
+    network: {
+      bytesIn: (net.incomingKb ?? 0) * 1024,
+      bytesOut: (net.outgoingKb ?? 0) * 1024,
+      packetsIn: net.incomingPackets ?? 0,
+      packetsOut: net.outgoingPackets ?? 0,
+    },
+  };
+};
+
+const mapNetworkHealthFromApi = (metrics: any): NetworkHealth | null => {
+  const net = metrics?.network;
+  if (!net) return null;
+
+  const checks = Array.isArray(net.checks)
+    ? net.checks.map((c: any) => ({
+      target: c.target,
+      host: c.host,
+      latencyMs: typeof c.latencyMs === 'number' ? c.latencyMs : 0,
+      status: (c.status === 'UP' || c.status === 'DOWN' ? c.status : 'DOWN') as 'UP' | 'DOWN',
+    }))
+    : [];
+
+  return {
+    averageLatencyMs: net.averageLatencyMs ?? 0,
+    availabilityPercent: net.availabilityPercent ?? 0,
+    bandwidthGbps: net.bandwidthGbps ?? 0,
+    checks,
+  };
+};
+
+const mapApplicationMetricsFromApi = (metrics: any): ApplicationMetrics => {
+  const app = metrics?.application ?? {};
+
+  return {
+    id: 'application',
+    timestamp: metrics?.timestamp ?? new Date().toISOString(),
+    activeUsers: app.activeUsers ?? 0,
+    totalSessions: app.totalSessions ?? 0,
+    averageResponseTime: app.averageResponseTimeMs ?? 0,
+    requestsPerMinute: app.requestsPerMinute ?? 0,
+    errorRate: app.errorRatePercent ?? 0,
+    databaseConnections: app.dbConnections ?? 0,
+    cacheHitRate: app.cacheHitRatePercent ?? 0,
+  };
+};
+
+const mapAlertsFromApi = (data: any): Alert[] => {
+  if (!data?.items) return [];
+
+  return data.items.map((a: any) => ({
+    id: a.id,
+    title: a.title,
+    message: a.description,
+    severity: (String(a.severity || '').toLowerCase() || 'low') as AlertSeverity,
+    status: (a.status ?? 'active') as AlertStatus,
+    category: 'system',
+    timestamp: a.createdAt,
+    resolvedAt: a.resolvedAt ?? undefined,
+    acknowledgedBy: undefined,
+    source: a.source,
+    threshold: undefined,
+    currentValue: undefined,
+    metadata: {},
+  }));
+};
+
+const mapServicesFromApi = (data: any): ServiceHealth[] => {
+  if (!data?.items) return [];
+
+  const statusMap: Record<string, ServiceStatus> = {
+    UP: 'running',
+    ERROR: 'error',
+    MAINTENANCE: 'maintenance',
+    DOWN: 'stopped',
+  };
+
+  return data.items.map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    status: statusMap[s.status] ?? 'stopped',
+    uptime: s.uptime?.seconds ?? 0,
+    lastCheck: s.lastCheckAt,
+    responseTime: s.responseTimeMs ?? undefined,
+    version: s.version,
+    endpoint: undefined,
+    dependencies: undefined,
+    metadata: {},
+  }));
+};
+
+const mapEventsFromApi = (data: any): SystemEvent[] => {
+  if (!data?.items) return [];
+
+  const typeMap: Record<string, string> = {
+    INFO: 'info',
+    WARNING: 'warning',
+    ERROR: 'error',
+  };
+
+  return data.items.map((e: any) => ({
+    id: e.id,
+    type: (typeMap[e.type] as any) ?? 'info',
+    title: e.title,
+    description: e.description,
+    timestamp: e.createdAt,
+    source: e.source,
+    userId: undefined,
+    ipAddress: e.metadata?.ip,
+    userAgent: undefined,
+    severity: (String(e.severity || '').toLowerCase() || 'low') as AlertSeverity,
+    metadata: e.metadata ?? {},
+  }));
+};
+
+const buildStatsFromApi = (
+  overview: any,
+  alerts: any,
+  services: any,
+  events: any,
+): MonitoringStats => {
+  const totalAlerts = alerts?.summary?.total ?? 0;
+  const activeAlerts = alerts?.summary?.active ?? 0;
+  const criticalAlerts = alerts?.summary?.critical ?? 0;
+  const systemUptime = overview?.uptime?.seconds ?? 0;
+  const averageResponseTime = overview?.responseTime?.avgMs24h ?? 0;
+  const minResponseTime = overview?.responseTime?.minMs24h ?? averageResponseTime;
+  const maxResponseTime = overview?.responseTime?.maxMs24h ?? averageResponseTime;
+  const serverErrorsToday = overview?.errorsToday?.count ?? 0;
+  const totalEvents = events?.summary?.total ?? 0;
+  const servicesUp = services?.summary?.up ?? 0;
+  const servicesDown = (services?.summary?.error ?? 0) + (services?.summary?.maintenance ?? 0);
+
+  return {
+    totalAlerts,
+    activeAlerts,
+    criticalAlerts,
+    systemUptime,
+    averageResponseTime,
+    minResponseTime,
+    maxResponseTime,
+    serverErrorsToday,
+    totalEvents,
+    servicesUp,
+    servicesDown,
+    lastUpdate: new Date().toISOString(),
+  };
+};
+
+const REALTIME_STORAGE_KEY = 'lncp_monitoring_realtime_enabled';
+
+const getInitialRealTimeEnabled = (): boolean => {
+  if (typeof window === 'undefined') return true;
+
+  try {
+    const stored = window.localStorage.getItem(REALTIME_STORAGE_KEY);
+    if (stored === 'true') return true;
+    if (stored === 'false') return false;
+  } catch {
+    // ignore localStorage errors and fall back to default
+  }
+
+  return true;
+};
+
 const defaultConfig: MonitoringConfig = {
   refreshInterval: 30000, // 30 secondes
   alertThresholds: {
@@ -273,10 +478,13 @@ export const useMonitoringStore = create<MonitoringStore>()(
       systemEvents: [],
       historicalData: [],
       stats: null,
+      networkHealth: null,
       config: defaultConfig,
+      eventsPage: 1,
+      hasMoreEvents: true,
       loading: false,
       error: null,
-      isRealTimeEnabled: true,
+      isRealTimeEnabled: getInitialRealTimeEnabled(),
       filters: {},
 
       // Actions de récupération des données
@@ -287,27 +495,16 @@ export const useMonitoringStore = create<MonitoringStore>()(
         });
 
         try {
-          // Simulation d'appel API
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
+          const metrics = await monitoringService.getMetrics();
+
           set((state) => {
-            state.systemMetrics = {
-              ...mockSystemMetrics,
-              timestamp: new Date().toISOString(),
-              cpu: {
-                ...mockSystemMetrics.cpu,
-                usage: Math.random() * 100
-              },
-              memory: {
-                ...mockSystemMetrics.memory,
-                percentage: Math.random() * 100
-              }
-            };
+            state.systemMetrics = mapSystemMetricsFromApi(metrics);
+            state.networkHealth = mapNetworkHealthFromApi(metrics);
             state.loading = false;
           });
-        } catch (error) {
+        } catch (error: any) {
           set((state) => {
-            state.error = 'Erreur lors de la récupération des métriques système';
+            state.error = error?.message || 'Erreur lors de la récupération des métriques système';
             state.loading = false;
           });
         }
@@ -320,20 +517,15 @@ export const useMonitoringStore = create<MonitoringStore>()(
         });
 
         try {
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
+          const metrics = await monitoringService.getMetrics();
+
           set((state) => {
-            state.applicationMetrics = {
-              ...mockApplicationMetrics,
-              timestamp: new Date().toISOString(),
-              activeUsers: Math.floor(Math.random() * 200) + 50,
-              averageResponseTime: Math.floor(Math.random() * 500) + 100
-            };
+            state.applicationMetrics = mapApplicationMetricsFromApi(metrics);
             state.loading = false;
           });
-        } catch (error) {
+        } catch (error: any) {
           set((state) => {
-            state.error = 'Erreur lors de la récupération des métriques application';
+            state.error = error?.message || 'Erreur lors de la récupération des métriques application';
             state.loading = false;
           });
         }
@@ -346,15 +538,15 @@ export const useMonitoringStore = create<MonitoringStore>()(
         });
 
         try {
-          await new Promise(resolve => setTimeout(resolve, 400));
-          
+          const alerts = await monitoringService.getAlerts();
+
           set((state) => {
-            state.alerts = mockAlerts;
+            state.alerts = mapAlertsFromApi(alerts);
             state.loading = false;
           });
-        } catch (error) {
+        } catch (error: any) {
           set((state) => {
-            state.error = 'Erreur lors de la récupération des alertes';
+            state.error = error?.message || 'Erreur lors de la récupération des alertes';
             state.loading = false;
           });
         }
@@ -367,18 +559,15 @@ export const useMonitoringStore = create<MonitoringStore>()(
         });
 
         try {
-          await new Promise(resolve => setTimeout(resolve, 350));
-          
+          const services = await monitoringService.getServices();
+
           set((state) => {
-            state.services = mockServices.map(service => ({
-              ...service,
-              lastCheck: new Date().toISOString()
-            }));
+            state.services = mapServicesFromApi(services);
             state.loading = false;
           });
-        } catch (error) {
+        } catch (error: any) {
           set((state) => {
-            state.error = 'Erreur lors de la récupération des services';
+            state.error = error?.message || 'Erreur lors de la récupération des services';
             state.loading = false;
           });
         }
@@ -391,6 +580,44 @@ export const useMonitoringStore = create<MonitoringStore>()(
         });
       },
 
+      loadMoreEvents: async () => {
+        const { eventsPage, hasMoreEvents, systemEvents } = get();
+        if (!hasMoreEvents) {
+          return;
+        }
+
+        const nextPage = eventsPage + 1;
+
+        set((state) => {
+          state.loading = true;
+          state.error = null;
+        });
+
+        try {
+          const data = await monitoringService.getEventsHistory(nextPage, 20);
+          const newEvents = mapEventsFromApi(data);
+
+          set((state) => {
+            state.systemEvents = [...systemEvents, ...newEvents];
+            state.eventsPage = nextPage;
+
+            const total = data?.pagination?.total ?? data?.total;
+            if (typeof total === 'number') {
+              state.hasMoreEvents = state.systemEvents.length < total;
+            } else {
+              state.hasMoreEvents = newEvents.length > 0;
+            }
+
+            state.loading = false;
+          });
+        } catch (error: any) {
+          set((state) => {
+            state.error = error?.message || 'Erreur lors du chargement des événements supplémentaires';
+            state.loading = false;
+          });
+        }
+      },
+
       fetchSystemEvents: async () => {
         set((state) => {
           state.loading = true;
@@ -398,15 +625,17 @@ export const useMonitoringStore = create<MonitoringStore>()(
         });
 
         try {
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
+          const events = await monitoringService.getEvents();
+
           set((state) => {
-            state.systemEvents = mockSystemEvents;
+            state.systemEvents = mapEventsFromApi(events);
+            state.eventsPage = 1;
+            state.hasMoreEvents = true;
             state.loading = false;
           });
-        } catch (error) {
+        } catch (error: any) {
           set((state) => {
-            state.error = 'Erreur lors de la récupération des événements';
+            state.error = error?.message || 'Erreur lors de la récupération des événements';
             state.loading = false;
           });
         }
@@ -426,18 +655,22 @@ export const useMonitoringStore = create<MonitoringStore>()(
         });
 
         try {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          
+          const [overview, alerts, services, events] = await Promise.all([
+            monitoringService.getOverview(),
+            monitoringService.getAlerts(),
+            monitoringService.getServices(),
+            monitoringService.getEvents(),
+          ]);
+
+          const stats = buildStatsFromApi(overview, alerts, services, events);
+
           set((state) => {
-            state.stats = {
-              ...mockStats,
-              lastUpdate: new Date().toISOString()
-            };
+            state.stats = stats;
             state.loading = false;
           });
-        } catch (error) {
+        } catch (error: any) {
           set((state) => {
-            state.error = 'Erreur lors de la récupération des statistiques';
+            state.error = error?.message || 'Erreur lors de la récupération des statistiques';
             state.loading = false;
           });
         }
@@ -447,7 +680,7 @@ export const useMonitoringStore = create<MonitoringStore>()(
       acknowledgeAlert: async (alertId: string) => {
         try {
           await new Promise(resolve => setTimeout(resolve, 200));
-          
+
           set((state) => {
             const alert = state.alerts.find(a => a.id === alertId);
             if (alert) {
@@ -465,7 +698,7 @@ export const useMonitoringStore = create<MonitoringStore>()(
       resolveAlert: async (alertId: string) => {
         try {
           await new Promise(resolve => setTimeout(resolve, 200));
-          
+
           set((state) => {
             const alert = state.alerts.find(a => a.id === alertId);
             if (alert) {
@@ -483,7 +716,7 @@ export const useMonitoringStore = create<MonitoringStore>()(
       createAlert: async (alertData: Omit<Alert, 'id' | 'timestamp'>) => {
         try {
           await new Promise(resolve => setTimeout(resolve, 200));
-          
+
           set((state) => {
             const newAlert: Alert = {
               ...alertData,
@@ -503,7 +736,7 @@ export const useMonitoringStore = create<MonitoringStore>()(
       restartService: async (serviceId: string) => {
         try {
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           set((state) => {
             const service = state.services.find(s => s.id === serviceId);
             if (service) {
@@ -522,7 +755,7 @@ export const useMonitoringStore = create<MonitoringStore>()(
       stopService: async (serviceId: string) => {
         try {
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           set((state) => {
             const service = state.services.find(s => s.id === serviceId);
             if (service) {
@@ -541,7 +774,7 @@ export const useMonitoringStore = create<MonitoringStore>()(
       startService: async (serviceId: string) => {
         try {
           await new Promise(resolve => setTimeout(resolve, 800));
-          
+
           set((state) => {
             const service = state.services.find(s => s.id === serviceId);
             if (service) {
@@ -561,7 +794,7 @@ export const useMonitoringStore = create<MonitoringStore>()(
       updateConfig: async (configUpdate: Partial<MonitoringConfig>) => {
         try {
           await new Promise(resolve => setTimeout(resolve, 300));
-          
+
           set((state) => {
             state.config = { ...state.config, ...configUpdate };
           });
@@ -589,6 +822,14 @@ export const useMonitoringStore = create<MonitoringStore>()(
         set((state) => {
           state.isRealTimeEnabled = enabled;
         });
+
+        if (typeof window !== 'undefined') {
+          try {
+            window.localStorage.setItem(REALTIME_STORAGE_KEY, String(enabled));
+          } catch {
+            // ignore localStorage errors
+          }
+        }
       },
 
       clearError: () => {
@@ -599,13 +840,13 @@ export const useMonitoringStore = create<MonitoringStore>()(
 
       // Actions utilitaires
       refreshAllData: async () => {
-        const { 
-          fetchSystemMetrics, 
-          fetchApplicationMetrics, 
-          fetchAlerts, 
-          fetchServices, 
-          fetchSystemEvents, 
-          fetchStats 
+        const {
+          fetchSystemMetrics,
+          fetchApplicationMetrics,
+          fetchAlerts,
+          fetchServices,
+          fetchSystemEvents,
+          fetchStats
         } = get();
 
         await Promise.all([
@@ -621,7 +862,7 @@ export const useMonitoringStore = create<MonitoringStore>()(
       exportData: async (type: 'alerts' | 'events' | 'metrics') => {
         try {
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           // Simulation d'export
           console.log(`Export des données ${type} terminé`);
         } catch (error) {

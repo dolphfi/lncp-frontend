@@ -3,7 +3,7 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import authService, { LoginCredentials, User, ApiError } from '../services/authService';
+import authService, { LoginCredentials, User, ApiError, AuthResponse } from '../services/authService';
 import { toast } from 'react-toastify';
 
 interface AuthState {
@@ -11,7 +11,8 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (credentials: LoginCredentials) => Promise<User | null>;
+  login: (credentials: LoginCredentials) => Promise<AuthResponse | null>;
+  twoFactorLogin: (params: { userId: string; twoFactorCode: string }) => Promise<User | null>;
   logout: () => void;
   clearError: () => void;
   checkAuth: () => void;
@@ -33,14 +34,44 @@ export const useAuthStore = create<AuthState>()(
             password: credentials.password,
           });
 
-          set({ user: res.user, isAuthenticated: true, isLoading: false, error: null });
-          toast.success(`Bienvenue ${res.user.first_name || res.user.email}`);
-          return res.user;
+          if (res?.twoFactorRequired) {
+            set({ isLoading: false, isAuthenticated: false, user: null });
+            return res;
+          }
+
+          if (res?.user) {
+            set({ user: res.user, isAuthenticated: true, isLoading: false, error: null });
+            toast.success(`Bienvenue ${res.user.first_name || res.user.email}`);
+          } else {
+            set({ isLoading: false });
+          }
+
+          return res;
         } catch (err) {
           const apiErr = err as ApiError;
           const msg = apiErr?.message || 'Erreur de connexion';
           set({ isLoading: false, error: msg, isAuthenticated: false, user: null });
           toast.error(msg);
+          throw err;
+        }
+      },
+
+      twoFactorLogin: async ({ userId, twoFactorCode }: { userId: string; twoFactorCode: string }) => {
+        set({ isLoading: true, error: null });
+        try {
+          const res = await authService.twoFactorLogin({ userId, twoFactorCode });
+
+          if (res.user) {
+            set({ user: res.user, isAuthenticated: true, isLoading: false, error: null });
+            return res.user;
+          }
+
+          set({ isLoading: false });
+          return null;
+        } catch (err) {
+          const apiErr = err as ApiError;
+          const msg = apiErr?.message || 'Erreur de connexion 2FA';
+          set({ isLoading: false, error: msg, isAuthenticated: false, user: null });
           throw err;
         }
       },

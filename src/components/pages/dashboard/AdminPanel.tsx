@@ -11,7 +11,7 @@
  * - Paramètres avancés
  */
 
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Users,
     Shield,
@@ -34,11 +34,11 @@ import {
     Archive
 } from 'lucide-react';
 
-import {Button} from '../../ui/button';
-import {Input} from '../../ui/input';
-import {Label} from '../../ui/label';
-import {Card, CardContent, CardHeader, CardTitle} from '../../ui/card';
-import {Badge} from '../../ui/badge';
+import { Button } from '../../ui/button';
+import { Input } from '../../ui/input';
+import { Label } from '../../ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
+import { Badge } from '../../ui/badge';
 import {
     Table,
     TableBody,
@@ -62,16 +62,16 @@ import {
     SelectValue
 } from '../../ui/select';
 // AlertDialog not used; we implement a controlled Dialog for reliability
-import {Tabs, TabsContent, TabsList, TabsTrigger} from '../../ui/tabs';
-import {Switch} from '../../ui/switch';
-import {Textarea} from '../../ui/textarea';
-import {useClassroomStore} from '../../../stores/classroomStore';
-import {useAcademicYearStore} from '../../../stores/academicYearStore';
-import {useSettingStore} from '../../../stores/settingStore';
-import {useUserStore} from '../../../stores/userStore';
-import {useStudentStore} from '../../../stores/studentStore';
-import {useEmployeeStore} from '../../../stores/employeeStore';
-import {toast} from 'react-toastify';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
+import { Switch } from '../../ui/switch';
+import { Textarea } from '../../ui/textarea';
+import { useClassroomStore } from '../../../stores/classroomStore';
+import { useAcademicYearStore } from '../../../stores/academicYearStore';
+import { useSettingStore } from '../../../stores/settingStore';
+import { useUserStore } from '../../../stores/userStore';
+import { useStudentStore } from '../../../stores/studentStore';
+import { useEmployeeStore } from '../../../stores/employeeStore';
+import { toast } from 'react-toastify';
 import type { SettingKey, SettingsGroup } from '../../../types/setting';
 import ArchivesTab from './ArchivesTab';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
@@ -150,9 +150,9 @@ interface SchoolClass {
 
 const AdminPanel: React.FC = () => { // États locaux
     const [activeTab, setActiveTab] = useState('overview');
-    const [users, setUsers] = useState < SystemUser[] > ([]);
-    const [logs, setLogs] = useState < SystemLog[] > ([]);
-    const [config, setConfig] = useState < SystemConfig > ({
+    const [users, setUsers] = useState<SystemUser[]>([]);
+    const [logs, setLogs] = useState<SystemLog[]>([]);
+    const [config, setConfig] = useState<SystemConfig>({
         schoolName: 'Lycée National Charlemagne Péralte',
         schoolAddress: '123 Rue de l\'Éducation, Port-au-Prince, Haïti',
         schoolPhone: '+509 1234-5678',
@@ -167,10 +167,9 @@ const AdminPanel: React.FC = () => { // États locaux
         sessionTimeout: 30,
         maxLoginAttempts: 5
     });
-    const [backups, setBackups] = useState < BackupInfo[] > ([]);
+    const [backups, setBackups] = useState<BackupInfo[]>([]);
     const [showUserDialog, setShowUserDialog] = useState(false);
     const [showConfigDialog, setShowConfigDialog] = useState(false);
-    const [showBackupDialog, setShowBackupDialog] = useState(false);
     // const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
 
     // Store Zustand pour les années académiques
@@ -247,7 +246,7 @@ const AdminPanel: React.FC = () => { // États locaux
         };
 
         const dynamicLogs: SystemLog[] = [];
-        
+
         // Log de connexion utilisateur
         if (userStats && userStats.total > 0) {
             dynamicLogs.push({
@@ -288,8 +287,8 @@ const AdminPanel: React.FC = () => { // États locaux
         dynamicLogs.push({
             id: '4',
             level: maintenanceMode ? 'warning' : 'info',
-            message: maintenanceMode 
-                ? 'Mode maintenance activé - Accès restreint' 
+            message: maintenanceMode
+                ? 'Mode maintenance activé - Accès restreint'
                 : 'Système opérationnel - Accès normal',
             user: 'system',
             timestamp: formatDate(new Date(now.getTime() - 2 * 60000)),
@@ -452,7 +451,7 @@ const AdminPanel: React.FC = () => { // États locaux
         ]);
     };
 
-    const getLogLevelBadge = (level : string) => {
+    const getLogLevelBadge = (level: string) => {
         switch (level) {
             case 'info':
                 return <Badge className="bg-blue-100 text-blue-800">Info</Badge>;
@@ -467,9 +466,9 @@ const AdminPanel: React.FC = () => { // États locaux
         }
     };
 
-    
 
-    const getRoleBadge = (role : string) => {
+
+    const getRoleBadge = (role: string) => {
         switch (role) {
             case 'admin':
                 return <Badge className="bg-red-100 text-red-800">Administrateur</Badge>;
@@ -484,7 +483,7 @@ const AdminPanel: React.FC = () => { // États locaux
         }
     };
 
-    const getStatusBadge = (status : string) => {
+    const getStatusBadge = (status: string) => {
         switch (status) {
             case 'active':
                 return <Badge className="bg-green-100 text-green-800">Actif</Badge>;
@@ -497,7 +496,7 @@ const AdminPanel: React.FC = () => { // États locaux
         }
     };
 
-    const getAcademicYearStatusBadge = (status : string) => {
+    const getAcademicYearStatusBadge = (status: string) => {
         switch (status) {
             case 'active':
                 return <Badge className="bg-green-100 text-green-800">En cours</Badge>;
@@ -512,7 +511,7 @@ const AdminPanel: React.FC = () => { // États locaux
         }
     };
 
-    const getClassStatusBadge = (status : string) => {
+    const getClassStatusBadge = (status: string) => {
         switch (status) {
             case 'active':
                 return <Badge className="bg-green-100 text-green-800">Active</Badge>;
@@ -535,7 +534,7 @@ const AdminPanel: React.FC = () => { // États locaux
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
-                
+
                 <Button onClick={
                     () => {
                         setActiveTab('settings');
@@ -543,7 +542,7 @@ const AdminPanel: React.FC = () => { // États locaux
                     }
                 }
                     className="flex-1 sm:flex-none text-xs sm:text-sm">
-                    <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
+                    <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">Configuration</span>
                     <span className="sm:hidden">Config</span>
                 </Button>
@@ -561,39 +560,34 @@ const AdminPanel: React.FC = () => { // États locaux
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="overview">📋 Vue d'ensemble</SelectItem>
-                        <SelectItem value="users">👥 Utilisateurs</SelectItem>
-                        <SelectItem value="academic-years">📅 Années Académiques</SelectItem>
-                        <SelectItem value="classes">🏫 Classes</SelectItem>
-                        <SelectItem value="archives">📦 Archives</SelectItem>
-                        <SelectItem value="settings">⚙️ Paramètres</SelectItem>
-                        <SelectItem value="logs">📝 Logs système</SelectItem>
-                        <SelectItem value="backup">💾 Sauvegardes</SelectItem>
-                        <SelectItem value="security">🔒 Sécurité</SelectItem>
+                        <SelectItem value="overview"> Vue d'ensemble</SelectItem>
+                        <SelectItem value="users"> Utilisateurs</SelectItem>
+                        <SelectItem value="academic-years"> Années Académiques</SelectItem>
+                        <SelectItem value="classes"> Classes</SelectItem>
+                        <SelectItem value="archives"> Archives</SelectItem>
+                        <SelectItem value="settings"> Paramètres</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
-            
+
             {/* Menu desktop - Tabs */}
-            <TabsList className="hidden lg:grid w-full grid-cols-9 h-auto">
+            <TabsList className="hidden lg:grid w-full grid-cols-6 h-auto">
                 <TabsTrigger value="overview" className="text-xs xl:text-sm py-2">Vue d'ensemble</TabsTrigger>
                 <TabsTrigger value="users" className="text-xs xl:text-sm py-2">Utilisateurs</TabsTrigger>
                 <TabsTrigger value="academic-years" className="text-xs xl:text-sm py-2">Années Acad.</TabsTrigger>
                 <TabsTrigger value="classes" className="text-xs xl:text-sm py-2">Classes</TabsTrigger>
                 <TabsTrigger value="archives" className="text-xs xl:text-sm py-2">Archives</TabsTrigger>
                 <TabsTrigger value="settings" className="text-xs xl:text-sm py-2">Paramètres</TabsTrigger>
-                <TabsTrigger value="logs" className="text-xs xl:text-sm py-2">Logs</TabsTrigger>
-                <TabsTrigger value="backup" className="text-xs xl:text-sm py-2">Sauvegardes</TabsTrigger>
-                <TabsTrigger value="security" className="text-xs xl:text-sm py-2">Sécurité</TabsTrigger>
             </TabsList>
 
             {/* Vue d'ensemble */}
             <TabsContent value="overview" className="space-y-4 sm:space-y-6"> {/* Statistiques système */}
                 <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
+                    {/* Utilisateurs actifs */}
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Utilisateurs Actifs</CardTitle>
-                            <Users className="h-4 w-4 text-muted-foreground"/>
+                            <Users className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{userStats?.active || 0}</div>
@@ -601,45 +595,54 @@ const AdminPanel: React.FC = () => { // États locaux
                         </CardContent>
                     </Card>
 
+                    {/* Année académique courante */}
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Erreurs Aujourd'hui</CardTitle>
-                            <AlertTriangle className="h-4 w-4 text-muted-foreground"/>
+                            <CardTitle className="text-sm font-medium">Année Académique Courante</CardTitle>
+                            <Activity className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-red-600">{
-                                logs.filter(l => l.level === 'error' || l.level === 'critical').length
-                            }</div>
-                            <p className="text-xs text-muted-foreground">Erreurs critiques</p>
+                            {currentAcademicYear ? (
+                                <>
+                                    <div className="text-base font-semibold">
+                                        {currentAcademicYear.label}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Du {new Date(currentAcademicYear.dateDebut).toLocaleDateString()} au {new Date(currentAcademicYear.dateFin).toLocaleDateString()}
+                                    </p>
+                                </>
+                            ) : (
+                                <p className="text-xs text-muted-foreground">
+                                    Aucune année académique active
+                                </p>
+                            )}
                         </CardContent>
                     </Card>
 
+                    {/* Total paramètres */}
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Dernière Sauvegarde</CardTitle>
-                            <Database className="h-4 w-4 text-muted-foreground"/>
+                            <CardTitle className="text-sm font-medium">Total Paramètres</CardTitle>
+                            <Settings className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{
-                                backups.length > 0 ? 'OK' : 'Aucune'
-                            }</div>
-                            <p className="text-xs text-muted-foreground">{
-                                backups.length > 0 ? backups[0].createdAt : 'Sauvegarde requise'
-                            }</p>
+                            <div className="text-2xl font-bold">{allSettings.length}</div>
+                            <p className="text-xs text-muted-foreground">Paramètres chargés</p>
                         </CardContent>
                     </Card>
 
+                    {/* Mode maintenance */}
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Mode Maintenance</CardTitle>
-                            <Settings className="h-4 w-4 text-muted-foreground"/>
+                            <Settings className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-center space-x-2">
-                                <Switch 
+                                <Switch
                                     checked={maintenanceMode}
                                     disabled={maintenanceLoading}
-                                    onCheckedChange={async (checked : boolean) => {
+                                    onCheckedChange={async (checked: boolean) => {
                                         try {
                                             if (checked) {
                                                 await enableMaintenance();
@@ -706,7 +709,7 @@ const AdminPanel: React.FC = () => { // États locaux
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Activity className="h-5 w-5"/>
+                                <Activity className="h-5 w-5" />
                                 Activité Récente
                             </CardTitle>
                         </CardHeader>
@@ -733,87 +736,19 @@ const AdminPanel: React.FC = () => { // États locaux
                 </div>
             </TabsContent>
 
+            {/* Gestion des années académiques */}
+            <TabsContent value="academic-years" className="space-y-6">
+                <AcademicYearTab />
+            </TabsContent>
+
             {/* Gestion des classes (branché sur l'API) */}
             <TabsContent value="classes" className="space-y-6">
-                <ClassroomsTab/>
+                <ClassroomsTab />
             </TabsContent>
 
             {/* Gestion des utilisateurs */}
             <TabsContent value="users" className="space-y-6">
                 <UsersTab />
-            </TabsContent>
-
-            {/* Ancien contenu Users (désactivé) */}
-            <TabsContent value="users-old" className="space-y-4 sm:space-y-6" style={{display: 'none'}}>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <h2 className="text-lg sm:text-xl font-semibold">Gestion des Utilisateurs</h2>
-                    <Button onClick={
-                        () => setShowUserDialog(true)
-                    }
-                        className="w-full sm:w-auto">
-                        <Plus className="h-4 w-4 mr-2"/>
-                        Nouvel Utilisateur
-                    </Button>
-                </div>
-
-                <Card>
-                    <CardContent className="p-0 overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Utilisateur</TableHead>
-                                    <TableHead>Rôle</TableHead>
-                                    <TableHead>Statut</TableHead>
-                                    <TableHead>Dernière Connexion</TableHead>
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody> {
-                                users.map((user) => (<TableRow key={
-                                    user.id
-                                }>
-                                    <TableCell>
-                                        <div>
-                                            <div className="font-medium"> {
-                                                user.username
-                                            }</div>
-                                            <div className="text-sm text-gray-500"> {
-                                                user.email
-                                            }</div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell> {
-                                        getRoleBadge(user.role)
-                                    }</TableCell>
-                                    <TableCell> {
-                                        getStatusBadge(user.status)
-                                    }</TableCell>
-                                    <TableCell> {
-                                        user.lastLogin
-                                    }</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Button variant="outline" size="sm">
-                                                <Eye className="h-4 w-4"/>
-                                            </Button>
-                                            <Button variant="outline" size="sm">
-                                                <Edit className="h-4 w-4"/>
-                                            </Button>
-                                            <Button variant="outline" size="sm">
-                                                <Lock className="h-4 w-4"/>
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>))
-                            } </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-
-            {/* Gestion des années académiques */}
-            <TabsContent value="academic-years" className="space-y-6">
-                <AcademicYearTab />
             </TabsContent>
 
             {/* Gestion des archives */}
@@ -826,280 +761,6 @@ const AdminPanel: React.FC = () => { // États locaux
                 <SettingsTab />
             </TabsContent>
 
-            {/* Logs système */}
-            <TabsContent value="logs" className="space-y-4 sm:space-y-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <h2 className="text-lg sm:text-xl font-semibold">Logs Système</h2>
-                    <div className="flex gap-2 w-full sm:w-auto">
-                        <Select>
-                            <SelectTrigger className="w-32 text-xs sm:text-sm">
-                                <SelectValue placeholder="Niveau"/>
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Tous</SelectItem>
-                                <SelectItem value="info">Info</SelectItem>
-                                <SelectItem value="warning">Avertissement</SelectItem>
-                                <SelectItem value="error">Erreur</SelectItem>
-                                <SelectItem value="critical">Critique</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Button variant="outline" className="flex-1 sm:flex-none text-xs sm:text-sm">
-                            <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
-                            <span className="hidden sm:inline">Exporter</span>
-                            <span className="sm:hidden">Export</span>
-                        </Button>
-                    </div>
-                </div>
-
-                <Card>
-                    <CardContent className="p-0 overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Niveau</TableHead>
-                                    <TableHead>Message</TableHead>
-                                    <TableHead>Module</TableHead>
-                                    <TableHead>Utilisateur</TableHead>
-                                    <TableHead>Date</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody> {
-                                logs.map((log) => (<TableRow key={
-                                    log.id
-                                }>
-                                    <TableCell> {
-                                        getLogLevelBadge(log.level)
-                                    }</TableCell>
-                                    <TableCell className="max-w-md truncate"> {
-                                        log.message
-                                    }</TableCell>
-                                    <TableCell> {
-                                        log.module
-                                    }</TableCell>
-                                    <TableCell> {
-                                        log.user || 'Système'
-                                    }</TableCell>
-                                    <TableCell> {
-                                        log.timestamp
-                                    }</TableCell>
-                                </TableRow>))
-                            } </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-
-            {/* Sauvegardes */}
-            <TabsContent value="backup" className="space-y-4 sm:space-y-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <h2 className="text-lg sm:text-xl font-semibold">Gestion des Sauvegardes</h2>
-                    <div className="flex gap-2 w-full sm:w-auto">
-                        <Button onClick={
-                            () => setShowBackupDialog(true)
-                        }
-                            className="flex-1 sm:flex-none text-xs sm:text-sm">
-                            <Database className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
-                            <span className="hidden sm:inline">Nouvelle Sauvegarde</span>
-                            <span className="sm:hidden">Nouvelle</span>
-                        </Button>
-                        <Button variant="outline" className="flex-1 sm:flex-none text-xs sm:text-sm">
-                            <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"/>
-                            Restaurer
-                        </Button>
-                    </div>
-                </div>
-
-                <Card>
-                    <CardContent className="p-0 overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Fichier</TableHead>
-                                    <TableHead>Taille</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Statut</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody> {
-                                backups.map((backup) => (<TableRow key={
-                                    backup.id
-                                }>
-                                    <TableCell className="font-mono text-sm"> {
-                                        backup.filename
-                                    }</TableCell>
-                                    <TableCell> {
-                                        backup.size
-                                    }</TableCell>
-                                    <TableCell>
-                                        <Badge variant={
-                                            backup.type === 'full' ? 'default' : 'secondary'
-                                        }> {
-                                            backup.type === 'full' ? 'Complète' : 'Incrémentale'
-                                        } </Badge>
-                                    </TableCell>
-                                    <TableCell> {
-                                        backup.status === 'completed' ? (<Badge className="bg-green-100 text-green-800">Terminée</Badge>) : backup.status === 'failed' ? (<Badge className="bg-red-100 text-red-800">Échouée</Badge>) : (<Badge className="bg-yellow-100 text-yellow-800">En cours</Badge>)
-                                    } </TableCell>
-                                    <TableCell> {
-                                        backup.createdAt
-                                    }</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Button variant="outline" size="sm">
-                                                <Download className="h-4 w-4"/>
-                                            </Button>
-                                            <Button variant="outline" size="sm">
-                                                <Eye className="h-4 w-4"/>
-                                            </Button>
-                                            <Button variant="outline" size="sm">
-                                                <Trash2 className="h-4 w-4"/>
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>))
-                            } </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-
-            {/* Sécurité */}
-            <TabsContent value="security" className="space-y-4 sm:space-y-6">
-                <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Shield className="h-5 w-5"/>
-                                Paramètres de Sécurité
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Label className="text-sm font-medium">Mode Maintenance</Label>
-                                    <p className="text-xs text-gray-500">
-                                        {maintenanceMode 
-                                            ? '🔴 Activé - Seuls les SUPER_ADMIN/ADMIN peuvent se connecter' 
-                                            : '🟢 Désactivé - Accès normal'
-                                        }
-                                    </p>
-                                </div>
-                                <Switch 
-                                    checked={maintenanceMode}
-                                    disabled={maintenanceLoading}
-                                    onCheckedChange={async (checked: boolean) => {
-                                        try {
-                                            if (checked) {
-                                                await enableMaintenance();
-                                                toast.success('Mode maintenance activé');
-                                            } else {
-                                                await disableMaintenance();
-                                                toast.success('Mode maintenance désactivé');
-                                            }
-                                        } catch (error: any) {
-                                            toast.error(error.message || 'Erreur lors de la modification');
-                                        }
-                                    }}
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Label className="text-sm font-medium">Notifications Email</Label>
-                                    <p className="text-xs text-gray-500">Alertes de sécurité par email</p>
-                                </div>
-                                <Switch checked={
-                                        config.emailNotifications
-                                    }
-                                    onCheckedChange={
-                                        (checked : boolean) => setConfig({
-                                            ...config,
-                                            emailNotifications: checked
-                                        })
-                                    }/>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Label className="text-sm font-medium">Sauvegarde Automatique</Label>
-                                    <p className="text-xs text-gray-500">Sauvegarde quotidienne</p>
-                                </div>
-                                <Switch checked={
-                                        config.autoBackup
-                                    }
-                                    onCheckedChange={
-                                        (checked : boolean) => setConfig({
-                                            ...config,
-                                            autoBackup: checked
-                                        })
-                                    }/>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Key className="h-5 w-5"/>
-                                Authentification
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <Label className="text-sm font-medium">Timeout de Session (minutes)</Label>
-                                <Input type="number"
-                                    value={
-                                        config.sessionTimeout
-                                    }
-                                    onChange={
-                                        (e) => setConfig({
-                                            ...config,
-                                            sessionTimeout: parseInt(e.target.value)
-                                        })
-                                    }
-                                    className="mt-1"/>
-                            </div>
-                            <div>
-                                <Label className="text-sm font-medium">Tentatives de Connexion Max</Label>
-                                <Input type="number"
-                                    value={
-                                        config.maxLoginAttempts
-                                    }
-                                    onChange={
-                                        (e) => setConfig({
-                                            ...config,
-                                            maxLoginAttempts: parseInt(e.target.value)
-                                        })
-                                    }
-                                    className="mt-1"/>
-                            </div>
-
-                            <div>
-                                <Label className="text-sm font-medium">Fréquence de Sauvegarde</Label>
-                                <Select value={
-                                        config.backupFrequency
-                                    }
-                                    onValueChange={
-                                        (value : 'daily' | 'weekly' | 'monthly') => setConfig({
-                                            ...config,
-                                            backupFrequency: value
-                                        })
-                                }>
-                                    <SelectTrigger>
-                                        <SelectValue/>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="daily">Quotidienne</SelectItem>
-                                        <SelectItem value="weekly">Hebdomadaire</SelectItem>
-                                        <SelectItem value="monthly">Mensuelle</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </TabsContent>
         </Tabs>
 
         {/* Dialogues */}
@@ -1119,77 +780,77 @@ const AdminPanel: React.FC = () => { // États locaux
                         <div>
                             <Label>Nom de l'école</Label>
                             <Input value={
-                                    config.schoolName
-                                }
+                                config.schoolName
+                            }
                                 onChange={
                                     (e) => setConfig({
                                         ...config,
                                         schoolName: e.target.value
                                     })
-                                }/>
+                                } />
                         </div>
                         <div>
                             <Label>Année Académique</Label>
                             <Input value={
-                                    config.academicYear
-                                }
+                                config.academicYear
+                            }
                                 onChange={
                                     (e) => setConfig({
                                         ...config,
                                         academicYear: e.target.value
                                     })
-                                }/>
+                                } />
                         </div>
                     </div>
                     <div>
                         <Label>Adresse</Label>
                         <Input value={
-                                config.schoolAddress
-                            }
+                            config.schoolAddress
+                        }
                             onChange={
                                 (e) => setConfig({
                                     ...config,
                                     schoolAddress: e.target.value
                                 })
-                            }/>
+                            } />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <Label>Téléphone</Label>
                             <Input value={
-                                    config.schoolPhone
-                                }
+                                config.schoolPhone
+                            }
                                 onChange={
                                     (e) => setConfig({
                                         ...config,
                                         schoolPhone: e.target.value
                                     })
-                                }/>
+                                } />
                         </div>
                         <div>
                             <Label>Email</Label>
                             <Input value={
-                                    config.schoolEmail
-                                }
+                                config.schoolEmail
+                            }
                                 onChange={
                                     (e) => setConfig({
                                         ...config,
                                         schoolEmail: e.target.value
                                     })
-                                }/>
+                                } />
                         </div>
                     </div>
                     <div className="flex justify-end gap-2">
                         <Button variant="outline"
                             onClick={
                                 () => setShowConfigDialog(false)
-                        }>
+                            }>
                             Annuler
                         </Button>
                         <Button onClick={
                             () => setShowConfigDialog(false)
                         }>
-                            <Save className="h-4 w-4 mr-2"/>
+                            <Save className="h-4 w-4 mr-2" />
                             Sauvegarder
                         </Button>
                     </div>
@@ -1197,7 +858,7 @@ const AdminPanel: React.FC = () => { // États locaux
             </DialogContent>
         </Dialog>
 
-        
+
 
 
         {/* Section de création de classe fictive retirée: gérée par l'onglet Classes */} </div>);
@@ -1271,7 +932,7 @@ const AcademicYearTab: React.FC = () => {
 
         const debut = new Date(formData.dateDebut);
         const fin = new Date(formData.dateFin);
-        
+
         if (debut >= fin) {
             setSubmitError("La date de fin doit être postérieure à la date de début");
             return;
@@ -1285,7 +946,7 @@ const AcademicYearTab: React.FC = () => {
         // Validation durée max 1 an
         const maxDate = new Date(debut);
         maxDate.setFullYear(maxDate.getFullYear() + 1);
-        
+
         if (fin > maxDate) {
             setSubmitError("La durée de l'année académique ne doit pas dépasser 1 an");
             return;
@@ -1427,7 +1088,7 @@ const AcademicYearTab: React.FC = () => {
                                     {currentAcademicYear.label}
                                 </h3>
                                 <p className="text-green-700 dark:text-green-300">
-                                    Du {new Date(currentAcademicYear.dateDebut).toLocaleDateString()} 
+                                    Du {new Date(currentAcademicYear.dateDebut).toLocaleDateString()}
                                     {' '}au {new Date(currentAcademicYear.dateFin).toLocaleDateString()}
                                 </p>
                             </div>
@@ -1450,8 +1111,8 @@ const AcademicYearTab: React.FC = () => {
                     ) : academicYears.length === 0 ? (
                         <div className="text-center py-8">
                             <p className="text-gray-600 dark:text-gray-400">Aucune année académique trouvée</p>
-                            <Button 
-                                onClick={() => setShowAddDialog(true)} 
+                            <Button
+                                onClick={() => setShowAddDialog(true)}
                                 className="mt-4"
                                 variant="outline"
                             >
@@ -1490,8 +1151,8 @@ const AcademicYearTab: React.FC = () => {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Button 
-                                                    variant="outline" 
+                                                <Button
+                                                    variant="outline"
                                                     size="sm"
                                                     onClick={() => handleView(year)}
                                                     title="Voir les détails"
@@ -1510,9 +1171,9 @@ const AcademicYearTab: React.FC = () => {
                                                     </Button>
                                                     )}
                                                 {currentAcademicYear?.id !== year.id && year.statut === 'Planifiée' && (
-                                                    <Button 
-                                                        variant="outline" 
-                                                        size="sm" 
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
                                                         className="text-green-600"
                                                         onClick={() => handleSetCurrent(year)}
                                                         title="Définir comme courante"
@@ -1563,7 +1224,7 @@ const AcademicYearTab: React.FC = () => {
                             <Input
                                 type="date"
                                 value={formData.dateDebut}
-                                onChange={(e) => setFormData({...formData, dateDebut: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, dateDebut: e.target.value })}
                                 className="h-9"
                             />
                         </div>
@@ -1577,7 +1238,7 @@ const AcademicYearTab: React.FC = () => {
                                 value={formData.dateFin}
                                 min={formData.dateDebut ? `${new Date(formData.dateDebut).getFullYear() + 1}-01-01` : undefined}
                                 max={formData.dateDebut ? new Date(new Date(formData.dateDebut).setFullYear(new Date(formData.dateDebut).getFullYear() + 1)).toISOString().split('T')[0] : undefined}
-                                onChange={(e) => setFormData({...formData, dateFin: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, dateFin: e.target.value })}
                                 className="h-9"
                             />
                         </div>
@@ -1696,7 +1357,7 @@ const AcademicYearTab: React.FC = () => {
                             </Label>
                             <Input
                                 value={editFormData.label}
-                                onChange={(e) => setEditFormData({...editFormData, label: e.target.value})}
+                                onChange={(e) => setEditFormData({ ...editFormData, label: e.target.value })}
                                 placeholder="Ex: 2025-2026"
                                 className="h-9"
                             />
@@ -1709,7 +1370,7 @@ const AcademicYearTab: React.FC = () => {
                             <Input
                                 type="date"
                                 value={editFormData.dateDebut}
-                                onChange={(e) => setEditFormData({...editFormData, dateDebut: e.target.value})}
+                                onChange={(e) => setEditFormData({ ...editFormData, dateDebut: e.target.value })}
                                 className="h-9"
                             />
                         </div>
@@ -1721,16 +1382,16 @@ const AcademicYearTab: React.FC = () => {
                             <Input
                                 type="date"
                                 value={editFormData.dateFin}
-                                onChange={(e) => setEditFormData({...editFormData, dateFin: e.target.value})}
+                                onChange={(e) => setEditFormData({ ...editFormData, dateFin: e.target.value })}
                                 className="h-9"
                             />
                         </div>
 
                         <div>
                             <Label className="text-sm font-medium">Statut</Label>
-                            <Select 
-                                value={editFormData.statut} 
-                                onValueChange={(value) => setEditFormData({...editFormData, statut: value})}
+                            <Select
+                                value={editFormData.statut}
+                                onValueChange={(value) => setEditFormData({ ...editFormData, statut: value })}
                             >
                                 <SelectTrigger className="h-9">
                                     <SelectValue placeholder="Sélectionner un statut" />
@@ -1786,7 +1447,7 @@ const ClassroomsTab: React.FC = () => {
         total
     } = useClassroomStore();
     const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
-    const toggleExpanded = (id : string) => setExpanded(prev => ({
+    const toggleExpanded = (id: string) => setExpanded(prev => ({
         ...prev,
         [id]: !prev[id]
     }));
@@ -1935,8 +1596,8 @@ const ClassroomsTab: React.FC = () => {
             setRoomName('');
             setRoomCapacity('');
             toast.success('Salle ajoutée');
-        } catch (e : any) {
-            toast.error(e ?. message || "Erreur lors de l'ajout de la salle");
+        } catch (e: any) {
+            toast.error(e?.message || "Erreur lors de l'ajout de la salle");
         }
     };
 
@@ -1964,8 +1625,8 @@ const ClassroomsTab: React.FC = () => {
             setDescription('');
             setInitialRooms([]);
             toast.success('Classe créée');
-        } catch (e : any) {
-            toast.error(e ?. message || 'Erreur lors de la création');
+        } catch (e: any) {
+            toast.error(e?.message || 'Erreur lors de la création');
         }
     };
 
@@ -1974,19 +1635,19 @@ const ClassroomsTab: React.FC = () => {
             <h2 className="text-xl font-semibold">Gestion des Classes</h2>
             <div className="flex items-center gap-2">
                 <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <Plus className="h-4 w-4 mr-2"/>
+                    <Plus className="h-4 w-4 mr-2" />
                     Nouveau Classe
                 </Button>
                 <Button onClick={() => setShowAddRoom(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                    <Plus className="h-4 w-4 mr-2"/>
+                    <Plus className="h-4 w-4 mr-2" />
                     Ajouter une salle
                 </Button>
             </div>
         </div>
 
         {
-        error && <div className="text-red-600 text-sm"> {error}</div>
-    }
+            error && <div className="text-red-600 text-sm"> {error}</div>
+        }
 
         <Card>
             <CardContent className="p-0">
@@ -2011,8 +1672,8 @@ const ClassroomsTab: React.FC = () => {
                                                 () => toggleExpanded(c.id)
                                             }
                                             className="px-2"> {
-                                            expanded[c.id] ? '▾' : '▸'
-                                        } </Button>
+                                                expanded[c.id] ? '▾' : '▸'
+                                            } </Button>
                                         <span> {
                                             c.name
                                         }</span>
@@ -2022,80 +1683,79 @@ const ClassroomsTab: React.FC = () => {
                                     c.description || '—'
                                 }</TableCell>
                                 <TableCell> {
-                                    c.rooms ?. length ?? 0
+                                    c.rooms?.length ?? 0
                                 }</TableCell>
                                 <TableCell>
                                     <div className="flex gap-2">
                                         <Button variant="outline" size="sm" title="Éditer la classe" onClick={() => handleOpenEditClass(c)}>
-                                            <Edit className="h-4 w-4"/>
+                                            <Edit className="h-4 w-4" />
                                         </Button>
                                         <Button variant="outline" size="sm" title="Détails" onClick={() => handleOpenDetails(c.id)}>
-                                            <Eye className="h-4 w-4"/>
+                                            <Eye className="h-4 w-4" />
                                         </Button>
                                         {(c.rooms?.length ?? 0) === 0 && (
                                             <Button variant="destructive" size="sm" title="Supprimer la classe" onClick={() => openDeleteClass(c)}>
-                                                <Trash2 className="h-4 w-4"/>
+                                                <Trash2 className="h-4 w-4" />
                                             </Button>
                                         )}
                                     </div>
                                 </TableCell>
                             </TableRow>
                             {
-                            expanded[c.id] && (<TableRow>
-                                <TableCell colSpan={4}
-                                    className="bg-muted/40">
-                                    <div className="py-3">
-                                        <div className="text-sm font-medium mb-2">Salles</div>
-                                        {
-                                        (!c.rooms || c.rooms.length === 0) ? (<div className="text-sm text-muted-foreground">Aucune salle pour ce niveau.</div>) : (<div className="grid gap-2"> {
-                                            c.rooms.map(r => (<div key={
-                                                    r.id
-                                                }
-                                                className="flex items-center justify-between rounded-md border p-2 bg-white">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-medium"> {
-                                                        r.name
-                                                    }</span>
-                                                    <span className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700">Capacité: {
-                                                        r.capacity ?? '—'
-                                                    }</span>
-                                                    {
-                                                    ('status' in (r as any)) && (<span className={
-                                                        `text-xs px-2 py-0.5 rounded ${
-                                                            ((r as any).status === 'Disponible') ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
-                                                        }`
-                                                    }> {
-                                                        (r as any).status
-                                                    } </span>)
-                                                } </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Button variant="outline" size="sm" title="Éditer" onClick={() => handleOpenEditRoom(c.id, r)}>
-                                                        <Edit className="h-4 w-4"/>
-                                                    </Button>
-                                                    <Button
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        title="Supprimer"
-                                                        onClick={() => { setDeleteClassId(c.id); setDeleteRoomId(r.id); setDeleteRoomName(r.name || ''); setShowDeleteRoom(true); }}
-                                                    >
-                                                        <Trash2 className="h-4 w-4"/>
-                                                    </Button>
-                                                </div>
-                                            </div>))
-                                        } </div>)
-                                    } </div>
-                                </TableCell>
-                            </TableRow>)
-                        } </React.Fragment>))
+                                expanded[c.id] && (<TableRow>
+                                    <TableCell colSpan={4}
+                                        className="bg-muted/40">
+                                        <div className="py-3">
+                                            <div className="text-sm font-medium mb-2">Salles</div>
+                                            {
+                                                (!c.rooms || c.rooms.length === 0) ? (<div className="text-sm text-muted-foreground">Aucune salle pour ce niveau.</div>) : (<div className="grid gap-2"> {
+                                                    c.rooms.map(r => (<div key={
+                                                        r.id
+                                                    }
+                                                        className="flex items-center justify-between rounded-md border p-2 bg-white">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="font-medium"> {
+                                                                r.name
+                                                            }</span>
+                                                            <span className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700">Capacité: {
+                                                                r.capacity ?? '—'
+                                                            }</span>
+                                                            {
+                                                                ('status' in (r as any)) && (<span className={
+                                                                    `text-xs px-2 py-0.5 rounded ${((r as any).status === 'Disponible') ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
+                                                                    }`
+                                                                }> {
+                                                                        (r as any).status
+                                                                    } </span>)
+                                                            } </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <Button variant="outline" size="sm" title="Éditer" onClick={() => handleOpenEditRoom(c.id, r)}>
+                                                                <Edit className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                title="Supprimer"
+                                                                onClick={() => { setDeleteClassId(c.id); setDeleteRoomId(r.id); setDeleteRoomName(r.name || ''); setShowDeleteRoom(true); }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>))
+                                                } </div>)
+                                            } </div>
+                                    </TableCell>
+                                </TableRow>)
+                            } </React.Fragment>))
                     }
                         {
-                        items.length === 0 && (<TableRow>
-                            <TableCell colSpan={4}
-                                className="text-center text-sm text-muted-foreground py-6">
-                                Aucune classe pour le moment
-                            </TableCell>
-                        </TableRow>)
-                    } </TableBody>
+                            items.length === 0 && (<TableRow>
+                                <TableCell colSpan={4}
+                                    className="text-center text-sm text-muted-foreground py-6">
+                                    Aucune classe pour le moment
+                                </TableCell>
+                            </TableRow>)
+                        } </TableBody>
                 </Table>
             </CardContent>
         </Card>
@@ -2105,24 +1765,24 @@ const ClassroomsTab: React.FC = () => {
                 total > 0 ? (<span> {
                     Math.min((page - 1) * limit + 1, total)
                 }–{
-                    Math.min(page * limit, total)
-                }
+                        Math.min(page * limit, total)
+                    }
                     sur {total} </span>) : (<span>Aucune donnée</span>)
             } </div>
             <div className="flex items-center gap-2">
                 <Label className="text-sm">Par page</Label>
                 <Select value={
-                        String(limit)
-                    }
+                    String(limit)
+                }
                     onValueChange={
                         (v) => fetchAll(1, Number(v))
-                }>
-                    <SelectTrigger className="w-[88px]"><SelectValue/></SelectTrigger>
+                    }>
+                    <SelectTrigger className="w-[88px]"><SelectValue /></SelectTrigger>
                     <SelectContent> {
                         [5, 10, 20, 50].map(sz => <SelectItem key={sz}
                             value={
                                 String(sz)
-                        }> {sz}</SelectItem>)
+                            }> {sz}</SelectItem>)
                     } </SelectContent>
                 </Select>
                 <div className="flex items-center gap-1">
@@ -2132,14 +1792,14 @@ const ClassroomsTab: React.FC = () => {
                         }
                         onClick={
                             () => fetchAll(page - 1, limit)
-                    }>Précédent</Button>
+                        }>Précédent</Button>
                     <Button variant="outline" size="sm"
                         disabled={
                             page * limit >= total || loading
                         }
                         onClick={
                             () => fetchAll(page + 1, limit)
-                    }>Suivant</Button>
+                        }>Suivant</Button>
                 </div>
             </div>
         </div>
@@ -2157,7 +1817,7 @@ const ClassroomsTab: React.FC = () => {
                             value={name}
                             onChange={
                                 e => setName(e.target.value)
-                            }/>
+                            } />
                     </div>
                     <div>
                         <Label>Description (optionnel)</Label>
@@ -2165,7 +1825,7 @@ const ClassroomsTab: React.FC = () => {
                             value={description}
                             onChange={
                                 e => setDescription(e.target.value)
-                            }/>
+                            } />
                     </div>
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -2200,7 +1860,7 @@ const ClassroomsTab: React.FC = () => {
                                     ]));
                                 }}
                             >
-                                <Plus className="w-4 h-4 mr-1"/>Ajouter une salle
+                                <Plus className="w-4 h-4 mr-1" />Ajouter une salle
                             </Button>
                         </div>
                         {showInitialRooms && (
@@ -2249,7 +1909,7 @@ const ClassroomsTab: React.FC = () => {
                         <Button variant="outline"
                             onClick={
                                 () => setShowCreate(false)
-                        }>Annuler</Button>
+                            }>Annuler</Button>
                         <Button onClick={
                             async () => {
                                 await handleCreate();
@@ -2273,17 +1933,17 @@ const ClassroomsTab: React.FC = () => {
                         <Select value={selectedClassId}
                             onValueChange={setSelectedClassId}>
                             <SelectTrigger>
-                                <SelectValue placeholder="Sélectionnez un niveau"/>
+                                <SelectValue placeholder="Sélectionnez un niveau" />
                             </SelectTrigger>
                             <SelectContent> {
                                 items.map(c => (<SelectItem key={
-                                        c.id
-                                    }
+                                    c.id
+                                }
                                     value={
                                         c.id
-                                }> {
-                                    c.name
-                                }</SelectItem>))
+                                    }> {
+                                        c.name
+                                    }</SelectItem>))
                             } </SelectContent>
                         </Select>
                     </div>
@@ -2293,7 +1953,7 @@ const ClassroomsTab: React.FC = () => {
                             value={roomName}
                             onChange={
                                 e => setRoomName(e.target.value)
-                            }/>
+                            } />
                     </div>
                     <div>
                         <Label>Capacité</Label>
@@ -2303,13 +1963,13 @@ const ClassroomsTab: React.FC = () => {
                             value={roomCapacity}
                             onChange={
                                 e => setRoomCapacity(e.target.value === '' ? '' : Number(e.target.value))
-                            }/>
+                            } />
                     </div>
                     <div className="flex justify-end gap-2">
                         <Button variant="outline"
                             onClick={
                                 () => setShowAddRoom(false)
-                        }>Annuler</Button>
+                            }>Annuler</Button>
                         <Button onClick={
                             async () => {
                                 await handleAddRoom();
@@ -2331,11 +1991,11 @@ const ClassroomsTab: React.FC = () => {
                 <div className="space-y-4">
                     <div>
                         <Label>Nom de la salle</Label>
-                        <Input value={editRoomName} onChange={(e)=> setEditRoomName(e.target.value)} />
+                        <Input value={editRoomName} onChange={(e) => setEditRoomName(e.target.value)} />
                     </div>
                     <div>
                         <Label>Capacité</Label>
-                        <Input type="number" min={0} value={editRoomCapacity} onChange={(e)=> setEditRoomCapacity(e.target.value === '' ? '' : Number(e.target.value))} />
+                        <Input type="number" min={0} value={editRoomCapacity} onChange={(e) => setEditRoomCapacity(e.target.value === '' ? '' : Number(e.target.value))} />
                     </div>
                     <div>
                         <Label>Statut</Label>
@@ -2350,7 +2010,7 @@ const ClassroomsTab: React.FC = () => {
                         </Select>
                     </div>
                     <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={()=> setShowEditRoom(false)}>Annuler</Button>
+                        <Button variant="outline" onClick={() => setShowEditRoom(false)}>Annuler</Button>
                         <Button onClick={handleUpdateRoom}>Mettre à jour</Button>
                     </div>
                 </div>
@@ -2396,14 +2056,14 @@ const ClassroomsTab: React.FC = () => {
                 <div className="space-y-4">
                     <div>
                         <Label>Nom</Label>
-                        <Input value={editClassName} onChange={(e)=> setEditClassName(e.target.value)} />
+                        <Input value={editClassName} onChange={(e) => setEditClassName(e.target.value)} />
                     </div>
                     <div>
                         <Label>Description</Label>
-                        <Input value={editClassDescription} onChange={(e)=> setEditClassDescription(e.target.value)} />
+                        <Input value={editClassDescription} onChange={(e) => setEditClassDescription(e.target.value)} />
                     </div>
                     <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={()=> setShowEditClass(false)}>Annuler</Button>
+                        <Button variant="outline" onClick={() => setShowEditClass(false)}>Annuler</Button>
                         <Button onClick={handleUpdateClass}>Mettre à jour</Button>
                     </div>
                 </div>
@@ -2462,7 +2122,7 @@ const ClassroomsTab: React.FC = () => {
                         </div>
 
                         <div className="flex justify-end">
-                            <Button onClick={()=> setShowClassDetails(false)}>Fermer</Button>
+                            <Button onClick={() => setShowClassDetails(false)}>Fermer</Button>
                         </div>
                     </div>
                 ) : (
@@ -2481,7 +2141,7 @@ const ClassroomsTab: React.FC = () => {
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={()=> setShowDeleteClass(false)}>Annuler</Button>
+                    <Button variant="outline" onClick={() => setShowDeleteClass(false)}>Annuler</Button>
                     <Button variant="destructive" onClick={handleDeleteClass}>Supprimer</Button>
                 </div>
             </DialogContent>
@@ -2585,7 +2245,7 @@ const SettingsTab: React.FC = () => {
     const handleKeyChange = (key: string) => {
         // Réinitialiser le fichier uploadé
         setUploadFile(null);
-        
+
         if (key === '_CUSTOM_') {
             // Mode personnalisé : réinitialiser le formulaire
             setSelectedKey('');
@@ -2653,7 +2313,7 @@ const SettingsTab: React.FC = () => {
                 // Paramètre normal
                 await createSetting(formData);
             }
-            
+
             setShowAddDialog(false);
             setFormData({ key: '', value: '', label: '', description: '', group: 'GENERAL' });
             setSelectedKey('');
@@ -2771,8 +2431,8 @@ const SettingsTab: React.FC = () => {
                         <div>
                             <p className="text-sm font-medium text-blue-900 dark:text-blue-200">Statut actuel</p>
                             <p className="text-sm text-blue-700 dark:text-blue-300">
-                                {allSettings.find(s => s.key === 'ADMISSION_PERIODE')?.value === 'YES' 
-                                    ? '🟢 Ouverte - Les inscriptions sont acceptées' 
+                                {allSettings.find(s => s.key === 'ADMISSION_PERIODE')?.value === 'YES'
+                                    ? '🟢 Ouverte - Les inscriptions sont acceptées'
                                     : '🔴 Fermée - Aucune inscription possible'}
                             </p>
                         </div>
@@ -2786,7 +2446,7 @@ const SettingsTab: React.FC = () => {
                                     const setting = allSettings.find(s => s.key === 'ADMISSION_PERIODE');
                                     try {
                                         if (setting) {
-                                            await updateSettingByKey('ADMISSION_PERIODE', { 
+                                            await updateSettingByKey('ADMISSION_PERIODE', {
                                                 value: checked ? 'YES' : 'NO',
                                                 label: "Période d'admission",
                                                 description: "Contrôle l'ouverture des admissions",
@@ -3082,11 +2742,11 @@ const SettingsTab: React.FC = () => {
                             }}>
                                 Annuler
                             </Button>
-                            <Button 
+                            <Button
                                 onClick={handleCreateSetting}
                                 disabled={
-                                    !formData.key || 
-                                    !formData.label || 
+                                    !formData.key ||
+                                    !formData.label ||
                                     ((formData.key === 'SCHOOL_LOGO_URL' || formData.key === 'SCHOOL_ENTETE_URL') ? !uploadFile : !formData.value)
                                 }
                             >
@@ -3257,7 +2917,7 @@ const UsersTab: React.FC = () => {
                 confirmPassword: formData.confirmPassword,
                 role: formData.role,
             };
-            
+
             // Ajouter les champs optionnels seulement s'ils sont remplis
             if (formData.phone && formData.phone.trim() !== '') {
                 dataToSend.phone = formData.phone;
@@ -3268,7 +2928,7 @@ const UsersTab: React.FC = () => {
             if (formData.bio && formData.bio.trim() !== '') {
                 dataToSend.bio = formData.bio;
             }
-            
+
             await createUser(dataToSend);
             setShowAddDialog(false);
             setFormData({

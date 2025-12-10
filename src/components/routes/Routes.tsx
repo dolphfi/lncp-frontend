@@ -35,6 +35,7 @@ import { TestManagement } from 'components/pages/dashboard/TestManagement';
 import { Re_registrationManagement } from '../pages/dashboard/Re_registrationManagement';
 import { Monitoring } from '../pages/dashboard/Monitoring';
 import TeacherCoursesView from '../pages/teacher/TeacherCoursesView';
+import OnlineAdmissionPage from '../pages/sites/OnlineAdmissionPage';
 
 function AppRoutes() {
     return (<Routes> {/* Routes avec Navbar et Footer */}
@@ -43,6 +44,8 @@ function AppRoutes() {
                 element={<MainLayout />} />
             <Route index
                 element={<MainLayout />} />
+            <Route path="/admission/apply"
+                element={<OnlineAdmissionPage />} />
         </Route>
 
         {/* Routes Public sans Navbar et Footer */}

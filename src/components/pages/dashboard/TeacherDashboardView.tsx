@@ -6,12 +6,12 @@
  */
 
 import React, { useEffect } from 'react';
-import { 
-  BookOpen, 
-  Calendar, 
-  Clock, 
-  FileText, 
-  CheckCircle, 
+import {
+  BookOpen,
+  Calendar,
+  Clock,
+  FileText,
+  CheckCircle,
   AlertCircle,
   GraduationCap,
   MapPin,
@@ -28,11 +28,11 @@ import { useNavigate } from 'react-router-dom';
  */
 export const TeacherDashboardView: React.FC = () => {
   const navigate = useNavigate();
-  const { 
-    fetchDashboard, 
-    getTeacherDashboard, 
-    loading, 
-    error 
+  const {
+    fetchDashboard,
+    getTeacherDashboard,
+    loading,
+    error
   } = useDashboardStore();
 
   const teacherData = getTeacherDashboard();
@@ -67,7 +67,7 @@ export const TeacherDashboardView: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="text-center">
-          <AlertCircle className="w-16 w-16 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="w-16 text-red-500 mx-auto mb-4" />
           <p className="text-gray-600 text-lg">Aucune donnée disponible</p>
           <p className="text-gray-400 text-sm mt-2">
             {error || "Impossible de charger vos informations"}
@@ -239,7 +239,7 @@ export const TeacherDashboardView: React.FC = () => {
                 {Object.entries(scheduleByDay).slice(0, 5).map(([key, schedules]) => {
                   const [day, period] = key.split('-');
                   const totalSlots = schedules.reduce((sum, s) => sum + s.timeSlots.length, 0);
-                  
+
                   return (
                     <div
                       key={key}
