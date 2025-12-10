@@ -74,13 +74,14 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
       adresse: '', vacation: 'AM', niveauEnseignement: 'Secondaire', grade: 'NSI',
       nomMere: '', prenomMere: '', statutMere: 'vivant', occupationMere: '',
       nomPere: '', prenomPere: '', statutPere: 'vivant', occupationPere: '',
-      responsableMode: 'create', personneResponsableId: '', responsable: { firstName: '', lastName: '', lienParente: '' },
+      responsableMode: 'create', personneResponsableId: '', responsable: { firstName: '', lastName: '', lienParente: '', email: '' },
       selectedClassroomId: '', roomId: 'none'
     }
   });
 
   const selectedClassroomId = watch('selectedClassroomId');
   const responsableMode = watch('responsableMode');
+  const hasHandicap = watch('hasHandicap');
 
   // Mapping entre les niveaux de classe et les niveaux d'étude
   const getGradeFromClassLevel = (className?: string): string => {
@@ -513,7 +514,7 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
                   </div>
                 </FormField>
                 <FormField label="Détails du handicap">
-                  <Input {...register('handicapDetails' as any)} placeholder="Précisions si applicable" className="h-9" />
+                  <Input {...register('handicapDetails' as any)} placeholder="Précisions si applicable" className="h-9" disabled={!hasHandicap} />
                 </FormField>
 
                 <FormField label="Adresse complète" required error={(errors as any).adresse?.message}>
@@ -684,10 +685,10 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-4">
-                  <FormField label="Prénom" required><Input {...register('responsable.firstName' as any)} className="h-9" /></FormField>
-                  <FormField label="Nom" required><Input {...register('responsable.lastName' as any)} className="h-9" /></FormField>
+                  <FormField label="Prénom" required><Input {...register('responsable.firstName')} className="h-9" /></FormField>
+                  <FormField label="Nom" required><Input {...register('responsable.lastName')} className="h-9" /></FormField>
                   <FormField label="Lien de parenté" required>
-                    <Controller name={'responsable.lienParente' as any} control={control as any} render={({field}) => (
+                    <Controller name={'responsable.lienParente'} control={control} render={({field}) => (
                       <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger className="h-9"><SelectValue placeholder="Lien" /></SelectTrigger>
                         <SelectContent>
@@ -703,15 +704,16 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
                   </FormField>
                   <div className="grid grid-cols-2 gap-4">
                     <FormField label="Email">
-                      <Input type="email" {...register('responsable.email' as any)} placeholder="email@exemple.com" className="h-9" />
+                      <Input type="email" {...register('responsable.email')} placeholder="email@exemple.com" className="h-9" />
                     </FormField>
                     <FormField label="Téléphone">
                       <Controller
-                        name={'responsable.phone' as any}
+                        name={'responsable.phone'}
                         control={control}
                         render={({ field }) => (
                           <PhoneInput
                             international
+                            limitMaxLength={true}
                             defaultCountry="HT"
                             value={field.value}
                             onChange={field.onChange}

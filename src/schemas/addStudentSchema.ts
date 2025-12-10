@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 
 // Schéma spécifique pour le nouveau modal AddStudentModal
 // Aligné 1:1 avec les champs de l'endpoint POST /students/add-student
@@ -50,8 +51,14 @@ export const addStudentSchema = z.object({
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     lienParente: z.string().optional(),
-    // Validation simplifiée pour PhoneInput qui renvoie une string (ex: +509...)
-    phone: z.string().optional().or(z.literal("")), 
+    email: z.string().email("Email invalide").optional().or(z.literal("")),
+    // Validation pour PhoneInput : doit être un numéro valide si renseigné
+    phone: z.string()
+      .optional()
+      .or(z.literal(""))
+      .refine((val) => !val || isValidPhoneNumber(val), {
+        message: "Numéro de téléphone invalide",
+      }), 
     // NIF format: xxx-xxx-xxx-x (13 caractères)
     nif: z.string().regex(/^\d{3}-\d{3}-\d{3}-\d{1}$/, "Le NIF doit respecter le format xxx-xxx-xxx-x").optional().or(z.literal("")),
     // NINU format: 10 chiffres

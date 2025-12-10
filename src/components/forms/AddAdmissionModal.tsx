@@ -13,7 +13,7 @@ import { CreateOnSiteAdmissionDTO } from '../../types/admission';
 import { useAdmissionStore } from '../../stores/admissionStore';
 import { studentsService, Responsable } from '../../services/students/studentsService';
 import { toast } from 'react-toastify';
-import PhoneInput from 'react-phone-number-input';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import '../../styles/phone-input.css';
 
@@ -299,9 +299,14 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
                 <Controller
                   name="phone"
                   control={control}
+                  rules={{
+                    validate: (value) => !value || isValidPhoneNumber(value) || "Numéro de téléphone invalide"
+                  }}
                   render={({ field }) => (
                     <PhoneInput
                       {...field}
+                      international
+                      limitMaxLength={true}
                       defaultCountry="HT"
                       placeholder="Entrez le numéro..."
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -309,6 +314,7 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
                     />
                   )}
                 />
+                {errors.phone && <span className="text-red-500 text-xs">{errors.phone.message}</span>}
               </div>
 
               <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -489,9 +495,14 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
                 <Controller
                   name="responsablePhone"
                   control={control}
+                  rules={{
+                    validate: (value) => !value || isValidPhoneNumber(value) || "Numéro de téléphone invalide"
+                  }}
                   render={({ field }) => (
                     <PhoneInput
                       {...field}
+                      international
+                      limitMaxLength={true}
                       defaultCountry="HT"
                       placeholder="Entrez le numéro..."
                       disabled={responsableMode === 'select'}
@@ -500,6 +511,7 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
                     />
                   )}
                 />
+                {errors.responsablePhone && <span className="text-red-500 text-xs">{errors.responsablePhone.message}</span>}
               </div>
               <div>
                 <Label>NIF</Label>

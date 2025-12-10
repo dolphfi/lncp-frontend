@@ -74,7 +74,7 @@ import {useEmployeeStore} from '../../../stores/employeeStore';
 import {toast} from 'react-toastify';
 import type { SettingKey, SettingsGroup } from '../../../types/setting';
 import ArchivesTab from './ArchivesTab';
-import PhoneInput from 'react-phone-number-input';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import '../../../styles/phone-input.css';
 
@@ -2517,6 +2517,30 @@ const SettingsTab: React.FC = () => {
     const [selectedKey, setSelectedKey] = useState<string>('');
     const [uploadFile, setUploadFile] = useState<File | null>(null);
 
+    const PREDEFINED_OPTIONS = [
+        { value: "SCHOOL_NAME", label: "🏫 Nom de l'école" },
+        { value: "SCHOOL_ACRONYM", label: "🔤 Acronyme" },
+        { value: "SCHOOL_ADDRESS", label: "📍 Adresse" },
+        { value: "SCHOOL_PHONE", label: "📞 Téléphone" },
+        { value: "SCHOOL_EMAIL", label: "✉️ Email" },
+        { value: "SCHOOL_LOGO_URL", label: "🖼️ Logo URL" },
+        { value: "SCHOOL_ENTETE_URL", label: "📄 En-tête URL" },
+        { value: "CURRENT_ACADEMIC_YEAR", label: "📅 Année académique" },
+        { value: "ADMISSION_PERIODE", label: "📅 Période d'admission" },
+        { value: "TEST_PERIODE", label: "📅 Période de test d'admission" },
+        { value: "VALIDATION_PERIODE", label: "📅 Période validation des inscriptions" },
+        { value: "MOYENNE_PASSAGE", label: "📊 Moyenne de passage" },
+        { value: "MOYENNE_REPECHAGE", label: "📈 Moyenne repêchage" },
+        { value: "MOYENNE_PASSAGE_CONCOURS", label: "📊 Moyenne passage concours" },
+        { value: "MOYENNE_REPECHAGE_CONCOURS", label: "📈 Moyenne repêchage concours" },
+        { value: "INSTITUTION_FEE", label: "💰 Frais de scolarite" },
+        { value: "ADMISSION_FEE", label: "💰 Frais d'inscription" },
+        { value: "PAYPAL_HTG_TO_USD_RATE", label: "💱 Taux HTG/USD" },
+        { value: "DEFAULT_EMAIL_SENDER", label: "📧 Email expéditeur" },
+        { value: "SMS_GATEWAY_API_KEY", label: "📱 Clé API SMS" },
+        { value: "BACKUP_FREQUENCY", label: "💾 Fréquence de sauvegarde" },
+    ];
+   
     // Form states
     const [formData, setFormData] = useState({
         key: '',
@@ -2547,6 +2571,16 @@ const SettingsTab: React.FC = () => {
         });
     }, [searchQuery, selectedGroup, setFilters]);
 
+    // Mapping local pour forcer les groupes de certains paramètres
+    const LOCAL_GROUP_MAPPING: Record<string, string> = {
+        TEST_PERIODE: 'ACADEMIQUE',
+        VALIDATION_PERIODE: 'ACADEMIQUE',
+        ADMISSION_PERIODE: 'ACADEMIQUE',
+        ADMISSION_FEE: 'FINANCIER',
+        INSTITUTION_FEE: 'FINANCIER',
+        PAYPAL_HTG_TO_USD_RATE: 'FINANCIER'
+    };
+
     // Gérer la sélection d'une clé prédéfinie
     const handleKeyChange = (key: string) => {
         // Réinitialiser le fichier uploadé
@@ -2556,25 +2590,41 @@ const SettingsTab: React.FC = () => {
             // Mode personnalisé : réinitialiser le formulaire
             setSelectedKey('');
             setFormData({ key: '', value: '', label: '', description: '', group: 'GENERAL' });
-        } else if (key === 'ADMISSION_PERIODE') {
-            setSelectedKey(key);
-            setFormData({
-                key,
-                value: 'YES',
-                label: "Periode d'admission",
-                description: "La periode d'admission",
-                group: 'ACADEMIQUE' as any,
-            });
         } else {
             // Clé prédéfinie : remplir automatiquement
             setSelectedKey(key);
             const { SETTING_KEY_LABELS, SETTING_KEY_DESCRIPTIONS, SETTING_KEY_GROUPS } = require('../../../types/setting');
+            
+            // Déterminer le groupe : Mapping local > Mapping importé > GENERAL
+            const group = LOCAL_GROUP_MAPPING[key] || SETTING_KEY_GROUPS[key] || 'GENERAL';
+            
+            // Trouver le label correspondant dans les options prédéfinies
+            const predefinedOpt = PREDEFINED_OPTIONS.find(opt => opt.value === key);
+            // Utiliser le label importé ou celui de la liste locale (en enlevant l'emoji si besoin pour stocker proprement, ou garder tel quel)
+            // Ici on garde le label tel quel pour l'affichage ou on le nettoie.
+            // Le label importé est prioritaire s'il existe.
+            const label = SETTING_KEY_LABELS[key] || (predefinedOpt ? predefinedOpt.label.replace(/^[^\s]+\s/, '') : '');
+
+            // Déterminer la valeur par défaut
+            let defaultValue = '';
+            if (['ADMISSION_PERIODE', 'TEST_PERIODE', 'VALIDATION_PERIODE'].includes(key)) {
+                defaultValue = 'NO';
+            } else if (key === 'DEFAULT_EMAIL_SENDER') {
+                defaultValue = 'no-reply@lnch.edu.ht';
+            } else if (key === 'ADMISSION_PERIODE') {
+                 defaultValue = 'YES';
+            } else if (key === 'BACKUP_FREQUENCY') {
+                 defaultValue = 'DAILY';
+            } else if (['MOYENNE_PASSAGE_CONCOURS', 'MOYENNE_REPECHAGE_CONCOURS'].includes(key)) {
+                defaultValue = 'DECROISSANT';
+            }
+
             setFormData({
                 key,
-                value: '',
-                label: SETTING_KEY_LABELS[key] || '',
+                value: defaultValue,
+                label: label,
                 description: SETTING_KEY_DESCRIPTIONS[key] || '',
-                group: SETTING_KEY_GROUPS[key] || 'GENERAL',
+                group: group as any,
             });
         }
     };
@@ -2582,6 +2632,18 @@ const SettingsTab: React.FC = () => {
     // Créer un paramètre
     const handleCreateSetting = async () => {
         try {
+            // Validation Email
+            if ((formData.key === 'SCHOOL_EMAIL' || formData.key === 'DEFAULT_EMAIL_SENDER') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.value)) {
+                toast.error('Format email invalide');
+                return;
+            }
+
+            // Validation Phone
+            if (formData.key === 'SCHOOL_PHONE' && (!formData.value || !isValidPhoneNumber(formData.value))) {
+                toast.error('Numéro de téléphone invalide');
+                return;
+            }
+
             // Vérifier si c'est un upload de fichier
             if (formData.key === 'SCHOOL_LOGO_URL' && uploadFile) {
                 await uploadLogo(uploadFile, formData.label, formData.description);
@@ -2873,21 +2935,9 @@ const SettingsTab: React.FC = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="_CUSTOM_">✏️ Clé personnalisée</SelectItem>
-                                    <SelectItem value="SCHOOL_NAME">🏫 Nom de l'école</SelectItem>
-                                    <SelectItem value="SCHOOL_ACRONYM">🔤 Acronyme</SelectItem>
-                                    <SelectItem value="SCHOOL_ADDRESS">📍 Adresse</SelectItem>
-                                    <SelectItem value="SCHOOL_PHONE">📞 Téléphone</SelectItem>
-                                    <SelectItem value="SCHOOL_EMAIL">✉️ Email</SelectItem>
-                                    <SelectItem value="SCHOOL_LOGO_URL">🖼️ Logo URL</SelectItem>
-                                    <SelectItem value="SCHOOL_ENTETE_URL">📄 En-tête URL</SelectItem>
-                                    <SelectItem value="CURRENT_ACADEMIC_YEAR">📅 Année académique</SelectItem>
-                                    <SelectItem value="ADMISSION_PERIODE">📅 Période d'admission</SelectItem>
-                                    <SelectItem value="MOYENNE_PASSAGE">📊 Moyenne de passage</SelectItem>
-                                    <SelectItem value="MOYENNE_REPECHAGE">📈 Moyenne repêchage</SelectItem>
-                                    <SelectItem value="INSTITUTION_FEE">💰 Frais d'inscription</SelectItem>
-                                    <SelectItem value="PAYPAL_HTG_TO_USD_RATE">💱 Taux HTG/USD</SelectItem>
-                                    <SelectItem value="DEFAULT_EMAIL_SENDER">📧 Email expéditeur</SelectItem>
-                                    <SelectItem value="SMS_GATEWAY_API_KEY">📱 Clé API SMS</SelectItem>
+                                    {PREDEFINED_OPTIONS.filter(opt => !allSettings.some(s => s.key === opt.value)).map(opt => (
+                                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -2926,9 +2976,74 @@ const SettingsTab: React.FC = () => {
                                         </p>
                                     )}
                                 </div>
+                            ) : formData.key === 'SCHOOL_PHONE' ? (
+                                <PhoneInput
+                                    international
+                                    limitMaxLength={true}
+                                    defaultCountry="HT"
+                                    value={formData.value}
+                                    onChange={(value) => setFormData({ ...formData, value: value || '' })}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                />
+                            ) : (formData.key === 'SCHOOL_EMAIL' || formData.key === 'DEFAULT_EMAIL_SENDER') ? (
+                                <Input
+                                    type="email"
+                                    placeholder="contact@ecole.com"
+                                    value={formData.value}
+                                    onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                                />
+                            ) : (['INSTITUTION_FEE', 'ADMISSION_FEE', 'PAYPAL_HTG_TO_USD_RATE', 'MOYENNE_PASSAGE', 'MOYENNE_REPECHAGE'].includes(formData.key)) ? (
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="0.00"
+                                    value={formData.value}
+                                    onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                                />
+                            ) : (['ADMISSION_PERIODE', 'TEST_PERIODE', 'VALIDATION_PERIODE'].includes(formData.key)) ? (
+                                <Select
+                                    value={formData.value}
+                                    onValueChange={(value) => setFormData({ ...formData, value })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sélectionner..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="YES">Oui (Activé)</SelectItem>
+                                        <SelectItem value="NO">Non (Désactivé)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            ) : (formData.key === 'BACKUP_FREQUENCY') ? (
+                                <Select
+                                    value={formData.value}
+                                    onValueChange={(value) => setFormData({ ...formData, value })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sélectionner..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="DAILY">Quotidienne (DAILY)</SelectItem>
+                                        <SelectItem value="WEEKLY">Hebdomadaire (WEEKLY)</SelectItem>
+                                        <SelectItem value="MONTHLY">Mensuelle (MONTHLY)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            ) : (['MOYENNE_PASSAGE_CONCOURS', 'MOYENNE_REPECHAGE_CONCOURS'].includes(formData.key)) ? (
+                                <Select
+                                    value={formData.value}
+                                    onValueChange={(value) => setFormData({ ...formData, value })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sélectionner..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="CROISSANT">Croissant</SelectItem>
+                                        <SelectItem value="DECROISSANT">Décroissant</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             ) : (
                                 <Input
-                                    placeholder="Acronyme de l'ecole"
+                                    placeholder="Valeur du paramètre"
                                     value={formData.value}
                                     onChange={(e) => setFormData({ ...formData, value: e.target.value })}
                                 />
@@ -3444,6 +3559,7 @@ const UsersTab: React.FC = () => {
                             <Label>Téléphone (optionnel)</Label>
                             <PhoneInput
                                 international
+                                limitMaxLength={true}
                                 defaultCountry="HT"
                                 value={formData.phone}
                                 onChange={(value) => setFormData({ ...formData, phone: value || '' })}
@@ -3530,6 +3646,7 @@ const UsersTab: React.FC = () => {
                             <Label>Téléphone</Label>
                             <PhoneInput
                                 international
+                                limitMaxLength={true}
                                 defaultCountry="HT"
                                 value={editFormData.phone}
                                 onChange={(value) => setEditFormData({ ...editFormData, phone: value || '' })}
