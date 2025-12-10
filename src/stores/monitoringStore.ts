@@ -43,6 +43,8 @@ interface MonitoringStore {
   stats: MonitoringStats | null;
   networkHealth: NetworkHealth | null;
   config: MonitoringConfig;
+  eventsPage: number;
+  hasMoreEvents: boolean;
 
   // États de l'interface
   loading: boolean;
@@ -57,6 +59,7 @@ interface MonitoringStore {
   fetchServices: () => Promise<void>;
   fetchPerformanceMetrics: () => Promise<void>;
   fetchSystemEvents: () => Promise<void>;
+  loadMoreEvents: () => Promise<void>;
   fetchHistoricalData: (period: string) => Promise<void>;
   fetchStats: () => Promise<void>;
 
@@ -477,6 +480,8 @@ export const useMonitoringStore = create<MonitoringStore>()(
       stats: null,
       networkHealth: null,
       config: defaultConfig,
+      eventsPage: 1,
+      hasMoreEvents: true,
       loading: false,
       error: null,
       isRealTimeEnabled: getInitialRealTimeEnabled(),
@@ -575,6 +580,44 @@ export const useMonitoringStore = create<MonitoringStore>()(
         });
       },
 
+      loadMoreEvents: async () => {
+        const { eventsPage, hasMoreEvents, systemEvents } = get();
+        if (!hasMoreEvents) {
+          return;
+        }
+
+        const nextPage = eventsPage + 1;
+
+        set((state) => {
+          state.loading = true;
+          state.error = null;
+        });
+
+        try {
+          const data = await monitoringService.getEventsHistory(nextPage, 20);
+          const newEvents = mapEventsFromApi(data);
+
+          set((state) => {
+            state.systemEvents = [...systemEvents, ...newEvents];
+            state.eventsPage = nextPage;
+
+            const total = data?.pagination?.total ?? data?.total;
+            if (typeof total === 'number') {
+              state.hasMoreEvents = state.systemEvents.length < total;
+            } else {
+              state.hasMoreEvents = newEvents.length > 0;
+            }
+
+            state.loading = false;
+          });
+        } catch (error: any) {
+          set((state) => {
+            state.error = error?.message || 'Erreur lors du chargement des événements supplémentaires';
+            state.loading = false;
+          });
+        }
+      },
+
       fetchSystemEvents: async () => {
         set((state) => {
           state.loading = true;
@@ -586,6 +629,8 @@ export const useMonitoringStore = create<MonitoringStore>()(
 
           set((state) => {
             state.systemEvents = mapEventsFromApi(events);
+            state.eventsPage = 1;
+            state.hasMoreEvents = true;
             state.loading = false;
           });
         } catch (error: any) {

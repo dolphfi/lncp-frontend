@@ -59,6 +59,16 @@ export const monitoringService = {
         return res.data;
     },
 
+    async getEventsHistory(page = 1, limit = 20) {
+        const params = new URLSearchParams({
+            page: String(page),
+            limit: String(limit),
+        }).toString();
+        const url = getApiUrl(`/monitoring/events/history?${params}`);
+        const res = await http.get(url);
+        return res.data;
+    },
+
     async getLogs(level?: string) {
         const url = getApiUrl('/monitoring/logs');
         const res = await http.get(url, {
@@ -73,6 +83,18 @@ export const monitoringService = {
         return res.data;
     },
 
+    async createBackup() {
+        const url = getApiUrl('/monitoring/backups');
+        const res = await http.post(url);
+        return res.data;
+    },
+
+    async deleteBackup(id: string) {
+        const url = getApiUrl(`/monitoring/backups/${id}`);
+        const res = await http.delete(url);
+        return res.data;
+    },
+
     async getSecurity() {
         const url = getApiUrl('/monitoring/security');
         const res = await http.get(url);
@@ -81,3 +103,4 @@ export const monitoringService = {
 };
 
 export default monitoringService;
+
