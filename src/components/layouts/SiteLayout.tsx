@@ -1,7 +1,7 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import Navbar from '../includes/Navbar';
-import Footer from '../includes/Footer';
+import React from "react";
+import { Outlet } from "react-router-dom";
+import Navbar from "../includes/Navbar";
+import Footer from "../includes/Footer";
 
 const SiteLayout = () => {
   return (

@@ -1,18 +1,20 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
 import {
   FileText,
   Calendar,
   CheckCircle,
   Download,
-  Plus,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
+import StepByStepAdmissionModal from "../../modals/StepByStepAdmissionModal";
 
 const Admissions = () => {
-  const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
 
   const handleApplyClick = () => {
-    navigate('/admission/apply');
+    setIsModalOpen(true);
   };
 
   return (
@@ -64,13 +66,48 @@ const Admissions = () => {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={handleApplyClick}
-                className="mt-4 flex items-center bg-blue-500/10 text-blue-600 text-xs py-2 px-6 rounded-full hover:bg-blue-500/20 transition-all duration-300 border border-blue-500/20 hover:border-blue-500/40"
-              >
-                <Plus className="h-3 w-3 mr-2" />
-                <span>Commencer l'inscription</span>
-              </button>
+
+              {/* Toggle Documents Section */}
+              <div className="mt-6 pt-4 border-t border-blue-200">
+                <button
+                  onClick={() => setShowDocuments(!showDocuments)}
+                  className="flex items-center justify-between w-full text-sm font-bold text-gray-700 hover:text-blue-600 transition-colors"
+                >
+                  <span>Documents à fournir</span>
+                  {showDocuments ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </button>
+
+                {showDocuments && (
+                  <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <p className="text-xs text-blue-700 mb-3 italic">
+                      * Les documents suivants devront être apportés lors de la
+                      validation dans l'établissement :
+                    </p>
+                    <ul className="space-y-2">
+                      {[
+                        "Photo d'identité récente",
+                        "Acte de naissance",
+                        "Dernier bulletin scolaire",
+                        "Certificat médical",
+                        "Justificatif de domicile",
+                        "Pièce d'identité du responsable",
+                      ].map((doc, index) => (
+                        <li
+                          key={index}
+                          className="flex items-start text-gray-600 text-xs"
+                        >
+                          <span className="text-blue-400 mr-2">✓</span>
+                          {doc}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Dates Importantes */}
@@ -104,7 +141,7 @@ const Admissions = () => {
 
           {/* CTA Button */}
           <div className="text-center mt-12">
-            <button 
+            <button
               onClick={handleApplyClick}
               className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full px-6 py-3 text-xs hover:shadow-lg hover:shadow-blue-200 transition-all duration-300"
             >
@@ -114,6 +151,12 @@ const Admissions = () => {
           </div>
         </div>
       </div>
+
+      {/* Step-by-Step Admission Modal */}
+      <StepByStepAdmissionModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+      />
     </section>
   );
 };
