@@ -1910,14 +1910,27 @@ export const Monitoring: React.FC = () => {
                                     </Label>
                                     <Select
                                         value={securityConfig.backupFrequency}
-                                        onValueChange={(
+                                        onValueChange={async (
                                             value: 'daily' | 'weekly' | 'monthly'
-                                        ) =>
-                                            setSecurityConfig({
-                                                ...securityConfig,
-                                                backupFrequency: value
-                                            })
-                                        }
+                                        ) => {
+                                            setSecurityConfig((prev) => ({
+                                                ...prev,
+                                                backupFrequency: value,
+                                            }));
+
+                                            const apiValue = value.toUpperCase(); // DAILY | WEEKLY | MONTHLY
+                                            try {
+                                                await settingService.updateSettingByKey(SettingKey.BACKUP_FREQUENCY, {
+                                                    value: apiValue,
+                                                });
+                                                toast.success('Fréquence de sauvegarde mise à jour');
+                                            } catch (error: any) {
+                                                toast.error(
+                                                    error?.message ||
+                                                    'Erreur lors de la mise à jour de la fréquence de sauvegarde',
+                                                );
+                                            }
+                                        }}
                                     >
                                         <SelectTrigger>
                                             <SelectValue />
