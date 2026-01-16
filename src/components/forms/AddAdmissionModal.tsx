@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Save } from 'lucide-react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
 } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -27,8 +27,10 @@ interface AddAdmissionModalProps {
 
 export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOpenChange, draft }) => {
   const { createOnSiteAdmission, createDraft, updateDraft, finalizeDraft, loadingAction } = useAdmissionStore();
-  const { register, handleSubmit, control, formState: { errors, dirtyFields }, reset, watch, setValue, clearErrors, getValues } = useForm<CreateOnSiteAdmissionDTO>();
-  
+  const { register, handleSubmit, control, formState: { errors, dirtyFields }, reset, watch, setValue, clearErrors, getValues } = useForm<CreateOnSiteAdmissionDTO>({
+    mode: 'onChange' // Validation en temps réel lors de la saisie
+  });
+
   // États pour la gestion des responsables
   const [responsableMode, setResponsableMode] = useState<'create' | 'select'>('create');
   const [responsables, setResponsables] = useState<Responsable[]>([]);
@@ -39,6 +41,8 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
 
   // Observer pour l'affichage conditionnel
   const handicap = watch('handicap');
+  const statutMere = watch('statutMere');
+  const statutPere = watch('statutPere');
 
   // Pré-remplissage si mode brouillon avec chargement complet
   useEffect(() => {
@@ -48,11 +52,11 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
           // Appel à l'API pour avoir le brouillon complet
           const fullDraft = await admissionService.getDraftById(draft.id);
           console.log('DEBUG - Données du brouillon complet reçues:', fullDraft);
-          
+
           // Fonction récursive pour aplatir et récupérer les données perdues dans les imbrications
           const flattenFormData = (data: any): any => {
             let result = { ...data };
-            
+
             // Si on trouve un champ 'formData' imbriqué
             if (data.formData) {
               let nestedData = data.formData;
@@ -64,30 +68,30 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
                   nestedData = {};
                 }
               }
-              
+
               // Appel récursif pour aller chercher plus loin
               const deepResult = flattenFormData(nestedData);
-              
+
               // Fusion intelligente : on récupère les données profondes si les actuelles sont vides
               Object.keys(deepResult).forEach(key => {
-                 if (key === 'formData') return;
-                 
-                 const currentVal = result[key];
-                 const deepVal = deepResult[key];
-                 
-                 // Si la valeur actuelle est "falsy" (vide, null, undefined) 
-                 // mais que la valeur profonde existe, on restaure la profonde.
-                 // Attention aux booléens false, mais ici ce sont surtout des strings.
-                 if ((currentVal === undefined || currentVal === null || currentVal === '') && deepVal !== undefined && deepVal !== null && deepVal !== '') {
-                   result[key] = deepVal;
-                 }
-                 // Si la clé n'existe pas du tout dans le niveau actuel, on la prend
-                 if (!(key in result)) {
-                   result[key] = deepVal;
-                 }
+                if (key === 'formData') return;
+
+                const currentVal = result[key];
+                const deepVal = deepResult[key];
+
+                // Si la valeur actuelle est "falsy" (vide, null, undefined) 
+                // mais que la valeur profonde existe, on restaure la profonde.
+                // Attention aux booléens false, mais ici ce sont surtout des strings.
+                if ((currentVal === undefined || currentVal === null || currentVal === '') && deepVal !== undefined && deepVal !== null && deepVal !== '') {
+                  result[key] = deepVal;
+                }
+                // Si la clé n'existe pas du tout dans le niveau actuel, on la prend
+                if (!(key in result)) {
+                  result[key] = deepVal;
+                }
               });
             }
-            
+
             // On supprime le champ formData imbriqué une fois traité
             delete result.formData;
             return result;
@@ -96,20 +100,20 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
           // On traite le formData racine
           let rootFormData = fullDraft.formData || {};
           if (typeof rootFormData === 'string') {
-             try { rootFormData = JSON.parse(rootFormData); } catch (e) { rootFormData = {}; }
+            try { rootFormData = JSON.parse(rootFormData); } catch (e) { rootFormData = {}; }
           }
-          
+
           const flattenedData = flattenFormData(rootFormData);
           console.log('DEBUG - Données aplaties et récupérées:', flattenedData);
-    
+
           let sexeVal = (fullDraft as any).sexe || flattenedData.sexe;
           // Normalisation pour matcher les options du select
           if (sexeVal === 'M' || sexeVal === 'Male' || sexeVal === 'Masculin') sexeVal = 'Homme';
           if (sexeVal === 'F' || sexeVal === 'Female' || sexeVal === 'Féminin') sexeVal = 'Femme';
-    
+
           const initialData: any = {
             ...flattenedData, // On utilise les données nettoyées
-            
+
             // Les valeurs racines restent prioritaires si elles existent
             firstName: fullDraft.firstName || flattenedData.firstName,
             lastName: fullDraft.lastName || flattenedData.lastName,
@@ -120,10 +124,10 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
             communeDeNaissance: fullDraft.communeDeNaissance || flattenedData.communeDeNaissance,
             sexe: sexeVal,
           };
-          
+
           console.log('DEBUG - Données initiales pour reset:', initialData);
           console.log('DEBUG - Sexe trouvé:', initialData.sexe);
-          
+
           // Si le brouillon a un responsableId stocké dans formData
           if (initialData.responsableId) {
             console.log('DEBUG - responsableId trouvé, passage en mode SELECT', initialData.responsableId);
@@ -133,9 +137,9 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
             console.log('DEBUG - Pas de responsableId, passage en mode CREATE');
             setResponsableMode('create');
           }
-    
+
           reset(initialData);
-          
+
           // Forcer la valeur du sexe si elle existe (fix potentiel)
           if (initialData.sexe) {
             setValue('sexe', initialData.sexe);
@@ -148,15 +152,15 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
           if (initialData.dateOfBirth) setValue('dateOfBirth', typeof initialData.dateOfBirth === 'string' ? initialData.dateOfBirth.split('T')[0] : initialData.dateOfBirth);
           if (initialData.lieuDeNaissance) setValue('lieuDeNaissance', initialData.lieuDeNaissance);
           if (initialData.communeDeNaissance) setValue('communeDeNaissance', initialData.communeDeNaissance);
-          
+
         } catch (error) {
           console.error("Erreur lors du chargement du brouillon complet", error);
           toast.error("Erreur lors du chargement des données du brouillon");
         }
-  
+
       } else if (open && !draft) {
         reset({
-          firstName: '', lastName: '', email: '', phone: '', 
+          firstName: '', lastName: '', email: '', phone: '',
           responsableMode: 'create'
         } as any);
         setResponsableMode('create');
@@ -184,7 +188,7 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
       clearErrors(['responsableNif', 'responsableNinu']);
     }
   };
-  
+
   // Charger les responsables au montage si le modal est ouvert (toujours, pour permettre la récupération auto)
   useEffect(() => {
     if (open) {
@@ -206,50 +210,50 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
   // ET NOUVEAU : Si on a les détails mais pas l'ID (brouillon legacy), on essaie de matcher.
   useEffect(() => {
     if (open && responsables.length > 0) {
-        const currentValues = getValues();
-        
-        // Cas 1: ID présent, on remplit si vide
-        if (responsableMode === 'select' && selectedResponsableId) {
-           if (!currentValues.responsableLastName) {
-              const responsable = responsables.find(r => r.id === selectedResponsableId);
-              if (responsable) {
-                  setValue('responsableFirstName', responsable.user.firstName);
-                  setValue('responsableLastName', responsable.user.lastName);
-                  setValue('responsableEmail', responsable.user.email);
-                  setValue('responsablePhone', responsable.user.phone || '');
-                  setValue('lienParente', responsable.lienParente);
-                  setValue('responsableNif', formatNif(responsable.nif || ''));
-                  setValue('responsableNinu', responsable.ninu || '');
-              }
-           }
+      const currentValues = getValues();
+
+      // Cas 1: ID présent, on remplit si vide
+      if (responsableMode === 'select' && selectedResponsableId) {
+        if (!currentValues.responsableLastName) {
+          const responsable = responsables.find(r => r.id === selectedResponsableId);
+          if (responsable) {
+            setValue('responsableFirstName', responsable.user.firstName);
+            setValue('responsableLastName', responsable.user.lastName);
+            setValue('responsableEmail', responsable.user.email);
+            setValue('responsablePhone', responsable.user.phone || '');
+            setValue('lienParente', responsable.lienParente);
+            setValue('responsableNif', formatNif(responsable.nif || ''));
+            setValue('responsableNinu', responsable.ninu || '');
+          }
         }
-        
-        // Cas 2: ID absent, mais Nom/Prénom présents -> on tente de retrouver le responsable existant
-        else if (responsableMode === 'create' && !selectedResponsableId) {
-           const fName = currentValues.responsableFirstName;
-           const lName = currentValues.responsableLastName;
-           
-           if (fName && lName) {
-             const match = responsables.find(r => 
-               r.user.firstName?.toLowerCase() === fName.toLowerCase() && 
-               r.user.lastName?.toLowerCase() === lName.toLowerCase()
-             );
-             if (match) {
-                console.log('DEBUG - Responsable retrouvé par nom/prénom (Recovery):', match.id);
-                setResponsableMode('select');
-                setSelectedResponsableId(match.id);
-                
-                // Remplissage direct pour éviter problèmes de closure
-                setValue('responsableFirstName', match.user.firstName);
-                setValue('responsableLastName', match.user.lastName);
-                setValue('responsableEmail', match.user.email);
-                setValue('responsablePhone', match.user.phone || '');
-                setValue('lienParente', match.lienParente);
-                setValue('responsableNif', formatNif(match.nif || ''));
-                setValue('responsableNinu', match.ninu || '');
-             }
-           }
+      }
+
+      // Cas 2: ID absent, mais Nom/Prénom présents -> on tente de retrouver le responsable existant
+      else if (responsableMode === 'create' && !selectedResponsableId) {
+        const fName = currentValues.responsableFirstName;
+        const lName = currentValues.responsableLastName;
+
+        if (fName && lName) {
+          const match = responsables.find(r =>
+            r.user.firstName?.toLowerCase() === fName.toLowerCase() &&
+            r.user.lastName?.toLowerCase() === lName.toLowerCase()
+          );
+          if (match) {
+            console.log('DEBUG - Responsable retrouvé par nom/prénom (Recovery):', match.id);
+            setResponsableMode('select');
+            setSelectedResponsableId(match.id);
+
+            // Remplissage direct pour éviter problèmes de closure
+            setValue('responsableFirstName', match.user.firstName);
+            setValue('responsableLastName', match.user.lastName);
+            setValue('responsableEmail', match.user.email);
+            setValue('responsablePhone', match.user.phone || '');
+            setValue('lienParente', match.lienParente);
+            setValue('responsableNif', formatNif(match.nif || ''));
+            setValue('responsableNinu', match.ninu || '');
+          }
         }
+      }
     }
   }, [responsables, selectedResponsableId, responsableMode, open]);
 
@@ -259,8 +263,8 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
       setFilteredResponsables(responsables);
     } else {
       const term = searchTerm.toLowerCase();
-      setFilteredResponsables(responsables.filter(r => 
-        r.user.firstName.toLowerCase().includes(term) || 
+      setFilteredResponsables(responsables.filter(r =>
+        r.user.firstName.toLowerCase().includes(term) ||
         r.user.lastName.toLowerCase().includes(term) ||
         (r.user.phone && r.user.phone.includes(term))
       ));
@@ -271,7 +275,7 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
   const handleResponsableSelect = (responsableId: string) => {
     setSelectedResponsableId(responsableId);
     const responsable = responsables.find(r => r.id === responsableId);
-    
+
     if (responsable) {
       setValue('responsableFirstName', responsable.user.firstName);
       setValue('responsableLastName', responsable.user.lastName);
@@ -298,16 +302,16 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
     setErrorMessage(null);
     try {
       const data = getValues();
-      
+
       // Validation minimale pour le brouillon
       if (!data.firstName || !data.lastName || !data.sexe) {
         toast.error("Pour enregistrer un brouillon, veuillez au moins renseigner le Prénom, le Nom et le Sexe de l'élève.");
         return;
       }
-      
+
       // On ajoute manuellement responsableId car il n'est pas géré par register (select hors form)
       // et on veut le sauvegarder pour restaurer la sélection
-      const formData: any = { 
+      const formData: any = {
         ...data,
         responsableId: responsableMode === 'select' ? selectedResponsableId : undefined
       };
@@ -318,11 +322,11 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
 
       // Traitement des fichiers
       const fileFields = [
-        'photoInscription', 
-        'acteNaissance', 
-        'bulletinPrecedent', 
-        'certificatMedical', 
-        'justificatifDomicile', 
+        'photoInscription',
+        'acteNaissance',
+        'bulletinPrecedent',
+        'certificatMedical',
+        'justificatifDomicile',
         'carteIdentiteParent'
       ];
 
@@ -342,15 +346,15 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
         // Pour une mise à jour, on ne renvoie PAS les champs racines s'ils n'ont pas changé
         // afin d'éviter les erreurs de validation "Doublon" du backend.
         const rootFieldsToCheck = [
-           'firstName', 'lastName', 'email', 'phone', 
-           'dateOfBirth', 'lieuDeNaissance', 'communeDeNaissance', 'sexe'
+          'firstName', 'lastName', 'email', 'phone',
+          'dateOfBirth', 'lieuDeNaissance', 'communeDeNaissance', 'sexe'
         ];
-        
+
         rootFieldsToCheck.forEach(field => {
-           // dirtyFields indique si un champ a été touché par l'utilisateur
-           if (!dirtyFields[field as keyof CreateOnSiteAdmissionDTO]) {
-              delete formData[field];
-           }
+          // dirtyFields indique si un champ a été touché par l'utilisateur
+          if (!dirtyFields[field as keyof CreateOnSiteAdmissionDTO]) {
+            delete formData[field];
+          }
         });
 
         await updateDraft(draft.id, formData);
@@ -359,65 +363,75 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
         await createDraft(formData);
         toast.success('Brouillon enregistré avec succès');
       }
-      
+
       reset();
       onOpenChange(false);
     } catch (error: any) {
       console.error('Erreur sauvegarde brouillon:', error);
-      toast.error("Erreur lors de l'enregistrement du brouillon");
+      const message = error.response?.data?.message;
+      if (Array.isArray(message)) {
+        setErrorMessage(message.join('\n'));
+        toast.error("Veuillez corriger les erreurs indiquées");
+      } else if (typeof message === 'string') {
+        setErrorMessage(message);
+        toast.error(message);
+      } else {
+        setErrorMessage("Erreur lors de l'enregistrement du brouillon");
+        toast.error("Erreur lors de l'enregistrement du brouillon");
+      }
     }
   };
 
   const handleFinalizeDraft = async () => {
     handleSubmit(async (data) => {
-        setErrorMessage(null);
-        try {
-            if (!draft?.id) return;
+      setErrorMessage(null);
+      try {
+        if (!draft?.id) return;
 
-            const formData: any = { 
-              ...data,
-              responsableId: responsableMode === 'select' ? selectedResponsableId : undefined,
-              status: 'READY_TO_SUBMIT' // On marque comme prêt
-            };
-            
-            if (formData.responsableNif) {
-              formData.responsableNif = formData.responsableNif.replace(/-/g, '');
-            }
-            
-            // Pour finaliser, on envoie TOUT (pas de nettoyage de champs vides, c'est une soumission)
-            const fileFields = [
-              'photoInscription', 'acteNaissance', 'bulletinPrecedent', 
-              'certificatMedical', 'justificatifDomicile', 'carteIdentiteParent'
-            ];
-            fileFields.forEach(field => {
-              if (formData[field] && formData[field].length > 0) {
-                 formData[field] = formData[field][0];
-              } else {
-                 delete formData[field];
-              }
-            });
+        const formData: any = {
+          ...data,
+          responsableId: responsableMode === 'select' ? selectedResponsableId : undefined,
+          status: 'READY_TO_SUBMIT' // On marque comme prêt
+        };
 
-            // 1. Mise à jour pour valider et changer le statut
-            await updateDraft(draft.id, formData);
-            
-            // 2. Finalisation
-            await finalizeDraft(draft.id);
-            
-            toast.success('Admission créée avec succès depuis le brouillon');
-            reset();
-            onOpenChange(false);
-            
-        } catch (error: any) {
-            console.error('Erreur finalisation:', error);
-            const msg = error.response?.data?.message || error.message || "Erreur lors de la finalisation";
-            if (Array.isArray(msg)) {
-                setErrorMessage(msg.join('\n'));
-                toast.error("Veuillez compléter tous les champs requis.");
-            } else {
-                setErrorMessage(typeof msg === 'string' ? msg : JSON.stringify(msg));
-                toast.error("Erreur lors de la finalisation");
-            }
+        if (formData.responsableNif) {
+          formData.responsableNif = formData.responsableNif.replace(/-/g, '');
         }
+
+        // Pour finaliser, on envoie TOUT (pas de nettoyage de champs vides, c'est une soumission)
+        const fileFields = [
+          'photoInscription', 'acteNaissance', 'bulletinPrecedent',
+          'certificatMedical', 'justificatifDomicile', 'carteIdentiteParent'
+        ];
+        fileFields.forEach(field => {
+          if (formData[field] && formData[field].length > 0) {
+            formData[field] = formData[field][0];
+          } else {
+            delete formData[field];
+          }
+        });
+
+        // 1. Mise à jour pour valider et changer le statut
+        await updateDraft(draft.id, formData);
+
+        // 2. Finalisation
+        await finalizeDraft(draft.id);
+
+        toast.success('Admission créée avec succès depuis le brouillon');
+        reset();
+        onOpenChange(false);
+
+      } catch (error: any) {
+        console.error('Erreur finalisation:', error);
+        const msg = error.response?.data?.message || error.message || "Erreur lors de la finalisation";
+        if (Array.isArray(msg)) {
+          setErrorMessage(msg.join('\n'));
+          toast.error("Veuillez compléter tous les champs requis.");
+        } else {
+          setErrorMessage(typeof msg === 'string' ? msg : JSON.stringify(msg));
+          toast.error("Erreur lors de la finalisation");
+        }
+      }
     })();
   };
 
@@ -426,7 +440,7 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
     try {
       // Transformation des FileList en File pour le service
       const formData: any = { ...data };
-      
+
       // Ajouter responsableId si mode sélection
       if (responsableMode === 'select') {
         // Si on sélectionne un responsable existant, on ne peut pas envoyer ses identifiants uniques
@@ -436,7 +450,7 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
         delete formData.responsableNif;
         delete formData.responsableNinu;
         delete formData.responsablePhone;
-        
+
         // On supprime aussi l'ID car le backend ne le gère pas
         delete formData.responsableId;
       }
@@ -448,11 +462,11 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
 
       // Traitement des fichiers
       const fileFields = [
-        'photoInscription', 
-        'acteNaissance', 
-        'bulletinPrecedent', 
-        'certificatMedical', 
-        'justificatifDomicile', 
+        'photoInscription',
+        'acteNaissance',
+        'bulletinPrecedent',
+        'certificatMedical',
+        'justificatifDomicile',
         'carteIdentiteParent'
       ];
 
@@ -472,10 +486,10 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
     } catch (error: any) {
       console.error(error);
       const message = error.response?.data?.message;
-      const formattedMessage = Array.isArray(message) 
-        ? message.join('\n') 
+      const formattedMessage = Array.isArray(message)
+        ? message.join('\n')
         : (message || 'Erreur lors de la création');
-      
+
       setErrorMessage(formattedMessage);
       toast.error('Erreur lors de la création, veuillez vérifier les champs');
     }
@@ -483,14 +497,14 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
 
   return (
     <Dialog open={open} onOpenChange={(v) => {
-        if(!v) setErrorMessage(null);
-        onOpenChange(v);
+      if (!v) setErrorMessage(null);
+      onOpenChange(v);
     }}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto w-full">
         <DialogHeader>
           <DialogTitle>{draft ? 'Modifier Brouillon' : 'Nouvelle Admission Sur Site'}</DialogTitle>
         </DialogHeader>
-        
+
         {errorMessage && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
             <div className="flex">
@@ -510,23 +524,35 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
             </div>
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-          
+
           {/* 1. IDENTITÉ DE L'ÉLÈVE */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold border-b pb-2 text-blue-600">1. Identité de l'élève</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Prénom *</Label>
-                <Input {...register('firstName', { required: true })} placeholder="Prénom de l'élève" />
-                {errors.firstName && <span className="text-red-500 text-xs">Requis</span>}
+                <Input {...register('firstName', {
+                  required: 'Le prénom est requis',
+                  pattern: {
+                    value: /^[^0-9]/,
+                    message: 'Le prénom ne peut pas commencer par un chiffre'
+                  }
+                })} placeholder="Prénom de l'élève" />
+                {errors.firstName && <span className="text-red-500 text-xs">{errors.firstName.message || 'Requis'}</span>}
               </div>
-              
+
               <div>
                 <Label>Nom *</Label>
-                <Input {...register('lastName', { required: true })} placeholder="Nom de famille" />
-                {errors.lastName && <span className="text-red-500 text-xs">Requis</span>}
+                <Input {...register('lastName', {
+                  required: 'Le nom est requis',
+                  pattern: {
+                    value: /^[^0-9]/,
+                    message: 'Le nom ne peut pas commencer par un chiffre'
+                  }
+                })} placeholder="Nom de famille" />
+                {errors.lastName && <span className="text-red-500 text-xs">{errors.lastName.message || 'Requis'}</span>}
               </div>
 
               <div>
@@ -541,20 +567,43 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
 
               <div>
                 <Label>Date de naissance *</Label>
-                <Input type="date" {...register('dateOfBirth', { required: true })} />
-                {errors.dateOfBirth && <span className="text-red-500 text-xs">Requis</span>}
+                <Input type="date" {...register('dateOfBirth', {
+                  required: 'La date de naissance est requise',
+                  validate: (value) => {
+                    if (!value) return 'La date de naissance est requise';
+                    const birthDate = new Date(value);
+                    const today = new Date();
+                    const age = today.getFullYear() - birthDate.getFullYear();
+                    const m = today.getMonth() - birthDate.getMonth();
+                    const actualAge = m < 0 || (m === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
+                    return actualAge >= 13 || "L'étudiant doit avoir au moins 13 ans";
+                  }
+                })} />
+                {errors.dateOfBirth && <span className="text-red-500 text-xs">{errors.dateOfBirth.message || 'Requis'}</span>}
               </div>
 
               <div>
                 <Label>Lieu de naissance *</Label>
-                <Input {...register('lieuDeNaissance', { required: true })} placeholder="Ville de naissance" />
-                {errors.lieuDeNaissance && <span className="text-red-500 text-xs">Requis</span>}
+                <Input {...register('lieuDeNaissance', {
+                  required: 'Le lieu de naissance est requis',
+                  pattern: {
+                    value: /^[^0-9]/,
+                    message: 'Le lieu de naissance ne peut pas commencer par un chiffre'
+                  }
+                })} placeholder="Ville de naissance" />
+                {errors.lieuDeNaissance && <span className="text-red-500 text-xs">{errors.lieuDeNaissance.message || 'Requis'}</span>}
               </div>
-              
+
               <div>
                 <Label>Commune de naissance *</Label>
-                <Input {...register('communeDeNaissance', { required: true })} placeholder="Commune" />
-                {errors.communeDeNaissance && <span className="text-red-500 text-xs">Requis</span>}
+                <Input {...register('communeDeNaissance', {
+                  required: 'La commune de naissance est requise',
+                  pattern: {
+                    value: /^[^0-9]/,
+                    message: 'La commune ne peut pas commencer par un chiffre'
+                  }
+                })} placeholder="Commune" />
+                {errors.communeDeNaissance && <span className="text-red-500 text-xs">{errors.communeDeNaissance.message || 'Requis'}</span>}
               </div>
 
               <div>
@@ -588,17 +637,16 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
             <h3 className="text-lg font-semibold border-b pb-2 text-blue-600">2. Coordonnées & Adresse</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label>Email *</Label>
-                <Input 
-                  type="email" 
-                  {...register('email', { 
-                    required: 'Requis',
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  {...register('email', {
                     pattern: {
                       value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                       message: 'Email invalide'
                     }
-                  })} 
-                  placeholder="email@exemple.com" 
+                  })}
+                  placeholder="email@exemple.com (optionnel)"
                 />
                 {errors.email && <span className="text-red-500 text-xs">{errors.email.message}</span>}
               </div>
@@ -632,17 +680,29 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
                   <Input {...register('adresseLigne1', { required: true })} placeholder="ex: 12, Rue Capois" />
                   {errors.adresseLigne1 && <span className="text-red-500 text-xs">Requis</span>}
                 </div>
-                
+
                 <div>
                   <Label>Département *</Label>
-                  <Input {...register('departement', { required: true })} placeholder="ex: Ouest" />
-                  {errors.departement && <span className="text-red-500 text-xs">Requis</span>}
+                  <Input {...register('departement', {
+                    required: 'Le département est requis',
+                    pattern: {
+                      value: /^[^0-9]/,
+                      message: 'Le département ne peut pas commencer par un chiffre'
+                    }
+                  })} placeholder="ex: Ouest" />
+                  {errors.departement && <span className="text-red-500 text-xs">{errors.departement.message || 'Requis'}</span>}
                 </div>
-                
+
                 <div>
                   <Label>Commune *</Label>
-                  <Input {...register('commune', { required: true })} placeholder="ex: Port-au-Prince" />
-                  {errors.commune && <span className="text-red-500 text-xs">Requis</span>}
+                  <Input {...register('commune', {
+                    required: 'La commune est requise',
+                    pattern: {
+                      value: /^[^0-9]/,
+                      message: 'La commune ne peut pas commencer par un chiffre'
+                    }
+                  })} placeholder="ex: Port-au-Prince" />
+                  {errors.commune && <span className="text-red-500 text-xs">{errors.commune.message || 'Requis'}</span>}
                 </div>
 
                 <div>
@@ -656,20 +716,32 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
           {/* 3. INFORMATIONS FAMILIALES */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold border-b pb-2 text-blue-600">3. Informations Familiales</h3>
-            
+
             {/* Mère */}
             <div className="bg-gray-50 p-4 rounded-md mb-4">
               <h4 className="font-medium mb-3 text-gray-700">Mère</h4>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <Label>Prénom *</Label>
-                  <Input {...register('prenomMere', { required: true })} />
-                  {errors.prenomMere && <span className="text-red-500 text-xs">Requis</span>}
+                  <Input {...register('prenomMere', {
+                    required: 'Le prénom de la mère est requis',
+                    pattern: {
+                      value: /^[^0-9]/,
+                      message: 'Le prénom ne peut pas commencer par un chiffre'
+                    }
+                  })} />
+                  {errors.prenomMere && <span className="text-red-500 text-xs">{errors.prenomMere.message || 'Requis'}</span>}
                 </div>
                 <div>
                   <Label>Nom *</Label>
-                  <Input {...register('nomMere', { required: true })} />
-                  {errors.nomMere && <span className="text-red-500 text-xs">Requis</span>}
+                  <Input {...register('nomMere', {
+                    required: 'Le nom de la mère est requis',
+                    pattern: {
+                      value: /^[^0-9]/,
+                      message: 'Le nom ne peut pas commencer par un chiffre'
+                    }
+                  })} />
+                  {errors.nomMere && <span className="text-red-500 text-xs">{errors.nomMere.message || 'Requis'}</span>}
                 </div>
                 <div>
                   <Label>Statut *</Label>
@@ -678,10 +750,12 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
                     <option value="Mort">Décédée</option>
                   </select>
                 </div>
-                <div>
-                  <Label>Occupation</Label>
-                  <Input {...register('occupationMere')} placeholder="Profession" />
-                </div>
+                {statutMere !== 'Mort' && (
+                  <div>
+                    <Label>Occupation</Label>
+                    <Input {...register('occupationMere')} placeholder="Profession" />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -691,13 +765,25 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <Label>Prénom *</Label>
-                  <Input {...register('prenomPere', { required: true })} />
-                  {errors.prenomPere && <span className="text-red-500 text-xs">Requis</span>}
+                  <Input {...register('prenomPere', {
+                    required: 'Le prénom du père est requis',
+                    pattern: {
+                      value: /^[^0-9]/,
+                      message: 'Le prénom ne peut pas commencer par un chiffre'
+                    }
+                  })} />
+                  {errors.prenomPere && <span className="text-red-500 text-xs">{errors.prenomPere.message || 'Requis'}</span>}
                 </div>
                 <div>
                   <Label>Nom *</Label>
-                  <Input {...register('nomPere', { required: true })} />
-                  {errors.nomPere && <span className="text-red-500 text-xs">Requis</span>}
+                  <Input {...register('nomPere', {
+                    required: 'Le nom du père est requis',
+                    pattern: {
+                      value: /^[^0-9]/,
+                      message: 'Le nom ne peut pas commencer par un chiffre'
+                    }
+                  })} />
+                  {errors.nomPere && <span className="text-red-500 text-xs">{errors.nomPere.message || 'Requis'}</span>}
                 </div>
                 <div>
                   <Label>Statut *</Label>
@@ -706,10 +792,12 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
                     <option value="Mort">Décédé</option>
                   </select>
                 </div>
-                <div>
-                  <Label>Occupation</Label>
-                  <Input {...register('occupationPere')} placeholder="Profession" />
-                </div>
+                {statutPere !== 'Mort' && (
+                  <div>
+                    <Label>Occupation</Label>
+                    <Input {...register('occupationPere')} placeholder="Profession" />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -717,21 +805,21 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
           {/* 4. RESPONSABLE LÉGAL */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold border-b pb-2 text-blue-600">4. Responsable Légal</h3>
-            
+
             <div className="flex gap-4 mb-4">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="radio" 
-                  checked={responsableMode === 'create'} 
+                <input
+                  type="radio"
+                  checked={responsableMode === 'create'}
                   onChange={() => handleModeChange('create')}
                   className="w-4 h-4 text-blue-600"
                 />
                 <span>Créer un nouveau</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="radio" 
-                  checked={responsableMode === 'select'} 
+                <input
+                  type="radio"
+                  checked={responsableMode === 'select'}
                   onChange={() => handleModeChange('select')}
                   className="w-4 h-4 text-blue-600"
                 />
@@ -742,13 +830,13 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
             {responsableMode === 'select' && (
               <div className="mb-6 p-4 bg-gray-50 rounded-md border">
                 <Label className="mb-2 block">Rechercher un responsable</Label>
-                <Input 
-                  placeholder="Rechercher par nom, prénom ou téléphone..." 
+                <Input
+                  placeholder="Rechercher par nom, prénom ou téléphone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="mb-3"
                 />
-                <select 
+                <select
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={selectedResponsableId}
                   onChange={(e) => handleResponsableSelect(e.target.value)}
@@ -787,15 +875,15 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
               </div>
               <div>
                 <Label>Email</Label>
-                <Input 
-                  type="email" 
+                <Input
+                  type="email"
                   {...register('responsableEmail', {
                     pattern: {
                       value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                       message: 'Email invalide'
                     }
-                  })} 
-                  disabled={responsableMode === 'select'} 
+                  })}
+                  disabled={responsableMode === 'select'}
                 />
                 {errors.responsableEmail && <span className="text-red-500 text-xs">{errors.responsableEmail.message}</span>}
               </div>
@@ -851,16 +939,22 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
               </div>
               <div>
                 <Label>NINU</Label>
-                <Input 
+                <Input
                   {...register('responsableNinu', {
                     pattern: responsableMode === 'create' ? {
                       value: /^\d{10}$/,
                       message: 'Le NINU doit contenir exactement 10 chiffres'
                     } : undefined
-                  })} 
-                  placeholder="Carte d'identité (10 chiffres)" 
+                  })}
+                  placeholder="Carte d'identité (10 chiffres)"
                   maxLength={10}
-                  disabled={responsableMode === 'select'} 
+                  inputMode="numeric"
+                  onKeyPress={(e) => {
+                    if (!/[0-9]/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  disabled={responsableMode === 'select'}
                 />
                 {errors.responsableNinu && <span className="text-red-500 text-xs">{errors.responsableNinu.message}</span>}
               </div>
@@ -873,33 +967,92 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label>Photo d'identité</Label>
-                <Input type="file" accept="image/*" {...register('photoInscription')} className="cursor-pointer" />
-                <p className="text-xs text-gray-500 mt-1">Format image requis</p>
+                <Input type="file" accept="image/*" {...register('photoInscription', {
+                  validate: (value: any) => {
+                    const files = value as FileList;
+                    if (files && files.length > 0 && files[0].size > 5 * 1024 * 1024) {
+                      return 'Le fichier est trop volumineux (max 5 Mo)';
+                    }
+                    return true;
+                  }
+                })} className="cursor-pointer" />
+                <p className="text-xs text-gray-500 mt-1">Format: JPG, PNG • Taille max: 5 Mo</p>
+                {errors.photoInscription && <span className="text-red-500 text-xs">{errors.photoInscription.message}</span>}
               </div>
-              
+
               <div>
                 <Label>Acte de naissance</Label>
-                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" {...register('acteNaissance')} className="cursor-pointer" />
+                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" {...register('acteNaissance', {
+                  validate: (value: any) => {
+                    const files = value as FileList;
+                    if (files && files.length > 0 && files[0].size > 5 * 1024 * 1024) {
+                      return 'Le fichier est trop volumineux (max 5 Mo)';
+                    }
+                    return true;
+                  }
+                })} className="cursor-pointer" />
+                <p className="text-xs text-gray-500 mt-1">Format: PDF, JPG, PNG • Taille max: 5 Mo</p>
+                {errors.acteNaissance && <span className="text-red-500 text-xs">{(errors.acteNaissance as any).message}</span>}
               </div>
 
               <div>
                 <Label>Bulletin de l'année précédente</Label>
-                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" {...register('bulletinPrecedent')} className="cursor-pointer" />
+                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" {...register('bulletinPrecedent', {
+                  validate: (value: any) => {
+                    const files = value as FileList;
+                    if (files && files.length > 0 && files[0].size > 5 * 1024 * 1024) {
+                      return 'Le fichier est trop volumineux (max 5 Mo)';
+                    }
+                    return true;
+                  }
+                })} className="cursor-pointer" />
+                <p className="text-xs text-gray-500 mt-1">Format: PDF, JPG, PNG • Taille max: 5 Mo</p>
+                {errors.bulletinPrecedent && <span className="text-red-500 text-xs">{(errors.bulletinPrecedent as any).message}</span>}
               </div>
 
               <div>
                 <Label>Certificat médical</Label>
-                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" {...register('certificatMedical')} className="cursor-pointer" />
+                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" {...register('certificatMedical', {
+                  validate: (value: any) => {
+                    const files = value as FileList;
+                    if (files && files.length > 0 && files[0].size > 5 * 1024 * 1024) {
+                      return 'Le fichier est trop volumineux (max 5 Mo)';
+                    }
+                    return true;
+                  }
+                })} className="cursor-pointer" />
+                <p className="text-xs text-gray-500 mt-1">Format: PDF, JPG, PNG • Taille max: 5 Mo</p>
+                {errors.certificatMedical && <span className="text-red-500 text-xs">{(errors.certificatMedical as any).message}</span>}
               </div>
 
               <div>
                 <Label>Justificatif de domicile</Label>
-                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" {...register('justificatifDomicile')} className="cursor-pointer" />
+                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" {...register('justificatifDomicile', {
+                  validate: (value: any) => {
+                    const files = value as FileList;
+                    if (files && files.length > 0 && files[0].size > 5 * 1024 * 1024) {
+                      return 'Le fichier est trop volumineux (max 5 Mo)';
+                    }
+                    return true;
+                  }
+                })} className="cursor-pointer" />
+                <p className="text-xs text-gray-500 mt-1">Format: PDF, JPG, PNG • Taille max: 5 Mo</p>
+                {errors.justificatifDomicile && <span className="text-red-500 text-xs">{(errors.justificatifDomicile as any).message}</span>}
               </div>
 
               <div>
                 <Label>Carte d'identité parent/responsable</Label>
-                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" {...register('carteIdentiteParent')} className="cursor-pointer" />
+                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" {...register('carteIdentiteParent', {
+                  validate: (value: any) => {
+                    const files = value as FileList;
+                    if (files && files.length > 0 && files[0].size > 5 * 1024 * 1024) {
+                      return 'Le fichier est trop volumineux (max 5 Mo)';
+                    }
+                    return true;
+                  }
+                })} className="cursor-pointer" />
+                <p className="text-xs text-gray-500 mt-1">Format: PDF, JPG, PNG • Taille max: 5 Mo</p>
+                {errors.carteIdentiteParent && <span className="text-red-500 text-xs">{(errors.carteIdentiteParent as any).message}</span>}
               </div>
             </div>
           </div>
@@ -909,8 +1062,8 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
             <h3 className="text-lg font-semibold border-b pb-2 text-blue-600">6. Commentaires</h3>
             <div>
               <Label>Notes ou observations</Label>
-              <textarea 
-                {...register('commentaires')} 
+              <textarea
+                {...register('commentaires')}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
                 placeholder="Commentaires éventuels sur l'admission..."
               />
@@ -918,10 +1071,10 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
           </div>
 
           <div className="flex justify-end gap-4 pt-6 border-t mt-8 sticky bottom-0 bg-white py-4 z-10">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={handleSaveDraft} 
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSaveDraft}
               className="mr-auto border-blue-200 text-blue-700 hover:bg-blue-50"
               disabled={loadingAction === 'create' || loadingAction === 'update'}
             >
@@ -929,11 +1082,11 @@ export const AddAdmissionModal: React.FC<AddAdmissionModalProps> = ({ open, onOp
               {draft ? 'Enregistrer les modifications' : 'Enregistrer en brouillon'}
             </Button>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-            
+
             {draft && (
-              <Button 
-                type="button" 
-                onClick={handleFinalizeDraft} 
+              <Button
+                type="button"
+                onClick={handleFinalizeDraft}
                 disabled={loadingAction === 'create' || loadingAction === 'update' || loadingAction === 'finalize'}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >

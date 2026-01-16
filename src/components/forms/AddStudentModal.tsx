@@ -15,7 +15,7 @@ import { toast } from 'react-toastify';
 import { addStudentSchema } from '../../schemas/addStudentSchema';
 import { studentsService, type Responsable, type AddStudentApiPayload } from '../../services/students/studentsService';
 import { useClassroomStore } from '../../stores/classroomStore';
-import { VACATION_OPTIONS, TEACHING_LEVEL_OPTIONS } from '../../schemas/studentSchema';
+import { VACATION_OPTIONS } from '../../schemas/studentSchema';
 import ImageCrop from '../ui/image-crop';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
@@ -30,7 +30,7 @@ interface AddStudentModalProps {
   studentId?: string; // ID pour le mode édition
 }
 
-const FormField: React.FC<{ label: string; required?: boolean; error?: React.ReactNode; children: React.ReactNode }>=({label, required=false, error, children})=> (
+const FormField: React.FC<{ label: string; required?: boolean; error?: React.ReactNode; children: React.ReactNode }> = ({ label, required = false, error, children }) => (
   <div className="space-y-2">
     <Label className="text-sm font-medium text-gray-700 dark:text-gray-200">
       {label} {required && <span className="text-red-500">*</span>}
@@ -43,12 +43,12 @@ const FormField: React.FC<{ label: string; required?: boolean; error?: React.Rea
 export default function AddStudentModal({ open, onOpenChange, onSuccess, studentId }: AddStudentModalProps) {
   const mode = studentId ? 'edit' : 'create';
   const { items: classrooms, fetchAll, getDetails } = useClassroomStore();
-  const [rooms, setRooms] = useState<Array<{id: string; name: string}>>([]);
+  const [rooms, setRooms] = useState<Array<{ id: string; name: string }>>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [responsables, setResponsables] = useState<Responsable[]>([]);
   const [filteredResponsables, setFilteredResponsables] = useState<Responsable[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [submitError, setSubmitError] = useState<string|null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showImageCrop, setShowImageCrop] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -71,7 +71,8 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
     defaultValues: {
       avatar: undefined,
       placeOfBirth: '', communeDeNaissance: '', hasHandicap: false, handicapDetails: '',
-      adresse: '', vacation: 'AM', niveauEnseignement: 'Secondaire', grade: 'NSI',
+      adresseLigne1: '', departement: '', commune: '', sectionCommunale: '',
+      vacation: 'AM', niveauEnseignement: 'Secondaire', grade: 'NSI',
       nomMere: '', prenomMere: '', statutMere: 'vivant', occupationMere: '',
       nomPere: '', prenomPere: '', statutPere: 'vivant', occupationPere: '',
       responsableMode: 'create', personneResponsableId: '', responsable: { firstName: '', lastName: '', lienParente: '', email: '' },
@@ -125,7 +126,7 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
     // Component mounted
     if (open) {
       fetchResponsables();
-      fetchAll(1, 50).catch(()=>{});
+      fetchAll(1, 50).catch(() => { });
 
       if (mode === 'edit' && studentId) {
         setIsLoadingStudent(true);
@@ -142,7 +143,11 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
             communeDeNaissance: student.communeDeNaissance,
             hasHandicap: student.handicap === 'Oui' ? true : false,
             handicapDetails: student.handicapDetails,
-            adresse: student.adresse ? JSON.stringify(student.adresse) : '',
+            // Champs d'adresse séparés
+            adresseLigne1: student.adresse?.adresseLigne1 || '',
+            departement: student.adresse?.departement || '',
+            commune: student.adresse?.commune || '',
+            sectionCommunale: student.adresse?.sectionCommunale || '',
             vacation: student.vacation === 'Matin (AM)' ? 'AM' : 'PM',
             niveauEnseignement: student.niveauEnseignement,
             grade: student.niveauEtude.replace(/ /g, '') as 'NSI' | 'NSII' | 'NSIII' | 'NSIV', // 'NS IV' -> 'NSIV' ou garde 'NSIV'
@@ -157,20 +162,28 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
             responsableMode: 'select',
             personneResponsableId: student.personneResponsable?.id || '',
             selectedClassroomId: student.classroom?.id || '',
-            roomId: student.room?.id || 'none',
-          } as any; // Utiliser 'as any' pour contourner le typage strict de reset pour l'instant
-          reset(studentData);
-          if (student.user.avatarUrl) {
-            setAvatarPreview(student.user.avatarUrl);
-          }
+            roomId: 'none', // sera mis à jour après le chargement des salles
+          } as any;
 
-          // Charger les salles de la classe de l'élève
+          // Charger les salles de la classe de l'élève AVANT de finaliser le reset
           if (student.classroom?.id) {
             getDetails(student.classroom.id).then(() => {
               const state: any = (useClassroomStore as any).getState?.();
               const current = state?.current;
-              setRooms((current?.rooms || []).map((r: any) => ({ id: r.id, name: r.name })));
+              const loadedRooms = (current?.rooms || []).map((r: any) => ({ id: r.id, name: r.name }));
+              setRooms(loadedRooms);
+
+              // Mettre à jour le roomId après que les salles sont chargées
+              const targetRoomId = student.room?.id;
+              if (targetRoomId && loadedRooms.some((r: any) => r.id === targetRoomId)) {
+                setValue('roomId', targetRoomId);
+              }
             });
+          }
+
+          reset(studentData);
+          if (student.user.avatarUrl) {
+            setAvatarPreview(student.user.avatarUrl);
           }
         }).catch((err: any) => {
           console.error("Erreur lors du chargement de l'élève pour l'édition:", err);
@@ -242,9 +255,9 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
         await getDetails(selectedClassroomId);
         const state: any = (useClassroomStore as any).getState?.();
         const current = state?.current;
-        setRooms((current?.rooms || []).map((r: any)=>({ id: r.id, name: r.name })));
+        setRooms((current?.rooms || []).map((r: any) => ({ id: r.id, name: r.name })));
         setValue('roomId', 'none');
-      } catch {}
+      } catch { }
       finally { setRoomsLoading(false); }
     })();
   }, [selectedClassroomId]);
@@ -258,7 +271,7 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
         const phone = r.user.phone?.toLowerCase() || '';
         const lienParente = r.lienParente.toLowerCase();
         const search = searchTerm.toLowerCase();
-        
+
         return fullName.includes(search) || phone.includes(search) || lienParente.includes(search);
       });
       setFilteredResponsables(filtered);
@@ -271,16 +284,13 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
       if (!data.selectedClassroomId) throw new Error('Veuillez sélectionner une classe.');
       if (!data.roomId || data.roomId === 'none') throw new Error('Veuillez sélectionner une salle.');
 
-      // Construire l'adresse objet
-      let adresse: any = undefined;
-      if (data.adresse) {
-        try {
-          const parsed = JSON.parse(data.adresse);
-          adresse = parsed && typeof parsed === 'object' ? parsed : { description: data.adresse };
-        } catch {
-          adresse = { description: data.adresse };
-        }
-      } else { adresse = { description: '' }; }
+      // Construire l'adresse objet avec les champs séparés du formulaire
+      let adresse: any = {
+        adresseLigne1: data.adresseLigne1?.trim() || '',
+        departement: data.departement?.trim() || '',
+        commune: data.commune?.trim() || '',
+        sectionCommunale: data.sectionCommunale?.trim() || ''
+      };
 
       // Construire createPersonneResponsable si mode create
       let createPersonneResponsable: AddStudentApiPayload['createPersonneResponsable'] | undefined = undefined;
@@ -367,7 +377,7 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
   // UI
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{mode === 'edit' ? 'Modifier l\'élève' : 'Ajouter un nouvel élève'}</DialogTitle>
           <DialogDescription>{mode === 'edit' ? 'Modifiez les informations de l\'élève.' : 'Remplissez tous les champs requis.'}</DialogDescription>
@@ -389,383 +399,385 @@ export default function AddStudentModal({ open, onOpenChange, onSuccess, student
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit, (formErrors) => {
+            // Afficher les erreurs de validation dans la console et via toast
+            console.error('Erreurs de validation du formulaire:', formErrors);
+            const errorMessages = Object.entries(formErrors)
+              .map(([field, error]) => `${field}: ${(error as any)?.message || 'invalide'}`)
+              .join(', ');
+            toast.error(`Erreurs de validation: ${errorMessages}`);
+          })} className="space-y-4">
 
-          {/* Identité et naissance */}
-          <Card className="shadow-sm border-0 w-full">
-            <CardHeader className="bg-blue-50 dark:bg-blue-900/20 rounded-t-lg">
-              <CardTitle className="text-base text-blue-800 dark:text-blue-200 flex items-center gap-2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                Identité
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              {/* Photo de profil */}
-              <div className="mb-6">
-                <FormField label="Photo de profil" error={errors.avatar?.message as any}>
-                  <div className="flex items-center gap-4">
-                    {avatarPreview ? (
-                      <div className="relative">
-                        <img 
-                          src={avatarPreview} 
-                          alt="Avatar preview" 
-                          className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
-                          style={{ borderRadius: '25px' }}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                          onClick={() => {
-                            setAvatarPreview(null);
-                            setAvatarFile(null);
-                            setValue('avatar', undefined);
-                          }}
-                        >
-                          ×
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center"
-                           style={{ borderRadius: '25px' }}>
-                        <Camera className="h-8 w-8 text-gray-400" />
-                      </div>
-                    )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowImageCrop(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <Camera className="h-4 w-4" />
-                      {avatarPreview ? 'Changer la photo' : 'Ajouter une photo'}
-                    </Button>
-                  </div>
-                </FormField>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <FormField label="Nom" required error={errors.lastName?.message as any}>
-                  <Input {...register('lastName')} placeholder="Nom" className="h-9" />
-                </FormField>
-                <FormField label="Prénom" required error={errors.firstName?.message as any}>
-                  <Input {...register('firstName')} placeholder="Prénom" className="h-9" />
-                </FormField>
-                <FormField label="Sexe" required error={errors.gender?.message as any}>
-                  <Controller name="gender" control={control} render={({field}) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Homme</SelectItem>
-                        <SelectItem value="female">Femme</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}/>
-                </FormField>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <FormField label="Date de naissance" required error={errors.dateOfBirth?.message as any}>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-                    <Input type="date" {...register('dateOfBirth')} className="h-9 pl-9" />
-                  </div>
-                </FormField>
-                <FormField label="Lieu de naissance" required error={errors.placeOfBirth?.message as any}>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-                    <Input {...register('placeOfBirth')} placeholder="Ville, Département" className="h-9 pl-9" />
-                  </div>
-                </FormField>
-                <FormField label="Commune de naissance" required error={(errors as any).communeDeNaissance?.message}>
-                  <Input {...register('communeDeNaissance' as any)} placeholder="Commune" className="h-9" />
-                </FormField>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <FormField label="Email" error={errors.email?.message as any}>
-                  <Input type="email" {...register('email')} placeholder="email@exemple.com" className="h-9" />
-                </FormField>
-                <FormField label="Vacation" required error={(errors as any).vacation?.message}>
-                  <Controller name={'vacation' as any} control={control as any} render={({field}) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="AM/PM" /></SelectTrigger>
-                      <SelectContent>
-                        {VACATION_OPTIONS.map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                  )}/>
-                </FormField>
-                <FormField label="Niveau d'enseignement" required error={(errors as any).niveauEnseignement?.message}>
-                  <Controller name={'niveauEnseignement' as any} control={control as any} render={({field}) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Fondamentale / Secondaire" /></SelectTrigger>
-                      <SelectContent>
-                        {TEACHING_LEVEL_OPTIONS.map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                  )}/>
-                </FormField>
-              </div>
-              <div className="grid grid-cols-3 gap-4 items-center">
-                <FormField label="Handicap">
-                  <div className="flex items-center gap-2 h-9">
-                    <input type="checkbox" className="h-4 w-4" {...register('hasHandicap' as any)} />
-                    <span className="text-sm text-muted-foreground">Élève en situation de handicap</span>
-                  </div>
-                </FormField>
-                <FormField label="Détails du handicap">
-                  <Input {...register('handicapDetails' as any)} placeholder="Précisions si applicable" className="h-9" disabled={!hasHandicap} />
-                </FormField>
-
-                <FormField label="Adresse complète" required error={(errors as any).adresse?.message}>
-                  <Input {...register('adresse' as any)} placeholder="Numéro, Rue, Ville..." className="h-9" />
-                </FormField>
-                <FormField label={"Adresse (objet)"} required error={(errors as any).adresse?.message}>
-                  <Textarea {...register('adresse' as any)} placeholder='Adresse' className="min-h-[60px]" />
-                </FormField>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Classe / Salle / Niveau d'étude */}
-          <Card className="shadow-sm border-0 w-full">
-            <CardHeader className="bg-purple-50 dark:bg-purple-900/20 rounded-t-lg">
-              <CardTitle className="text-base text-purple-800 dark:text-purple-200 flex items-center gap-2">
-                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                Classe et Salle
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <FormField label="Classe" required error={(errors as any).selectedClassroomId?.message}>
-                  <Controller name={'selectedClassroomId' as any} control={control as any} render={({field}) => (
-                    <Select value={field.value} onValueChange={async (val)=>{ field.onChange(val); try{ await getDetails(val); const st:any=(useClassroomStore as any).getState?.(); setRooms((st?.current?.rooms||[]).map((r:any)=>({id:r.id,name:r.name}))); setValue('roomId','none'); }catch{}}}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner une classe" /></SelectTrigger>
-                      <SelectContent>
-                        {classrooms.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                  )}/>
-                </FormField>
-                <FormField label="Niveau d'étude (NSI..NSIV)" required error={errors.grade?.message as any}>
-                  <Controller name={'grade' as any} control={control as any} render={({field}) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      disabled={!!selectedClassroomId} // Désactiver si une classe est sélectionnée
-                    >
-                      <SelectTrigger className={`h-9 ${selectedClassroomId ? 'bg-gray-50 text-gray-600' : ''}`}>
-                        <SelectValue placeholder={selectedClassroomId ? 'Auto-sélectionné depuis la classe' : 'NSI..NSIV'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="NSI">NSI</SelectItem>
-                        <SelectItem value="NSII">NSII</SelectItem>
-                        <SelectItem value="NSIII">NSIII</SelectItem>
-                        <SelectItem value="NSIV">NSIV</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}/>
-                </FormField>
-                <FormField label="Salle" required error={(errors as any).roomId?.message}>
-                  <Controller name={'roomId' as any} control={control as any} render={({field}) => (
-                    <Select value={field.value} onValueChange={field.onChange} disabled={roomsLoading}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder={roomsLoading ? 'Chargement...' : 'Sélectionner une salle'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Aucune</SelectItem>
-                        {rooms.map(r => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                  )}/>
-                </FormField>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Parents */}
-          <Card className="shadow-sm border-0 w-full">
-            <CardHeader className="bg-orange-50 dark:bg-orange-900/20 rounded-t-lg">
-              <CardTitle className="text-base text-orange-800 dark:text-orange-200 flex items-center gap-2">
-                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                Parents
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <FormField label="Nom du père" required error={(errors as any).nomPere?.message}><Input {...register('nomPere' as any)} className="h-9" /></FormField>
-                <FormField label="Prénom du père" required error={(errors as any).prenomPere?.message}><Input {...register('prenomPere' as any)} className="h-9" /></FormField>
-                <FormField label="Statut du père" required error={(errors as any).statutPere?.message}>
-                  <Controller name="statutPere" control={control} render={({field}) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="vivant">Vivant</SelectItem>
-                        <SelectItem value="mort">Mort</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}/>
-                </FormField>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <FormField label="Nom de la mère" required error={(errors as any).nomMere?.message}><Input {...register('nomMere' as any)} className="h-9" /></FormField>
-                <FormField label="Prénom de la mère" required error={(errors as any).prenomMere?.message}><Input {...register('prenomMere' as any)} className="h-9" /></FormField>
-                <FormField label="Statut de la mère" required error={(errors as any).statutMere?.message}>
-                  <Controller name="statutMere" control={control} render={({field}) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="vivant">Vivant</SelectItem>
-                        <SelectItem value="mort">Mort</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}/>
-                </FormField>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Occupation du père"><Input {...register('occupationPere' as any)} className="h-9" /></FormField>
-                <FormField label="Occupation de la mère"><Input {...register('occupationMere' as any)} className="h-9" /></FormField>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Personne responsable */}
-          <Card className="shadow-sm border-0 w-full">
-            <CardHeader className="bg-indigo-50 dark:bg-indigo-900/20 rounded-t-lg">
-              <CardTitle className="text-base text-indigo-800 dark:text-indigo-200 flex items-center gap-2">
-                <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
-                Personne responsable
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <FormField label="Mode" required>
-                <Controller name={'responsableMode' as any} control={control as any} render={({field}) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="select">Sélectionner</SelectItem>
-                      <SelectItem value="create">Créer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}/>
-              </FormField>
-
-              {responsableMode === 'select' ? (
-                <div className="space-y-2">
-                  <FormField label="Rechercher un responsable">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-                      <Input 
-                        placeholder="Rechercher par nom, prénom ou téléphone..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="h-9 pl-9"
-                      />
+            {/* Identité et naissance */}
+            <Card className="shadow-sm border-0 w-full">
+              <CardHeader className="bg-blue-50 dark:bg-blue-900/20 rounded-t-lg">
+                <CardTitle className="text-base text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  Identité
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                {/* Photo de profil */}
+                <div className="mb-6">
+                  <FormField label="Photo de profil" error={errors.avatar?.message as any}>
+                    <div className="flex items-center gap-4">
+                      {avatarPreview ? (
+                        <div className="relative">
+                          <img
+                            src={avatarPreview}
+                            alt="Avatar preview"
+                            className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                            style={{ borderRadius: '25px' }}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                            onClick={() => {
+                              setAvatarPreview(null);
+                              setAvatarFile(null);
+                              setValue('avatar', undefined);
+                            }}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center"
+                          style={{ borderRadius: '25px' }}>
+                          <Camera className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowImageCrop(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Camera className="h-4 w-4" />
+                        {avatarPreview ? 'Changer la photo' : 'Ajouter une photo'}
+                      </Button>
                     </div>
                   </FormField>
-                  <FormField label="Responsable existant" required>
-                    <Controller name={'personneResponsableId' as any} control={control as any} render={({field}) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner une personne" /></SelectTrigger>
-                        <SelectContent>
-                          {filteredResponsables.length > 0 ? (
-                            filteredResponsables.map(r => (
-                              <SelectItem key={r.id} value={r.id}>
-                                {r.user.firstName} {r.user.lastName} - {r.lienParente}
-                                {r.user.phone && <span className="text-xs text-gray-500 ml-2">({r.user.phone})</span>}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="no-results" disabled>Aucun résultat trouvé</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    )}/>
-                  </FormField>
                 </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField label="Prénom" required><Input {...register('responsable.firstName')} className="h-9" /></FormField>
-                  <FormField label="Nom" required><Input {...register('responsable.lastName')} className="h-9" /></FormField>
-                  <FormField label="Lien de parenté" required>
-                    <Controller name={'responsable.lienParente'} control={control} render={({field}) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Lien" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="père">Père</SelectItem>
-                          <SelectItem value="mère">Mère</SelectItem>
-                          <SelectItem value="tuteur">Tuteur</SelectItem>
-                          <SelectItem value="tutrice">Tutrice</SelectItem>
-                          <SelectItem value="grand-parent">Grand-parent</SelectItem>
-                          <SelectItem value="autre">Autre</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}/>
-                  </FormField>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField label="Email">
-                      <Input type="email" {...register('responsable.email')} placeholder="email@exemple.com" className="h-9" />
-                    </FormField>
-                    <FormField label="Téléphone">
-                      <Controller
-                        name={'responsable.phone'}
-                        control={control}
-                        render={({ field }) => (
-                          <PhoneInput
-                            international
-                            limitMaxLength={true}
-                            defaultCountry="HT"
-                            value={field.value}
-                            onChange={field.onChange}
-                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          />
-                        )}
-                      />
-                    </FormField>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField label="NIF">
-                      <Controller
-                        name="responsable.nif"
-                        control={control}
-                        render={({ field }) => (
-                          <Input
-                            {...field}
-                            placeholder="000-000-000-0"
-                            maxLength={13}
-                            className="h-9"
-                            onChange={(e) => {
-                              // Formatage en temps réel : xxx-xxx-xxx-x
-                              let value = e.target.value.replace(/\D/g, ''); // Garder que les chiffres
-                              if (value.length > 10) value = value.slice(0, 10); // Max 10 chiffres
-                              
-                              let formattedValue = '';
-                              if (value.length > 0) formattedValue += value.slice(0, 3);
-                              if (value.length > 3) formattedValue += '-' + value.slice(3, 6);
-                              if (value.length > 6) formattedValue += '-' + value.slice(6, 9);
-                              if (value.length > 9) formattedValue += '-' + value.slice(9, 10);
-                              
-                              field.onChange(formattedValue);
-                            }}
-                          />
-                        )}
-                      />
-                    </FormField>
-                    <FormField label="NINU (10 chiffres)">
-                      <Input {...register('responsable.ninu' as any)} placeholder="0000000000" maxLength={10} className="h-9" />
-                    </FormField>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={()=>onOpenChange(false)} disabled={isSubmitting}>Annuler</Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
-              {isSubmitting ? (mode === 'edit' ? 'Mise à jour...' : 'Enregistrement...') : (mode === 'edit' ? 'Mettre à jour' : 'Enregistrer l\'élève')}
-            </Button>
-          </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormField label="Nom" required error={errors.lastName?.message as any}>
+                    <Input {...register('lastName')} placeholder="Nom" className="h-9" />
+                  </FormField>
+                  <FormField label="Prénom" required error={errors.firstName?.message as any}>
+                    <Input {...register('firstName')} placeholder="Prénom" className="h-9" />
+                  </FormField>
+                  <FormField label="Sexe" required error={errors.gender?.message as any}>
+                    <Controller name="gender" control={control} render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Homme</SelectItem>
+                          <SelectItem value="female">Femme</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )} />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormField label="Date de naissance" required error={errors.dateOfBirth?.message as any}>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                      <Input type="date" {...register('dateOfBirth')} className="h-9 pl-9" />
+                    </div>
+                  </FormField>
+                  <FormField label="Lieu de naissance" required error={errors.placeOfBirth?.message as any}>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                      <Input {...register('placeOfBirth')} placeholder="Ville, Département" className="h-9 pl-9" />
+                    </div>
+                  </FormField>
+                  <FormField label="Commune de naissance" required error={(errors as any).communeDeNaissance?.message}>
+                    <Input {...register('communeDeNaissance' as any)} placeholder="Commune" className="h-9" />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Email" error={errors.email?.message as any}>
+                    <Input type="email" {...register('email')} placeholder="email@exemple.com" className="h-9" />
+                  </FormField>
+                  <FormField label="Vacation" required error={(errors as any).vacation?.message}>
+                    <Controller name={'vacation' as any} control={control as any} render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="AM/PM" /></SelectTrigger>
+                        <SelectContent>
+                          {VACATION_OPTIONS.map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    )} />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
+                  <FormField label="Handicap">
+                    <div className="flex items-center gap-2 h-9">
+                      <input type="checkbox" className="h-4 w-4" {...register('hasHandicap' as any)} />
+                      <span className="text-sm text-muted-foreground">Élève en situation de handicap</span>
+                    </div>
+                  </FormField>
+                  <FormField label="Détails du handicap">
+                    <Input {...register('handicapDetails' as any)} placeholder="Précisions si applicable" className="h-9" disabled={!hasHandicap} />
+                  </FormField>
+                </div>
+                {/* Adresse - champs séparés */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Adresse (ligne 1)" required error={(errors as any).adresseLigne1?.message}>
+                    <Input {...register('adresseLigne1' as any)} placeholder="Numéro, Rue..." className="h-9" />
+                  </FormField>
+                  <FormField label="Section communale">
+                    <Input {...register('sectionCommunale' as any)} placeholder="Section communale" className="h-9" />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Commune" required error={(errors as any).commune?.message}>
+                    <Input {...register('commune' as any)} placeholder="Commune" className="h-9" />
+                  </FormField>
+                  <FormField label="Département" required error={(errors as any).departement?.message}>
+                    <Input {...register('departement' as any)} placeholder="Département" className="h-9" />
+                  </FormField>
+                </div>
+                {/* Informations scolaires additionnelles */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="N° ordre 9ème">
+                    <Input {...register('numeroOrdre9e' as any)} placeholder="Ex: 12345" className="h-9" />
+                  </FormField>
+                  <FormField label="Dernier établissement">
+                    <Input {...register('dernierEtablissement' as any)} placeholder="Nom de l'école précédente" className="h-9" />
+                  </FormField>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Classe / Salle / Niveau d'étude */}
+            <Card className="shadow-sm border-0 w-full">
+              <CardHeader className="bg-purple-50 dark:bg-purple-900/20 rounded-t-lg">
+                <CardTitle className="text-base text-purple-800 dark:text-purple-200 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  Classe et Salle
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Classe" required error={(errors as any).selectedClassroomId?.message}>
+                    <Controller name={'selectedClassroomId' as any} control={control as any} render={({ field }) => (
+                      <Select value={field.value} onValueChange={async (val) => { field.onChange(val); try { await getDetails(val); const st: any = (useClassroomStore as any).getState?.(); setRooms((st?.current?.rooms || []).map((r: any) => ({ id: r.id, name: r.name }))); setValue('roomId', 'none'); } catch { } }}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner une classe" /></SelectTrigger>
+                        <SelectContent>
+                          {classrooms.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    )} />
+                  </FormField>
+                  <FormField label="Salle" required error={(errors as any).roomId?.message}>
+                    <Controller name={'roomId' as any} control={control as any} render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange} disabled={roomsLoading}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder={roomsLoading ? 'Chargement...' : 'Sélectionner une salle'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Aucune</SelectItem>
+                          {rooms.map(r => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    )} />
+                  </FormField>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Parents */}
+            <Card className="shadow-sm border-0 w-full">
+              <CardHeader className="bg-orange-50 dark:bg-orange-900/20 rounded-t-lg">
+                <CardTitle className="text-base text-orange-800 dark:text-orange-200 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  Parents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormField label="Nom du père" required error={(errors as any).nomPere?.message}><Input {...register('nomPere' as any)} className="h-9" /></FormField>
+                  <FormField label="Prénom du père" required error={(errors as any).prenomPere?.message}><Input {...register('prenomPere' as any)} className="h-9" /></FormField>
+                  <FormField label="Statut du père" required error={(errors as any).statutPere?.message}>
+                    <Controller name="statutPere" control={control} render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="vivant">Vivant</SelectItem>
+                          <SelectItem value="mort">Mort</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )} />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormField label="Nom de la mère" required error={(errors as any).nomMere?.message}><Input {...register('nomMere' as any)} className="h-9" /></FormField>
+                  <FormField label="Prénom de la mère" required error={(errors as any).prenomMere?.message}><Input {...register('prenomMere' as any)} className="h-9" /></FormField>
+                  <FormField label="Statut de la mère" required error={(errors as any).statutMere?.message}>
+                    <Controller name="statutMere" control={control} render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="vivant">Vivant</SelectItem>
+                          <SelectItem value="mort">Mort</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )} />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Occupation du père"><Input {...register('occupationPere' as any)} className="h-9" /></FormField>
+                  <FormField label="Occupation de la mère"><Input {...register('occupationMere' as any)} className="h-9" /></FormField>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Personne responsable */}
+            <Card className="shadow-sm border-0 w-full">
+              <CardHeader className="bg-indigo-50 dark:bg-indigo-900/20 rounded-t-lg">
+                <CardTitle className="text-base text-indigo-800 dark:text-indigo-200 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                  Personne responsable
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                <FormField label="Mode" required>
+                  <Controller name={'responsableMode' as any} control={control as any} render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="select">Sélectionner</SelectItem>
+                        <SelectItem value="create">Créer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )} />
+                </FormField>
+
+                {responsableMode === 'select' ? (
+                  <div className="space-y-2">
+                    <FormField label="Rechercher un responsable">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                        <Input
+                          placeholder="Rechercher par nom, prénom ou téléphone..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="h-9 pl-9"
+                        />
+                      </div>
+                    </FormField>
+                    <FormField label="Responsable existant" required>
+                      <Controller name={'personneResponsableId' as any} control={control as any} render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner une personne" /></SelectTrigger>
+                          <SelectContent>
+                            {filteredResponsables.length > 0 ? (
+                              filteredResponsables.map(r => (
+                                <SelectItem key={r.id} value={r.id}>
+                                  {r.user.firstName} {r.user.lastName} - {r.lienParente}
+                                  {r.user.phone && <span className="text-xs text-gray-500 ml-2">({r.user.phone})</span>}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="no-results" disabled>Aucun résultat trouvé</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )} />
+                    </FormField>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Prénom, Nom, Lien de parenté */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <FormField label="Prénom" required><Input {...register('responsable.firstName')} className="h-9" /></FormField>
+                      <FormField label="Nom" required><Input {...register('responsable.lastName')} className="h-9" /></FormField>
+                      <FormField label="Lien de parenté" required>
+                        <Controller name={'responsable.lienParente'} control={control} render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Lien" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="père">Père</SelectItem>
+                              <SelectItem value="mère">Mère</SelectItem>
+                              <SelectItem value="tuteur">Tuteur</SelectItem>
+                              <SelectItem value="tutrice">Tutrice</SelectItem>
+                              <SelectItem value="grand-parent">Grand-parent</SelectItem>
+                              <SelectItem value="autre">Autre</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )} />
+                      </FormField>
+                    </div>
+                    {/* Email, Téléphone */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField label="Email">
+                        <Input type="email" {...register('responsable.email')} placeholder="email@exemple.com" className="h-9" />
+                      </FormField>
+                      <FormField label="Téléphone">
+                        <Controller
+                          name={'responsable.phone'}
+                          control={control}
+                          render={({ field }) => (
+                            <PhoneInput
+                              international
+                              limitMaxLength={true}
+                              defaultCountry="HT"
+                              value={field.value}
+                              onChange={field.onChange}
+                              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                          )}
+                        />
+                      </FormField>
+                    </div>
+                    {/* NIF, NINU */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField label="NIF">
+                        <Controller
+                          name="responsable.nif"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              placeholder="000-000-000-0"
+                              maxLength={13}
+                              className="h-9"
+                              onChange={(e) => {
+                                // Formatage en temps réel : xxx-xxx-xxx-x
+                                let value = e.target.value.replace(/\D/g, ''); // Garder que les chiffres
+                                if (value.length > 10) value = value.slice(0, 10); // Max 10 chiffres
+
+                                let formattedValue = '';
+                                if (value.length > 0) formattedValue += value.slice(0, 3);
+                                if (value.length > 3) formattedValue += '-' + value.slice(3, 6);
+                                if (value.length > 6) formattedValue += '-' + value.slice(6, 9);
+                                if (value.length > 9) formattedValue += '-' + value.slice(9, 10);
+
+                                field.onChange(formattedValue);
+                              }}
+                            />
+                          )}
+                        />
+                      </FormField>
+                      <FormField label="NINU (10 chiffres)">
+                        <Input {...register('responsable.ninu' as any)} placeholder="0000000000" maxLength={10} className="h-9" />
+                      </FormField>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Annuler</Button>
+              <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+                {isSubmitting ? (mode === 'edit' ? 'Mise à jour...' : 'Enregistrement...') : (mode === 'edit' ? 'Mettre à jour' : 'Enregistrer l\'élève')}
+              </Button>
+            </div>
           </form>
         )}
 

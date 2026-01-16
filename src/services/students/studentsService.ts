@@ -95,8 +95,14 @@ export const buildStudentFormData = (payload: AddStudentApiPayload): FormData =>
   fd.append('classroomId', payload.classroomId);
   fd.append('roomId', payload.roomId);
 
-  // Adresse (objet): selon l'API, si elle attend un JSON stringifié dans multipart
-  fd.append('adresse', JSON.stringify(payload.adresse));
+  // Adresse: le backend attend des champs séparés au format adresse[champ]
+  if (payload.adresse) {
+    const addr = payload.adresse as any;
+    if (addr.adresseLigne1) fd.append('adresse[adresseLigne1]', addr.adresseLigne1);
+    if (addr.departement) fd.append('adresse[departement]', addr.departement);
+    if (addr.commune) fd.append('adresse[commune]', addr.commune);
+    if (addr.sectionCommunale) fd.append('adresse[sectionCommunale]', addr.sectionCommunale);
+  }
 
   // Responsable: seulement l'ID (le responsable doit être créé séparément avant)
   if (payload.personneResponsableId) {
@@ -167,7 +173,7 @@ export const studentsService = {
         console.table(preview);
         // eslint-disable-next-line no-console
         console.groupEnd();
-      } catch {}
+      } catch { }
     }
 
     const res = await http.post(url, formData, {
@@ -226,7 +232,7 @@ export const studentsService = {
     const res = await http.get(url, {
       params: { page: 1, limit: 100 }
     });
-    
+
     // Extraire toutes les salles de tous les classrooms
     const allRooms: any[] = [];
     if (res.data && res.data.data) {
@@ -247,7 +253,7 @@ export const studentsService = {
         }
       });
     }
-    
+
     return allRooms;
   },
 
@@ -287,14 +293,21 @@ export const studentsService = {
   // PATCH /students/{id} - Mettre à jour un étudiant
   async updateStudent(id: string, updateData: Partial<AddStudentApiPayload>): Promise<any> {
     const url = getApiUrl(`/students/${id}`);
-    
+
     // Le backend attend TOUJOURS du multipart/form-data pour cet endpoint
     const formData = new FormData();
-    
+
     Object.entries(updateData).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         if (key === 'avatar' && value instanceof File) {
           formData.append(key, value);
+        } else if (key === 'adresse' && typeof value === 'object') {
+          // Adresse: le backend attend des champs séparés au format adresse[champ]
+          const addr = value as any;
+          if (addr.adresseLigne1) formData.append('adresse[adresseLigne1]', addr.adresseLigne1);
+          if (addr.departement) formData.append('adresse[departement]', addr.departement);
+          if (addr.commune) formData.append('adresse[commune]', addr.commune);
+          if (addr.sectionCommunale) formData.append('adresse[sectionCommunale]', addr.sectionCommunale);
         } else if (typeof value === 'object' && !(value instanceof File)) {
           formData.append(key, JSON.stringify(value));
         } else {

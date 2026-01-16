@@ -10,11 +10,11 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Plus, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
   CheckCircle,
   AlertCircle,
   Users,
@@ -29,19 +29,19 @@ import {
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
-import { 
-  DataTable, 
-  Column, 
-  RowAction 
+import {
+  DataTable,
+  Column,
+  RowAction
 } from '../../ui/data-table';
 import { Badge } from '../../ui/badge';
-import { 
-  Card, 
+import {
+  Card,
   CardContent,
   CardHeader,
   CardTitle
 } from '../../ui/card';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -70,25 +70,25 @@ import { useDebounce } from '../../../hooks/useDebounce';
 // COMPOSANT PRINCIPAL DE GESTION DES PRÉSENCES
 // =====================================================
 export const AttendancesManagement: React.FC = () => {
-  
+
   // État local
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showManualDialog, setShowManualDialog] = useState(false);
   const [showJustifyDialog, setShowJustifyDialog] = useState(false);
   const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false);
-  
+
   const [selectedAttendance, setSelectedAttendance] = useState<Attendance | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [userSearchId, setUserSearchId] = useState('');
-  
+
   // Formulaire manuel
   const [manualForm, setManualForm] = useState({
     studentId: '',
     reason: '',
     timestamp: new Date().toISOString().slice(0, 16) // Format datetime-local
   });
-  
+
   // Recherche de personne pour pointage manuel
   const [targetType, setTargetType] = useState<'student' | 'employee'>('student');
   const [personSearch, setPersonSearch] = useState('');
@@ -96,6 +96,9 @@ export const AttendancesManagement: React.FC = () => {
 
   // Formulaire justification
   const [justifyReason, setJustifyReason] = useState('');
+
+  // Erreur modale (affichée inline)
+  const [modalError, setModalError] = useState<string | null>(null);
 
   // Store
   const {
@@ -121,7 +124,7 @@ export const AttendancesManagement: React.FC = () => {
   const { fetchAll: fetchClassrooms } = useClassroomStore();
   const { allStudents, fetchStudents } = useStudentStore();
   const { allEmployees, fetchEmployees } = useEmployeeStore();
-  
+
   // Chargement initial : Retards du jour par défaut
   useEffect(() => {
     if (selectedDate) {
@@ -139,13 +142,13 @@ export const AttendancesManagement: React.FC = () => {
     if (!searchLower && !selectedPerson) return []; // Ne rien afficher si pas de recherche
 
     const source = (targetType === 'student' ? allStudents : allEmployees) as any[];
-    
+
     return source.filter((p: any) => {
       // Adaptation selon la structure des objets (Student vs Employee)
       const firstName = p.firstName || '';
       const lastName = p.lastName || '';
       const id = targetType === 'student' ? (p.studentId || p.matricule) : (p.employeeId || p.id);
-      
+
       return (
         firstName.toLowerCase().includes(searchLower) ||
         lastName.toLowerCase().includes(searchLower) ||
@@ -169,7 +172,7 @@ export const AttendancesManagement: React.FC = () => {
     // IMPORTANT: Le backend attend probablement l'UUID (id) ou le matricule selon la config.
     // Supposons UUID pour être sûr, ou matricule si c'est ce qui est affiché.
     // D'après les props, student.id est l'UUID.
-    const id = person.id; 
+    const id = person.id;
     setManualForm({ ...manualForm, studentId: id });
     setPersonSearch(`${person.firstName} ${person.lastName}`);
   };
@@ -185,7 +188,7 @@ export const AttendancesManagement: React.FC = () => {
         timestamp: new Date(manualForm.timestamp).toISOString(),
         reason: manualForm.reason
       };
-      
+
       if (targetType === 'student') {
         payload.studentId = manualForm.studentId;
       } else {
@@ -203,21 +206,31 @@ export const AttendancesManagement: React.FC = () => {
       setManualForm({ ...manualForm, studentId: '', reason: '' });
       setSelectedPerson(null);
       setPersonSearch('');
-    } catch (error) {
-      // Erreur gérée par le store
+    } catch (error: any) {
+      // Extraire le message d'erreur du backend et l'afficher inline
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Une erreur est survenue lors du pointage manuel';
+      setModalError(errorMessage);
     }
   };
 
   const handleJustifySubmit = async () => {
     if (!selectedAttendance || !justifyReason.trim()) return;
     try {
-      await justifyAttendance(selectedAttendance.id, { reason: justifyReason });
+      await justifyAttendance(selectedAttendance.id, { justification: justifyReason });
       toast.success('Justification enregistrée');
       setShowJustifyDialog(false);
       setJustifyReason('');
       setSelectedAttendance(null);
-    } catch (error) {
-      // Erreur gérée par le store
+    } catch (error: any) {
+      // Extraire le message d'erreur du backend
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Une erreur est survenue lors de la justification';
+      toast.error(errorMessage);
     }
   };
 
@@ -227,8 +240,12 @@ export const AttendancesManagement: React.FC = () => {
       if (action === 'reprocess') await reprocessAbsences(selectedDate);
       if (action === 'force') await forceAbsenceDetection();
       toast.success('Action de maintenance effectuée avec succès');
-    } catch (error) {
-      // Erreur gérée par le store
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Erreur lors de l\'action de maintenance';
+      toast.error(errorMessage);
     }
   };
 
@@ -302,7 +319,7 @@ export const AttendancesManagement: React.FC = () => {
       )
     }
   ];
-  
+
   // Actions de ligne
   const rowActions: RowAction<Attendance>[] = [
     {
@@ -313,25 +330,25 @@ export const AttendancesManagement: React.FC = () => {
     {
       label: "Justifier",
       icon: <Edit className="h-4 w-4" />,
-      onClick: (attendance) => { 
-        setSelectedAttendance(attendance); 
+      onClick: (attendance) => {
+        setSelectedAttendance(attendance);
         setJustifyReason(attendance.reason || '');
-        setShowJustifyDialog(true); 
+        setShowJustifyDialog(true);
       },
       // Afficher seulement si absent ou retard
       disabled: (attendance) => !['absent', 'late'].includes(attendance.status)
     }
   ];
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  
+
   useEffect(() => {
     setFilters({ search: debouncedSearchTerm });
   }, [debouncedSearchTerm, setFilters]);
-  
+
   const handleSort = (sort: { field: string; order: 'asc' | 'desc' }) => setSortOptions({ field: sort.field as keyof Attendance, order: sort.order });
-  
+
   return (
     <div className="space-y-6">
       {/* EN-TÊTE AVEC ACTIONS */}
@@ -344,12 +361,12 @@ export const AttendancesManagement: React.FC = () => {
           <Button variant="outline" onClick={() => setShowMaintenanceDialog(true)}>
             <Settings className="h-4 w-4 mr-2" />Maintenance
           </Button>
-          <Button onClick={() => setShowManualDialog(true)}>
+          <Button onClick={() => { setModalError(null); setShowManualDialog(true); }}>
             <Plus className="h-4 w-4 mr-2" />Pointage Manuel
           </Button>
         </div>
       </div>
-      
+
       {/* BARRE DE RECHERCHE ET FILTRES */}
       <Card>
         <CardContent className="p-4">
@@ -357,9 +374,9 @@ export const AttendancesManagement: React.FC = () => {
             <div className="flex-1 w-full">
               <Label htmlFor="user-search">Recherche par ID Étudiant/Employé</Label>
               <div className="flex gap-2 mt-1.5">
-                <Input 
+                <Input
                   id="user-search"
-                  placeholder="ID UUID..." 
+                  placeholder="ID UUID..."
                   value={userSearchId}
                   onChange={(e) => setUserSearchId(e.target.value)}
                 />
@@ -369,8 +386,8 @@ export const AttendancesManagement: React.FC = () => {
               </div>
             </div>
             <div className="w-full md:w-auto">
-               <Label htmlFor="date-filter">Date (pour retards/maintenance)</Label>
-               <Input
+              <Label htmlFor="date-filter">Date (pour retards/maintenance)</Label>
+              <Input
                 id="date-filter"
                 type="date"
                 value={selectedDate}
@@ -384,7 +401,7 @@ export const AttendancesManagement: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Affichage des erreurs */}
       {error && (
         <Alert variant="destructive" className="mb-4">
@@ -392,7 +409,7 @@ export const AttendancesManagement: React.FC = () => {
           <AlertDescription>{error.message}<Button variant="link" size="sm" onClick={clearError} className="ml-2 h-auto p-0">Fermer</Button></AlertDescription>
         </Alert>
       )}
-      
+
       {/* Statistiques (si disponibles) */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -442,7 +459,7 @@ export const AttendancesManagement: React.FC = () => {
           </Card>
         </div>
       )}
-      
+
       {/* Table des présences */}
       <DataTable
         data={attendances}
@@ -458,9 +475,9 @@ export const AttendancesManagement: React.FC = () => {
         title={userSearchId ? "Rapport Utilisateur" : "Rapport des Retards / Incidents"}
         description={userSearchId ? `Historique pour ${userSearchId}` : `Incidents du ${new Date(selectedDate).toLocaleDateString('fr-FR')}`}
       />
-      
+
       {/* DIALOGS */}
-      
+
       {/* Dialog Pointage Manuel */}
       <Dialog open={showManualDialog} onOpenChange={setShowManualDialog}>
         <DialogContent className="overflow-visible">
@@ -469,13 +486,13 @@ export const AttendancesManagement: React.FC = () => {
             <DialogDescription>Enregistrer une présence manuellement pour un étudiant ou employé.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            
+
             {/* Choix du Type */}
             <div className="space-y-2">
               <Label>Type de personne</Label>
-              <RadioGroup 
-                defaultValue="student" 
-                value={targetType} 
+              <RadioGroup
+                defaultValue="student"
+                value={targetType}
                 onValueChange={(val: string) => {
                   setTargetType(val as 'student' | 'employee');
                   setSelectedPerson(null);
@@ -500,7 +517,7 @@ export const AttendancesManagement: React.FC = () => {
               <Label>Rechercher {targetType === 'student' ? 'un étudiant' : 'un employé'}</Label>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
+                <Input
                   placeholder={targetType === 'student' ? "Nom, prénom ou matricule..." : "Nom, prénom ou ID..."}
                   value={personSearch}
                   onChange={(e) => {
@@ -513,25 +530,25 @@ export const AttendancesManagement: React.FC = () => {
                   className="pl-8"
                 />
                 {selectedPerson && (
-                   <div className="absolute right-2 top-2 text-green-600">
-                     <Check className="h-5 w-5" />
-                   </div>
+                  <div className="absolute right-2 top-2 text-green-600">
+                    <Check className="h-5 w-5" />
+                  </div>
                 )}
               </div>
-              
+
               {/* Liste des suggestions */}
               {!selectedPerson && personSearch && filteredPersons.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-950 border rounded-md shadow-lg max-h-48 overflow-y-auto">
                   {filteredPersons.map((person: any) => (
-                    <div 
+                    <div
                       key={person.id}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer flex flex-col border-b last:border-0"
                       onClick={() => handleSelectPerson(person)}
                     >
                       <span className="font-medium">{person.firstName} {person.lastName}</span>
                       <span className="text-xs text-muted-foreground">
-                        {targetType === 'student' 
-                          ? `Mat: ${person.studentId || person.matricule}` 
+                        {targetType === 'student'
+                          ? `Mat: ${person.studentId || person.matricule}`
                           : `ID: ${person.employeeId || 'N/A'}`}
                       </span>
                     </div>
@@ -539,30 +556,40 @@ export const AttendancesManagement: React.FC = () => {
                 </div>
               )}
               {!selectedPerson && personSearch && filteredPersons.length === 0 && (
-                 <div className="absolute z-10 w-full mt-1 bg-white p-2 text-sm text-muted-foreground border rounded-md shadow-lg">
-                   Aucun résultat trouvé
-                 </div>
+                <div className="absolute z-10 w-full mt-1 bg-white p-2 text-sm text-muted-foreground border rounded-md shadow-lg">
+                  Aucun résultat trouvé
+                </div>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="timestamp">Date et Heure *</Label>
-              <Input 
-                id="timestamp" 
+              <Input
+                id="timestamp"
                 type="datetime-local"
                 value={manualForm.timestamp}
-                onChange={(e) => setManualForm({...manualForm, timestamp: e.target.value})}
+                onChange={(e) => setManualForm({ ...manualForm, timestamp: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="reason">Motif (Optionnel)</Label>
-              <Input 
-                id="reason" 
+              <Input
+                id="reason"
                 value={manualForm.reason}
-                onChange={(e) => setManualForm({...manualForm, reason: e.target.value})}
+                onChange={(e) => setManualForm({ ...manualForm, reason: e.target.value })}
                 placeholder="Ex: Oubli de badge"
               />
             </div>
+
+            {/* Affichage de l'erreur inline */}
+            {modalError && (
+              <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md">
+                <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  {modalError}
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowManualDialog(false)}>Annuler</Button>
@@ -583,8 +610,8 @@ export const AttendancesManagement: React.FC = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="justifyReason">Motif de la justification *</Label>
-              <Textarea 
-                id="justifyReason" 
+              <Textarea
+                id="justifyReason"
                 value={justifyReason}
                 onChange={(e) => setJustifyReason(e.target.value)}
                 placeholder="Ex: Certificat médical fourni..."
@@ -610,10 +637,10 @@ export const AttendancesManagement: React.FC = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-              <h4 className="font-medium text-yellow-800 mb-2 flex items-center"><AlertCircle className="h-4 w-4 mr-2"/> Attention</h4>
+              <h4 className="font-medium text-yellow-800 mb-2 flex items-center"><AlertCircle className="h-4 w-4 mr-2" /> Attention</h4>
               <p className="text-sm text-yellow-700">Ces actions peuvent modifier massivement les données. Utilisez avec précaution.</p>
             </div>
-            
+
             <div className="space-y-3">
               <Button variant="outline" className="w-full justify-start" onClick={() => handleMaintenanceAction('force')}>
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -634,7 +661,7 @@ export const AttendancesManagement: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog de visualisation */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
         <DialogContent className="max-w-2xl">

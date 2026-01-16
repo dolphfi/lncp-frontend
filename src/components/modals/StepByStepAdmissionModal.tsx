@@ -63,11 +63,9 @@ const StyledInput = React.forwardRef<
       )}
       <input
         ref={ref}
-        className={`w-full ${icon ? "pl-10" : "pl-3"} pr-3 py-2 bg-white/50 ${
-          hasError ? "border-red-500 border-2" : "border border-gray-100"
-        } rounded-full focus:outline-none focus:ring-1 ${
-          hasError ? "focus:ring-red-400" : "focus:ring-blue-400"
-        } focus:border-blue-400 transition-all duration-200 text-xs text-blue-900 placeholder-blue-700/50 ${className}`}
+        className={`w-full ${icon ? "pl-10" : "pl-3"} pr-3 py-2 bg-white/50 ${hasError ? "border-red-500 border-2" : "border border-gray-100"
+          } rounded-full focus:outline-none focus:ring-1 ${hasError ? "focus:ring-red-400" : "focus:ring-blue-400"
+          } focus:border-blue-400 transition-all duration-200 text-xs text-blue-900 placeholder-blue-700/50 ${className}`}
         {...props}
       />
     </div>
@@ -83,6 +81,7 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [backendError, setBackendError] = useState<string[] | null>(null);
   const {
     register,
     handleSubmit,
@@ -103,11 +102,9 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
     switch (currentStep) {
       case 1: // Informations Personnelles
         fieldsToValidate = [
-          "firstName",
-          "lastName",
+          "dateOfBirth",
           "email",
           "phone",
-          "dateOfBirth",
           "sexe",
           "lieuDeNaissance",
           "communeDeNaissance",
@@ -115,8 +112,8 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
           "departement",
           "commune",
           "sectionCommunale",
-          "vacation",
-          "classe",
+          "dernierEtablissementFrequente",
+          "numeroOrdre9emeAF",
         ];
         break;
       case 2: // Informations Familiales
@@ -136,8 +133,6 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
           "responsableFirstName",
           "responsableLastName",
           "lienParente",
-          "responsableEmail",
-          "responsablePhone",
         ];
         break;
     }
@@ -176,15 +171,25 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
       toast.success("Votre demande d'admission a été soumise avec succès !");
     } catch (error: any) {
       console.error("Erreur soumission:", error);
-      const msg =
-        error.response?.data?.message ||
-        error.message ||
-        "Une erreur est survenue";
-      toast.error(
-        typeof msg === "string"
-          ? msg
-          : "Erreur lors de la soumission. Veuillez vérifier tous les champs."
-      );
+      const backendMessage = error.response?.data?.message;
+
+      let errorMessages: string[] = [];
+      if (Array.isArray(backendMessage)) {
+        errorMessages = backendMessage;
+      } else if (typeof backendMessage === 'string') {
+        errorMessages = [backendMessage];
+      } else {
+        errorMessages = [error.message || "Une erreur est survenue lors de la soumission."];
+      }
+
+      // Set error state to display in UI
+      setBackendError(errorMessages);
+
+      // Also show as toast for visibility
+      toast.error(errorMessages.join('\n'), {
+        autoClose: 8000,
+        style: { whiteSpace: 'pre-line' }
+      });
     } finally {
       setLoading(false);
     }
@@ -203,21 +208,19 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
       {[1, 2, 3].map((step) => (
         <React.Fragment key={step}>
           <div
-            className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-all ${
-              step === currentStep
-                ? "bg-blue-600 text-white scale-110"
-                : step < currentStep
+            className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-all ${step === currentStep
+              ? "bg-blue-600 text-white scale-110"
+              : step < currentStep
                 ? "bg-green-500 text-white"
                 : "bg-gray-200 text-gray-500"
-            }`}
+              }`}
           >
             {step < currentStep ? <CheckCircle className="w-5 h-5" /> : step}
           </div>
           {step < 3 && (
             <div
-              className={`h-1 w-12 md:w-20 mx-2 transition-all ${
-                step < currentStep ? "bg-green-500" : "bg-gray-200"
-              }`}
+              className={`h-1 w-12 md:w-20 mx-2 transition-all ${step < currentStep ? "bg-green-500" : "bg-gray-200"
+                }`}
             />
           )}
         </React.Fragment>
@@ -292,6 +295,34 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Backend Error Display */}
+          {backendError && backendError.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-red-800">Erreur de soumission</h3>
+                  <ul className="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+                    {backendError.map((err, idx) => (
+                      <li key={idx}>{err}</li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => setBackendError(null)}
+                    className="mt-3 text-xs text-red-600 hover:text-red-800 underline"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {renderStepIndicator()}
           {renderStepTitle()}
 
@@ -311,11 +342,11 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                     id="firstName"
                     icon={<User className="w-4 h-4 text-blue-900/50" />}
                     hasError={!!errors.firstName}
-                    {...register("firstName", { required: true })}
+                    {...register("firstName", { required: "Le prénom est requis" })}
                     placeholder="Ex: Jean"
                   />
                   {errors.firstName && (
-                    <span className="text-xs text-red-500">*</span>
+                    <span className="text-xs text-red-500">{errors.firstName.message || "Le prénom est requis"}</span>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -329,11 +360,11 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                     id="lastName"
                     icon={<User className="w-4 h-4 text-blue-900/50" />}
                     hasError={!!errors.lastName}
-                    {...register("lastName", { required: true })}
+                    {...register("lastName", { required: "Le nom est requis" })}
                     placeholder="Ex: Dupont"
                   />
                   {errors.lastName && (
-                    <span className="text-xs text-red-500">*</span>
+                    <span className="text-xs text-red-500">{errors.lastName.message || "Le nom est requis"}</span>
                   )}
                 </div>
 
@@ -349,11 +380,17 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                     type="email"
                     icon={<Mail className="w-4 h-4 text-blue-900/50" />}
                     hasError={!!errors.email}
-                    {...register("email", { required: true })}
+                    {...register("email", {
+                      required: "L'email est requis",
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: "Adresse email invalide"
+                      }
+                    })}
                     placeholder="jean.dupont@email.com"
                   />
                   {errors.email && (
-                    <span className="text-xs text-red-500">*</span>
+                    <span className="text-xs text-red-500">{errors.email.message || "Email invalide"}</span>
                   )}
                 </div>
 
@@ -367,7 +404,7 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                   <Controller
                     name="phone"
                     control={control}
-                    rules={{ required: true }}
+                    rules={{ required: "Le téléphone est requis" }}
                     render={({ field }) => (
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
@@ -383,9 +420,6 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                       </div>
                     )}
                   />
-                  {errors.phone && (
-                    <span className="text-xs text-red-500">*</span>
-                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -400,10 +434,21 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                     type="date"
                     icon={<Calendar className="w-4 h-4 text-blue-900/50" />}
                     hasError={!!errors.dateOfBirth}
-                    {...register("dateOfBirth", { required: true })}
+                    {...register("dateOfBirth", {
+                      required: "La date de naissance est requise",
+                      validate: (value) => {
+                        if (!value) return "La date de naissance est requise";
+                        const birthDate = new Date(value);
+                        const today = new Date();
+                        const age = today.getFullYear() - birthDate.getFullYear();
+                        const m = today.getMonth() - birthDate.getMonth();
+                        const actualAge = m < 0 || (m === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
+                        return actualAge >= 13 || "L'étudiant doit avoir au moins 13 ans";
+                      }
+                    })}
                   />
                   {errors.dateOfBirth && (
-                    <span className="text-xs text-red-500">*</span>
+                    <span className="text-xs text-red-500">{errors.dateOfBirth.message || "Date invalide"}</span>
                   )}
                 </div>
 
@@ -542,19 +587,62 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                         htmlFor="sectionCommunale"
                         className="text-blue-900 font-medium text-sm"
                       >
-                        Section Communale{" "}
-                        <span className="text-red-500">*</span>
+                        Section Communale <span className="text-red-500">*</span>
                       </Label>
                       <StyledInput
                         id="sectionCommunale"
                         hasError={!!errors.sectionCommunale}
-                        {...register("sectionCommunale", { required: true })}
+                        {...register("sectionCommunale", { required: "La section communale est requise" })}
                         placeholder="Ex: Turgeau"
                       />
                       {errors.sectionCommunale && (
                         <span className="text-xs text-red-500">*</span>
                       )}
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informations Académiques Précédentes */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-blue-900 mb-4">
+                  Informations Académiques
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="dernierEtablissementFrequente"
+                      className="text-blue-900 font-medium text-sm"
+                    >
+                      Dernier établissement fréquenté <span className="text-red-500">*</span>
+                    </Label>
+                    <StyledInput
+                      id="dernierEtablissementFrequente"
+                      hasError={!!errors.dernierEtablissementFrequente}
+                      {...register("dernierEtablissementFrequente", { required: "Ce champ est requis" })}
+                      placeholder="Ex: Collège Saint Louis"
+                    />
+                    {errors.dernierEtablissementFrequente && (
+                      <span className="text-xs text-red-500">{errors.dernierEtablissementFrequente.message || "*"}</span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="numeroOrdre9emeAF"
+                      className="text-blue-900 font-medium text-sm"
+                    >
+                      Numéro d'ordre 9ème AF <span className="text-red-500">*</span>
+                    </Label>
+                    <StyledInput
+                      id="numeroOrdre9emeAF"
+                      hasError={!!errors.numeroOrdre9emeAF}
+                      {...register("numeroOrdre9emeAF", { required: "Ce champ est requis" })}
+                      placeholder="Ex: 9AF-2023-..."
+                    />
+                    {errors.numeroOrdre9emeAF && (
+                      <span className="text-xs text-red-500">{errors.numeroOrdre9emeAF.message || "*"}</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -637,13 +725,11 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                 <div className="space-y-2">
                   <Label className="text-blue-900 font-medium text-sm">
                     Handicap ou besoins particuliers ?{" "}
-                    <span className="text-red-500">*</span>
                   </Label>
                   <Controller
                     name="handicap"
                     control={control}
                     defaultValue="Non"
-                    rules={{ required: true }}
                     render={({ field }) => (
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
@@ -775,7 +861,7 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                     </Label>
                     <StyledInput
                       hasError={!!errors.occupationMere}
-                      {...register("occupationMere", { required: true })}
+                      {...register("occupationMere", { required: "L'occupation de la mère est requise" })}
                       placeholder="Profession"
                     />
                     {errors.occupationMere && (
@@ -853,7 +939,7 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                     </Label>
                     <StyledInput
                       hasError={!!errors.occupationPere}
-                      {...register("occupationPere", { required: true })}
+                      {...register("occupationPere", { required: "L'occupation du père est requise" })}
                       placeholder="Profession"
                     />
                     {errors.occupationPere && (
@@ -941,35 +1027,38 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                 </div>
                 <div className="space-y-2">
                   <Label className="text-blue-900 font-medium text-sm">
-                    Email Responsable <span className="text-red-500">*</span>
+                    Email Responsable
                   </Label>
                   <StyledInput
                     type="email"
                     icon={<Mail className="w-4 h-4 text-blue-900/50" />}
                     hasError={!!errors.responsableEmail}
-                    {...register("responsableEmail", { required: true })}
-                    placeholder="email@example.com"
+                    {...register("responsableEmail", {
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: "Adresse email invalide"
+                      }
+                    })}
+                    placeholder="email@example.com (optionnel)"
                   />
                   {errors.responsableEmail && (
-                    <span className="text-xs text-red-500">*</span>
+                    <span className="text-xs text-red-500">{errors.responsableEmail.message || "Email invalide"}</span>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-blue-900 font-medium text-sm">
-                    Téléphone Responsable{" "}
-                    <span className="text-red-500">*</span>
+                    Téléphone Responsable
                   </Label>
                   <Controller
                     name="responsablePhone"
                     control={control}
-                    rules={{ required: true }}
                     render={({ field }) => (
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                           <Phone className="w-4 h-4 text-blue-900/50" />
                         </div>
                         <PhoneInput
-                          placeholder="Téléphone"
+                          placeholder="Téléphone (optionnel)"
                           value={field.value}
                           onChange={field.onChange}
                           defaultCountry="HT"
@@ -978,9 +1067,6 @@ const StepByStepAdmissionModal: React.FC<StepByStepAdmissionModalProps> = ({
                       </div>
                     )}
                   />
-                  {errors.responsablePhone && (
-                    <span className="text-xs text-red-500">*</span>
-                  )}
                 </div>
               </div>
             </div>

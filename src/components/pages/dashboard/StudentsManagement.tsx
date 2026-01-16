@@ -14,13 +14,13 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Plus, 
-  Download, 
-  Upload, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Download,
+  Upload,
+  Eye,
+  Edit,
+  Trash2,
   CheckCircle,
   FileDown,
   FileText,
@@ -44,20 +44,20 @@ import {
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
-import { 
-  DataTable, 
-  Column, 
-  RowAction 
+import {
+  DataTable,
+  Column,
+  RowAction
 } from '../../ui/data-table';
 import { Badge } from '../../ui/badge';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from '../../ui/card';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -97,7 +97,7 @@ import { AddStudentApiPayload, studentsService } from '../../../services/student
 // COMPOSANT PRINCIPAL DE GESTION DES ÉLÈVES
 // =====================================================
 export const StudentsManagement: React.FC = () => {
-  
+
   // =====================================================
   // ÉTAT LOCAL DU COMPOSANT
   // =====================================================
@@ -119,10 +119,10 @@ export const StudentsManagement: React.FC = () => {
   } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [exportRoomId, setExportRoomId] = useState<string>('');
-  
+
   // Référence pour l'input file
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // =====================================================
   // RÉCUPÉRATION DE L'ÉTAT DEPUIS LE STORE ZUSTAND
   // =====================================================
@@ -136,7 +136,7 @@ export const StudentsManagement: React.FC = () => {
     filters,
     stats,
     responsables,
-    
+
     // Actions
     fetchStudents,
     createStudent, // mock path (conservé)
@@ -157,7 +157,7 @@ export const StudentsManagement: React.FC = () => {
 
   // Récupération des salles pour les filtres
   const { rooms, fetchRooms } = useRoomStore();
-  
+
   // =====================================================
   // CHARGEMENT INITIAL DES DONNÉES
   // =====================================================
@@ -207,13 +207,13 @@ export const StudentsManagement: React.FC = () => {
 
       // Récupérer via endpoint store (sans affecter la table principale)
       const list = await getStudentsByRoom(exportRoomId);
-      
+
       // Vérifier qu'il y a des élèves dans cette salle
       if (!Array.isArray(list) || list.length === 0) {
         toast.error(`Aucun élève trouvé dans la salle ${roomLabel}`);
         return;
       }
-      
+
       const rows = (Array.isArray(list) ? list : []).map((s: any) => {
         const matricule = s.matricule || s.studentId || s.user?.matricule || '—';
         const firstName = s.user?.firstName || s.firstName || '';
@@ -234,7 +234,7 @@ export const StudentsManagement: React.FC = () => {
         try {
           // x=0, y=0, largeur=pageWidth, hauteur=scaledHeight (plein largeur)
           doc.addImage(headerMeta.dataURL, 'PNG', 0, 0, pageWidth, scaledHeight);
-        } catch {}
+        } catch { }
         // Position de départ du contenu: juste après l'image + petit espace
         topY = scaledHeight + 12;
       }
@@ -245,7 +245,7 @@ export const StudentsManagement: React.FC = () => {
 
       autoTable(doc, {
         startY: topY + 28,
-        head: [[ 'Matricule', 'Nom', 'Prénom', 'Classe', 'Salle' ]],
+        head: [['Matricule', 'Nom', 'Prénom', 'Classe', 'Salle']],
         body: rows,
         styles: { fontSize: 9 },
         headStyles: { fillColor: [25, 118, 210] },
@@ -253,7 +253,7 @@ export const StudentsManagement: React.FC = () => {
       });
 
       const safeRoomName = (roomLabel || 'salle').replace(/[^a-z0-9_-]+/gi, '_');
-      doc.save(`eleves_${safeRoomName}_${new Date().toISOString().slice(0,10)}.pdf`);
+      doc.save(`eleves_${safeRoomName}_${new Date().toISOString().slice(0, 10)}.pdf`);
       setShowExportDialog(false);
       setExportRoomId('');
     } catch (e) {
@@ -271,7 +271,7 @@ export const StudentsManagement: React.FC = () => {
     const b = (last?.trim()?.charAt(0) || '').toUpperCase();
     return `${a}${b}` || 'ST';
   };
-  
+
   // =====================================================
   // CONFIGURATION DES COLONNES DE LA TABLE
   // =====================================================
@@ -299,7 +299,7 @@ export const StudentsManagement: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             {/* Informations de l'élève */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
@@ -338,11 +338,11 @@ export const StudentsManagement: React.FC = () => {
             </Badge>
           );
         } else if (student.grade) {
-        return (
+          return (
             <Badge variant="secondary" className="text-xs whitespace-nowrap">
               {student.grade} - Non assignée
-          </Badge>
-        );
+            </Badge>
+          );
         } else {
           return (
             <span className="text-xs text-gray-400 whitespace-nowrap">Non assignée</span>
@@ -356,10 +356,10 @@ export const StudentsManagement: React.FC = () => {
       sortable: true,
       width: '100px',
       render: (status: string) => {
-        const variant = status === 'active' ? 'default' : 
-                      status === 'inactive' ? 'secondary' : 'destructive';
-        const label = status === 'active' ? 'Actif' : 
-                     status === 'inactive' ? 'Inactif' : 'Suspendu';
+        const variant = status === 'active' ? 'default' :
+          status === 'inactive' ? 'secondary' : 'destructive';
+        const label = status === 'active' ? 'Actif' :
+          status === 'inactive' ? 'Inactif' : 'Suspendu';
         return (
           <Badge variant={variant} className="text-xs">
             {label}
@@ -391,7 +391,7 @@ export const StudentsManagement: React.FC = () => {
       }
     }
   ];
-  
+
   // =====================================================
   // CONFIGURATION DES ACTIONS DE LIGNE
   // =====================================================
@@ -422,15 +422,15 @@ export const StudentsManagement: React.FC = () => {
       variant: "destructive"
     }
   ];
-  
+
   // =====================================================
   // GESTIONNAIRES D'ÉVÉNEMENTS
   // =====================================================
-  
+
   // =====================================================
   // GESTION DES FILTRES PAR CLASSE ET SALLE
   // =====================================================
-  
+
   const handleClassroomFilter = async (grade: string, className: string) => {
     try {
       // Les grades des étudiants sont comme "secondaire", "3e_cycle", "fondamentale"
@@ -459,7 +459,7 @@ export const StudentsManagement: React.FC = () => {
           return n1.includes(target) || n2.includes(target);
         });
       }
-      
+
       if (!classroom) {
         console.error(`Classe ${grade} non trouvée dans:`, classrooms.map(c => ({ id: c.id, name: c.name, level: c.level })));
         toast.error(`Classe ${grade} non trouvée`);
@@ -471,7 +471,7 @@ export const StudentsManagement: React.FC = () => {
       console.log(`Étudiants trouvés pour la classe ${classroom.name}:`, studentsInClassroom);
       // Marquer le filtre de classe actif pour l'UX (affichage du X)
       setFilters({ ...filters, grade });
-      
+
       // Forcer le recalcul des statistiques après le filtrage
       fetchStats();
     } catch (error) {
@@ -499,7 +499,7 @@ export const StudentsManagement: React.FC = () => {
 
     try {
       const studentsInRoom = await getStudentsByRoom(roomId);
-      
+
       // Mettre à jour le filtre de salle
       setFilters({ ...filters, roomId });
     } catch (error) {
@@ -513,7 +513,7 @@ export const StudentsManagement: React.FC = () => {
     try {
       // Recharger tous les étudiants
       await fetchStudents();
-      
+
       // Réinitialiser tous les filtres
       setFilters({
         search: '',
@@ -553,7 +553,7 @@ export const StudentsManagement: React.FC = () => {
       // Construire la partie Responsable selon le mode
       let personneResponsableId: string | undefined = undefined;
       let createPersonneResponsable: AddStudentApiPayload['createPersonneResponsable'] | undefined = undefined;
-      const mode = (data as any).responsableMode as ('select'|'create'|undefined);
+      const mode = (data as any).responsableMode as ('select' | 'create' | undefined);
       if (mode === 'select' && (data as any).personneResponsableId) {
         personneResponsableId = (data as any).personneResponsableId as string;
       } else if ((data as any).responsable) {
@@ -629,11 +629,11 @@ export const StudentsManagement: React.FC = () => {
       setCreateError(message);
     }
   };
-  
+
   // Gestion de la mise à jour d'un élève
   const handleUpdateStudent = async (data: CreateStudentFormData, studentId?: string) => {
     if (!studentId) return;
-    
+
     try {
       // Convertir les données en format de mise à jour
       const updateData = {
@@ -648,11 +648,11 @@ export const StudentsManagement: React.FC = () => {
       // L'erreur est gérée par le store
     }
   };
-  
+
   // Gestion de la suppression d'un élève
   const handleDeleteStudent = async () => {
     if (!selectedStudent) return;
-    
+
     try {
       await deleteStudent(selectedStudent.id);
       setShowDeleteDialog(false);
@@ -662,26 +662,26 @@ export const StudentsManagement: React.FC = () => {
       // L'erreur est gérée par le store
     }
   };
-  
+
   // État local pour la recherche avec debouncing
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300); // 300ms de délai
-  
+
   // Effet pour appliquer la recherche debouncée
   useEffect(() => {
     setFilters({ search: debouncedSearchTerm });
   }, [debouncedSearchTerm, setFilters]);
-  
+
   // Gestion de la recherche (mise à jour immédiate de l'état local)
   const handleSearch = (searchValue: string) => {
     setSearchTerm(searchValue);
   };
-  
+
   // ✨ Gestion des filtres avancés
   const handleStudentFilter = (filterUpdates: Partial<typeof filters>) => {
     setFilters(filterUpdates);
   };
-  
+
   // Gestion du tri
   const handleSort = (sort: { field: string; order: 'asc' | 'desc' }) => {
     setSortOptions({
@@ -693,15 +693,15 @@ export const StudentsManagement: React.FC = () => {
   // =====================================================
   // FONCTIONS D'EXPORTATION
   // =====================================================
-  
+
   const exportToCSV = async () => {
     try {
       // Récupérer données backend complètes directement depuis le service
       const backendResponse = await studentsService.getAllStudentsComplete();
       const backendStudents = backendResponse.data;
-      
+
       const studentsByRoom = new Map<string, any[]>();
-      
+
       for (const student of backendStudents) {
         const s = student as any;
         const roomKey = s.room?.name || 'Sans_salle';
@@ -710,41 +710,41 @@ export const StudentsManagement: React.FC = () => {
         }
         studentsByRoom.get(roomKey)!.push(student);
       }
-      
+
       // En-têtes complets avec TOUS les champs d'inscription (basés sur la structure backend)
       const headers = [
         // Informations personnelles
         'Matricule', 'Prénom', 'Nom', 'Sexe', 'Date de naissance', 'Lieu de naissance', 'Commune de naissance',
         'Email', 'Téléphone',
-        
+
         // Informations académiques
         'Classe', 'Niveau d\'enseignement', 'Niveau d\'étude', 'Salle', 'Vacation', 'Statut', 'Date création compte',
         'Dernier établissement', 'N° ordre 9ème',
-        
+
         // Informations familiales - Père
         'Nom du père', 'Prénom du père', 'Statut du père', 'Occupation du père',
-        
+
         // Informations familiales - Mère
         'Nom de la mère', 'Prénom de la mère', 'Statut de la mère', 'Occupation de la mère',
-        
+
         // Responsable légal
         'Nom complet responsable', 'Lien de parenté', 'Téléphone responsable', 'Email responsable',
-        
+
         // Adresse et informations complémentaires
         'Adresse complète', 'Handicap', 'Détails handicap'
       ];
-      
+
       // Créer un workbook Excel avec une sheet par salle
       const workbook = XLSX.utils.book_new();
-      
+
       for (const [roomName, roomStudents] of studentsByRoom.entries()) {
         // Préparer les données pour cette salle
         const sheetData = [headers]; // En-têtes en première ligne
-        
+
         roomStudents.forEach((student, index) => {
           // Utiliser la structure frontend transformée par le store
           const s = student as any;
-          
+
           // Debug pour le premier étudiant de chaque salle
           if (index === 0) {
             console.log(`DEBUG - Salle ${roomName}, Premier étudiant backend:`, {
@@ -754,7 +754,7 @@ export const StudentsManagement: React.FC = () => {
               room: s.room?.name
             });
           }
-          
+
           const row = [
             // Informations personnelles (structure backend)
             s.matricule || '',
@@ -766,7 +766,7 @@ export const StudentsManagement: React.FC = () => {
             s.communeDeNaissance || '',
             s.user?.email || '',
             s.user?.phone || '',
-            
+
             // Informations académiques (structure backend)
             s.classroom?.name || '',
             s.niveauEnseignement || '',
@@ -777,27 +777,27 @@ export const StudentsManagement: React.FC = () => {
             s.user?.createdAt ? new Date(s.user.createdAt).toLocaleDateString('fr-FR') : '',
             '', // lastSchool pas dans backend
             '', // ninthGradeOrderNumber pas dans backend
-            
+
             // Informations familiales - Père (structure backend)
             s.nomPere || '',
             s.prenomPere || '',
             s.statutPere || '',
             s.occupationPere || '',
-            
+
             // Informations familiales - Mère (structure backend)
             s.nomMere || '',
             s.prenomMere || '',
             s.statutMere || '',
             s.occupationMere || '',
-            
+
             // Responsable légal (structure backend)
             s.personneResponsable?.user ? (s.personneResponsable.user.firstName + ' ' + s.personneResponsable.user.lastName) : '',
             s.personneResponsable?.lienParente || '',
             s.personneResponsable?.user?.phone || '',
             s.personneResponsable?.user?.email || '',
-            
+
             // Adresse et informations complémentaires (structure backend)
-            s.adresse && typeof s.adresse === 'object' ? 
+            s.adresse && typeof s.adresse === 'object' ?
               [s.adresse.adresseLigne1, s.adresse.commune, s.adresse.departement, s.adresse.sectionCommunale]
                 .filter(Boolean).join(', ') || 'Adresse non renseignée'
               : (s.adresse || ''),
@@ -806,21 +806,21 @@ export const StudentsManagement: React.FC = () => {
           ];
           sheetData.push(row);
         });
-        
+
         // Créer la worksheet
         const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-        
+
         // Nom de la sheet (max 31 caractères pour Excel)
         const sheetName = roomName.length > 31 ? roomName.substring(0, 31) : roomName;
-        
+
         // Ajouter la sheet au workbook
         XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
       }
-      
+
       // Exporter le fichier Excel
       const fileName = `eleves_par_salle_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
-      
+
       const totalStudents = Array.from(studentsByRoom.values()).reduce((sum, arr) => sum + arr.length, 0);
       toast.success(`Export Excel: ${studentsByRoom.size} salles, ${totalStudents} élèves exportés`);
     } catch (error) {
@@ -832,7 +832,7 @@ export const StudentsManagement: React.FC = () => {
   // =====================================================
   // FONCTIONS D'IMPORTATION EXCEL
   // =====================================================
-  
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
@@ -842,7 +842,7 @@ export const StudentsManagement: React.FC = () => {
       toast.error('Fichier Excel requis (.xlsx ou .xls)');
     }
   };
-  
+
   const resetImport = () => {
     setImportFile(null);
     setImportProgress(0);
@@ -850,57 +850,57 @@ export const StudentsManagement: React.FC = () => {
     setIsImporting(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
-  
+
   const findClassroomIdByName = (className: string): string => {
     if (!className) return classrooms[0]?.id || '';
     const classroom = classrooms.find(c => c.name === className);
     return classroom?.id || classrooms[0]?.id || '';
   };
-  
+
   const findRoomIdByName = (roomName: string): string => {
     if (!roomName) return rooms[0]?.id || '';
     const room = rooms.find(r => r.name === roomName);
     return room?.id || rooms[0]?.id || '';
   };
-  
+
   const findResponsableByEmailOrPhone = (email?: string, phone?: string): string | undefined => {
     console.log('DEBUG - Recherche responsable:', { email, phone, responsablesCount: responsables?.length });
-    
+
     if (!email && !phone) {
       console.log('DEBUG - Pas d\'email ni téléphone');
       return undefined;
     }
-    
+
     if (!responsables || responsables.length === 0) {
       console.log('DEBUG - Aucun responsable chargé');
       return undefined;
     }
-    
+
     // Chercher dans la liste des responsables existants
     const responsable = responsables.find(r => {
       const matchEmail = email && r.user?.email === email;
       const matchPhone = phone && r.user?.phone === phone;
-      console.log('DEBUG - Test responsable:', { 
-        rId: r.id, 
-        rEmail: r.user?.email, 
-        rPhone: r.user?.phone, 
-        matchEmail, 
-        matchPhone 
+      console.log('DEBUG - Test responsable:', {
+        rId: r.id,
+        rEmail: r.user?.email,
+        rPhone: r.user?.phone,
+        matchEmail,
+        matchPhone
       });
       return matchEmail || matchPhone;
     });
-    
+
     console.log('DEBUG - Responsable trouvé:', responsable?.id);
     return responsable?.id;
   };
-  
+
   const validateAndMapStudentData = (rowData: any): AddStudentApiPayload => {
     // Champs obligatoires
     if (!rowData['Prénom']?.trim()) throw new Error('Prénom requis');
     if (!rowData['Nom']?.trim()) throw new Error('Nom requis');
     if (!rowData['Sexe']?.trim()) throw new Error('Sexe requis');
     if (!rowData['Date de naissance']?.trim()) throw new Error('Date de naissance requise');
-    
+
     // Parse date
     const dateStr = rowData['Date de naissance'];
     let dateOfBirth: string;
@@ -910,28 +910,28 @@ export const StudentsManagement: React.FC = () => {
     } else {
       dateOfBirth = dateStr;
     }
-    
+
     // Construire l'adresse
     const adresseStr = rowData['Adresse complète']?.trim();
     const adresse = adresseStr ? { description: adresseStr } : { description: '' };
-    
+
     // Gestion du responsable - même logique que le formulaire
     const responsableEmail = rowData['Email responsable']?.trim();
     const responsablePhone = rowData['Téléphone responsable']?.trim();
-    
+
     console.log('DEBUG - Données responsable Excel:', {
       'Email responsable': responsableEmail,
       'Téléphone responsable': responsablePhone,
       'Nom complet responsable': rowData['Nom complet responsable'],
       'Lien de parenté': rowData['Lien de parenté']
     });
-    
+
     // Chercher un responsable existant
     const existingResponsableId = findResponsableByEmailOrPhone(responsableEmail, responsablePhone);
-    
+
     let personneResponsableId: string | undefined = undefined;
     let createPersonneResponsable: AddStudentApiPayload['createPersonneResponsable'] | undefined = undefined;
-    
+
     if (existingResponsableId) {
       // Utiliser le responsable existant
       personneResponsableId = existingResponsableId;
@@ -939,7 +939,7 @@ export const StudentsManagement: React.FC = () => {
       // Créer un nouveau responsable
       const responsableFirstName = rowData['Nom complet responsable']?.split(' ')[0] || rowData['Prénom de la mère'] || 'Responsable';
       const responsableLastName = rowData['Nom complet responsable']?.split(' ')[1] || rowData['Nom de la mère'] || 'Inconnu';
-      
+
       createPersonneResponsable = {
         firstName: responsableFirstName,
         lastName: responsableLastName,
@@ -950,7 +950,7 @@ export const StudentsManagement: React.FC = () => {
         ninu: undefined
       };
     }
-    
+
     return {
       firstName: rowData['Prénom'].trim(),
       lastName: rowData['Nom'].trim(),
@@ -973,25 +973,25 @@ export const StudentsManagement: React.FC = () => {
       prenomPere: rowData['Prénom du père']?.trim() || '',
       statutPere: rowData['Statut du père']?.trim() || 'Vivant',
       occupationPere: rowData['Occupation du père']?.trim() || undefined,
-      
+
       // Responsable: soit ID existant, soit création
       personneResponsableId,
       createPersonneResponsable,
-      
+
       classroomId: findClassroomIdByName(rowData['Classe']?.trim() || ''),
       roomId: findRoomIdByName(rowData['Salle']?.trim() || '')
     };
   };
-  
+
   const importExcelData = async () => {
     if (!importFile) {
       toast.error('Veuillez sélectionner un fichier Excel');
       return;
     }
-    
+
     setIsImporting(true);
     setImportProgress(0);
-    
+
     // S'assurer que les responsables sont chargés
     if (!responsables || responsables.length === 0) {
       try {
@@ -1005,17 +1005,17 @@ export const StudentsManagement: React.FC = () => {
         // Continuer sans les responsables existants
       }
     }
-    
+
     const results = {
       total: 0,
       success: 0,
       errors: [] as { row: number; sheet: string; error: string }[]
     };
-    
+
     try {
       const arrayBuffer = await importFile.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      
+
       // Compter le total de lignes
       let totalRows = 0;
       workbook.SheetNames.forEach(sheetName => {
@@ -1023,29 +1023,29 @@ export const StudentsManagement: React.FC = () => {
         const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
         totalRows += Math.max(0, data.length - 1);
       });
-      
+
       results.total = totalRows;
       let processedRows = 0;
-      
+
       // Traiter chaque sheet
       for (const sheetName of workbook.SheetNames) {
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
-        
+
         for (let i = 0; i < jsonData.length; i++) {
           const rowData = jsonData[i];
           const rowIndex = i + 2; // +2 car Excel commence à 1 et on a les headers
-          
+
           try {
             // Ignorer les lignes vides
             if (!rowData['Prénom'] && !rowData['Nom']) {
               processedRows++;
               continue;
             }
-            
+
             // Valider et mapper les données
             const payload = validateAndMapStudentData(rowData);
-            
+
             // Debug: Vérifier le payload
             console.log('DEBUG - Payload pour import:', {
               firstName: payload.firstName,
@@ -1053,11 +1053,11 @@ export const StudentsManagement: React.FC = () => {
               personneResponsableId: payload.personneResponsableId,
               createPersonneResponsable: payload.createPersonneResponsable
             });
-            
+
             // Créer l'étudiant via l'API
             await createStudentApi(payload);
             results.success++;
-            
+
           } catch (error) {
             results.errors.push({
               row: rowIndex,
@@ -1065,26 +1065,26 @@ export const StudentsManagement: React.FC = () => {
               error: (error as Error).message
             });
           }
-          
+
           processedRows++;
           setImportProgress(Math.round((processedRows / results.total) * 100));
-          
+
           // Petite pause pour éviter de surcharger l'API
           await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
-      
+
       setImportResults(results);
-      
+
       if (results.success > 0) {
         await fetchStudents(); // Rafraîchir la liste
         toast.success(`Import terminé: ${results.success}/${results.total} élèves importés`);
       }
-      
+
       if (results.errors.length > 0) {
         toast.warning(`${results.errors.length} erreurs d'import détectées`);
       }
-      
+
     } catch (error) {
       console.error('Erreur lors de l\'import:', error);
       toast.error('Erreur lors de l\'import Excel');
@@ -1095,13 +1095,13 @@ export const StudentsManagement: React.FC = () => {
 
   // exportToPDF géré via un dialog dédié (showExportDialog)
 
-  
+
   // =====================================================
   // RENDU DES STATISTIQUES
   // =====================================================
   const renderStats = () => {
     if (!stats) return null;
-    
+
     return (
       <div className="mb-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
@@ -1129,7 +1129,7 @@ export const StudentsManagement: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           {/* Statistique Actifs avec détails des autres statuts */}
           <Card className="h-fit">
             <CardContent className="p-3">
@@ -1152,7 +1152,7 @@ export const StudentsManagement: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           {/* Statistique Salles avec répartition */}
           <Card className="h-fit">
             <CardContent className="p-3">
@@ -1176,9 +1176,9 @@ export const StudentsManagement: React.FC = () => {
                     ];
                     const color = colors[index % colors.length];
                     const isActive = filters?.grade === grade;
-                    
+
                     return (
-                      <div 
+                      <div
                         key={grade}
                         className={`${isActive ? 'ring-2 ring-offset-1 ring-orange-400' : ''} ${color.bg} rounded-md p-0.5 px-2 border ${color.border} cursor-pointer hover:opacity-80 transition-opacity`}
                         onClick={() => {
@@ -1214,12 +1214,12 @@ export const StudentsManagement: React.FC = () => {
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Lien pour voir plus de détails */}
         <div className="flex justify-end">
-          <Button 
-            variant="link" 
-            size="sm" 
+          <Button
+            variant="link"
+            size="sm"
             className="text-xs text-muted-foreground hover:text-primary p-0 h-auto"
             onClick={() => navigate('/dashboard')}
           >
@@ -1229,13 +1229,13 @@ export const StudentsManagement: React.FC = () => {
       </div>
     );
   };
-  
+
   // =====================================================
   // RENDU DES ERREURS
   // =====================================================
   const renderError = () => {
     if (!error) return null;
-    
+
     return (
       <Alert variant="destructive" className="mb-4">
         <AlertCircle className="h-4 w-4" />
@@ -1253,7 +1253,7 @@ export const StudentsManagement: React.FC = () => {
       </Alert>
     );
   };
-  
+
   // =====================================================
   // RENDU PRINCIPAL DU COMPOSANT
   // =====================================================
@@ -1271,16 +1271,16 @@ export const StudentsManagement: React.FC = () => {
             Gérez les informations des élèves de votre établissement
           </p>
         </div>
-        
-        <div className="flex items-center gap-2">
-         
-          
+
+        <div className="flex flex-wrap items-center gap-2">
+
+
           {/* Menu d'export */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                <Upload className="h-4 w-4 mr-2" />
-                Exporter
+                <Upload className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Exporter</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -1296,30 +1296,30 @@ export const StudentsManagement: React.FC = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
-          <Button 
-            variant="outline" 
-            onClick={() => setShowImportDialog(true)} 
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowImportDialog(true)}
             disabled={loading}
           >
-          <Download className="h-4 w-4 mr-2"/>
-
-            Importer Excel
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Importer Excel</span>
           </Button>
-          
-          <Button onClick={() => setShowAddDialog(true)} disabled={loading}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvel Élève
+
+          <Button size="sm" onClick={() => setShowAddDialog(true)} disabled={loading}>
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nouvel Élève</span>
           </Button>
         </div>
       </div>
-      
+
       {/* Affichage des erreurs */}
       {renderError()}
-      
+
       {/* Statistiques */}
       {renderStats()}
-      
+
       {/* Table des élèves */}
       <DataTable
         data={students}
@@ -1347,20 +1347,20 @@ export const StudentsManagement: React.FC = () => {
         description={`${pagination.total} élèves au total`}
         onResetAllFilters={handleResetFilters}
       />
-      
+
       {/* =====================================================
           DIALOGS ET MODALES
           ===================================================== */}
-      
+
       {/* Dialog d'ajout d'élève (nouveau composant dédié) */}
       {showAddDialog && (
-        <AddStudentModal 
-          open={showAddDialog} 
+        <AddStudentModal
+          open={showAddDialog}
           onOpenChange={setShowAddDialog}
           onSuccess={() => { fetchStudents(); }}
         />
       )}
-      
+
       {/* Dialog de modification d'élève */}
       {showEditDialog && selectedStudent && (
         <AddStudentModal
@@ -1370,7 +1370,7 @@ export const StudentsManagement: React.FC = () => {
           studentId={selectedStudent.id} // Passer l'ID pour le mode édition
         />
       )}
-      
+
       {/* Dialog de suppression d'élève */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
@@ -1380,7 +1380,7 @@ export const StudentsManagement: React.FC = () => {
               Êtes-vous sûr de vouloir supprimer cet élève ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedStudent && (
             <div className="space-y-4">
               <div className="p-4 bg-gray-50 rounded-lg">
@@ -1388,7 +1388,7 @@ export const StudentsManagement: React.FC = () => {
                 <p><strong>Matricule :</strong> {selectedStudent.studentId}</p>
                 <p><strong>Classe :</strong> {selectedStudent.grade}</p>
               </div>
-              
+
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
@@ -1448,7 +1448,7 @@ export const StudentsManagement: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog d'import Excel */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
         <DialogContent>
@@ -1483,14 +1483,14 @@ export const StudentsManagement: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog de visualisation d'élève */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Détails de l'élève</DialogTitle>
           </DialogHeader>
-          
+
           {selectedStudent && (
             <div className="space-y-6">
               {/* En-tête élève */}

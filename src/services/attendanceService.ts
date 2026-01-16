@@ -24,7 +24,7 @@ export interface ManualAttendanceDto {
 }
 
 export interface JustificationDto {
-  reason: string;
+  justification: string;
 }
 
 const attendanceService = {

@@ -247,8 +247,8 @@ export function DataTable<T>({
               onClick={() => action.onClick(row)}
               disabled={action.disabled ? action.disabled(row) : false}
               className={
-                action.variant === 'destructive' ? 'text-red-600' : 
-                action.variant === 'success' ? 'text-green-600' : ''
+                action.variant === 'destructive' ? 'text-red-600' :
+                  action.variant === 'success' ? 'text-green-600' : ''
               }
             >
               {action.icon && <span className="mr-2">{action.icon}</span>}
@@ -267,43 +267,104 @@ export function DataTable<T>({
     if (!pagination || !onPageChange) return null;
 
     const { page, totalPages } = pagination;
-    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+    // Only show a subset of pages on mobile/tablet
+    const getVisiblePages = () => {
+      const pages = [];
+      const maxVisible = 5; // Show max 5 page buttons
+      let start = Math.max(1, page - Math.floor(maxVisible / 2));
+      let end = Math.min(totalPages, start + maxVisible - 1);
+
+      // Adjust start if we're near the end
+      if (end - start + 1 < maxVisible) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      return pages;
+    };
+
+    const visiblePages = getVisiblePages();
 
     return (
-      <div className="flex items-center justify-between px-2 py-4">
-        <div className="text-sm text-muted-foreground">
-          Page {page} sur {totalPages} ({pagination.total} éléments)
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 py-4">
+        <div className="text-sm text-muted-foreground text-center sm:text-left">
+          <span className="hidden sm:inline">Page {page} sur {totalPages} ({pagination.total} éléments)</span>
+          <span className="sm:hidden">{page}/{totalPages} • {pagination.total} élém.</span>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-center">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1 || loading}
+            className="px-2 sm:px-3"
           >
-            Précédent
+            <span className="hidden sm:inline">Précédent</span>
+            <span className="sm:hidden">←</span>
           </Button>
 
-          {pages.map(pageNumber => (
+          {/* Show first page + ellipsis if needed */}
+          {visiblePages[0] > 1 && (
+            <>
+              <Button
+                variant={page === 1 ? "default" : "outline"}
+                size="sm"
+                onClick={() => onPageChange(1)}
+                disabled={loading}
+                className="hidden sm:inline-flex w-8 h-8 p-0"
+              >
+                1
+              </Button>
+              {visiblePages[0] > 2 && (
+                <span className="hidden sm:inline text-muted-foreground px-1">...</span>
+              )}
+            </>
+          )}
+
+          {visiblePages.map(pageNumber => (
             <Button
               key={pageNumber}
               variant={page === pageNumber ? "default" : "outline"}
               size="sm"
               onClick={() => onPageChange(pageNumber)}
               disabled={loading}
+              className="w-8 h-8 p-0"
             >
               {pageNumber}
             </Button>
           ))}
+
+          {/* Show last page + ellipsis if needed */}
+          {visiblePages[visiblePages.length - 1] < totalPages && (
+            <>
+              {visiblePages[visiblePages.length - 1] < totalPages - 1 && (
+                <span className="hidden sm:inline text-muted-foreground px-1">...</span>
+              )}
+              <Button
+                variant={page === totalPages ? "default" : "outline"}
+                size="sm"
+                onClick={() => onPageChange(totalPages)}
+                disabled={loading}
+                className="hidden sm:inline-flex w-8 h-8 p-0"
+              >
+                {totalPages}
+              </Button>
+            </>
+          )}
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages || loading}
+            className="px-2 sm:px-3"
           >
-            Suivant
+            <span className="hidden sm:inline">Suivant</span>
+            <span className="sm:hidden">→</span>
           </Button>
         </div>
       </div>

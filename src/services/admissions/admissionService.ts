@@ -1,12 +1,12 @@
 import axios from 'axios';
 import { getApiUrl } from '../../config/api';
 import authService from '../authService';
-import { 
-  Admission, 
-  AdmissionDraft, 
-  CreateOnSiteAdmissionDTO, 
-  CreateDraftDTO, 
-  UpdateDraftDTO 
+import {
+  Admission,
+  AdmissionDraft,
+  CreateOnSiteAdmissionDTO,
+  CreateDraftDTO,
+  UpdateDraftDTO
 } from '../../types/admission';
 
 // Service HTTP avec authentification
@@ -43,7 +43,7 @@ export const admissionService = {
   // Créer une admission sur site
   createOnSiteAdmission: async (data: CreateOnSiteAdmissionDTO): Promise<Admission> => {
     const formData = new FormData();
-    
+
     // Append text fields
     Object.keys(data).forEach(key => {
       const value = (data as any)[key];
@@ -80,13 +80,13 @@ export const admissionService = {
       sexe: data.sexe,
       lieuDeNaissance: data.lieuDeNaissance,
       communeDeNaissance: data.communeDeNaissance,
-      
+
       // Mapping adresses selon spec backend
       adresseAdresseligne1: data.adresseLigne1,
       adresseDepartement: data.departement,
       adresseCommune: data.commune,
       adresseSectioncommunale: data.sectionCommunale,
-      
+
       nomMere: data.nomMere,
       prenomMere: data.prenomMere,
       nomPere: data.nomPere,
@@ -95,20 +95,22 @@ export const admissionService = {
       statutPere: data.statutPere,
       occupationMere: data.occupationMere,
       occupationPere: data.occupationPere,
-      
+
       handicap: data.handicap,
       handicapDetails: data.handicapDetails,
-      
+
       responsableFirstName: data.responsableFirstName,
       responsableLastName: data.responsableLastName,
-      responsableEmail: data.responsableEmail,
+      ...(data.responsableEmail && data.responsableEmail.trim() !== '' && { responsableEmail: data.responsableEmail }),
       responsablePhone: data.responsablePhone,
       lienParente: data.lienParente,
       responsableNif: data.responsableNif,
       responsableNinu: data.responsableNinu,
-      
-      vacation: data.vacation,
-      classe: data.classe
+
+      // Champs académiques requis
+      dernierEtablissementFrequente: data.dernierEtablissementFrequente,
+      numeroOrdre9emeAF: data.numeroOrdre9emeAF,
+      // Note: vacation et classe sont ignorés par le backend (valeurs par défaut)
     };
 
     console.log('🚀 [admissionService] Envoi payload admission en ligne:', JSON.stringify(payload, null, 2));
@@ -130,7 +132,7 @@ export const admissionService = {
   // Créer un brouillon
   createDraft: async (data: any): Promise<AdmissionDraft> => {
     const formData = new FormData();
-    
+
     // Champs principaux requis pour le listage
     if (data.firstName) formData.append('firstName', data.firstName);
     if (data.lastName) formData.append('lastName', data.lastName);
@@ -186,14 +188,14 @@ export const admissionService = {
   // Mettre à jour un brouillon
   updateDraft: async (draftId: string, data: any): Promise<AdmissionDraft> => {
     const formData = new FormData();
-    
+
     // Champs racines autorisés par le DTO backend
     const rootFields = [
-      'firstName', 'lastName', 'email', 'phone', 
-      'dateOfBirth', 'lieuDeNaissance', 'communeDeNaissance', 'sexe', 
+      'firstName', 'lastName', 'email', 'phone',
+      'dateOfBirth', 'lieuDeNaissance', 'communeDeNaissance', 'sexe',
       'notes', 'status', 'completionPercentage'
     ];
-    
+
     rootFields.forEach(field => {
       if (data[field] !== undefined && data[field] !== null) {
         formData.append(field, String(data[field]));
@@ -202,19 +204,19 @@ export const admissionService = {
 
     // Le reste des données va dans formData (JSON stringifié), sauf les fichiers
     const fileFields = [
-      'photoInscription', 'acteNaissance', 'bulletinPrecedent', 
+      'photoInscription', 'acteNaissance', 'bulletinPrecedent',
       'certificatMedical', 'justificatifDomicile', 'carteIdentiteParent'
     ];
-    
+
     // Créer une copie pour le JSON
     const jsonPayload: any = {};
     Object.keys(data).forEach(key => {
-       // On exclut les fichiers pour ne pas polluer le JSON
-       if (!fileFields.includes(key)) {
-         jsonPayload[key] = data[key];
-       }
+      // On exclut les fichiers pour ne pas polluer le JSON
+      if (!fileFields.includes(key)) {
+        jsonPayload[key] = data[key];
+      }
     });
-    
+
     formData.append('formData', JSON.stringify(jsonPayload));
 
     // Fichiers

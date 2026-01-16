@@ -16,8 +16,8 @@ export const addStudentSchema = z.object({
       const age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
       const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
-      return actualAge >= 5;
-    }, "L'étudiant doit avoir au moins 5 ans"),
+      return actualAge >= 13;
+    }, "L'étudiant doit avoir au moins 13 ans"),
 
   // Photo de profil
   avatar: z.instanceof(File).optional(),
@@ -28,21 +28,29 @@ export const addStudentSchema = z.object({
 
   // Administratif
   hasHandicap: z.boolean().default(false),
-  handicapDetails: z.string().optional(),
-  adresse: z.string().trim().min(1, "L'adresse est requise"),
+  handicapDetails: z.string().optional().nullable(),
+  // Adresse (champs séparés comme attendu par le backend)
+  adresseLigne1: z.string().trim().min(1, "L'adresse ligne 1 est requise"),
+  departement: z.string().trim().min(1, "Le département est requis"),
+  commune: z.string().trim().min(1, "La commune est requise"),
+  sectionCommunale: z.string().optional().nullable(),
   vacation: z.enum(['AM', 'PM'], { required_error: "La vacation est requise" }),
   niveauEnseignement: z.enum(['Fondamentale', 'Secondaire'], { required_error: "Le niveau d'enseignement est requis" }),
   grade: z.enum(['NSI', 'NSII', 'NSIII', 'NSIV'], { required_error: "Le niveau d'étude est requis" }),
+
+  // Informations scolaires additionnelles
+  numeroOrdre9e: z.string().optional().nullable(),
+  dernierEtablissement: z.string().optional().nullable(),
 
   // Parents (tous requis)
   nomMere: z.string().trim().min(1, "Le nom de la mère est requis"),
   prenomMere: z.string().trim().min(1, "Le prénom de la mère est requis"),
   statutMere: z.string().trim().min(1, "Le statut de la mère est requis"),
-  occupationMere: z.string().optional(),
+  occupationMere: z.string().optional().nullable(),
   nomPere: z.string().trim().min(1, "Le nom du père est requis"),
   prenomPere: z.string().trim().min(1, "Le prénom du père est requis"),
   statutPere: z.string().trim().min(1, "Le statut du père est requis"),
-  occupationPere: z.string().optional(),
+  occupationPere: z.string().optional().nullable(),
 
   // Responsable
   responsableMode: z.enum(['select', 'create'], { required_error: "Le mode responsable est requis" }),
@@ -52,17 +60,24 @@ export const addStudentSchema = z.object({
     lastName: z.string().optional(),
     lienParente: z.string().optional(),
     email: z.string().email("Email invalide").optional().or(z.literal("")),
-    // Validation pour PhoneInput : doit être un numéro valide si renseigné
+    // Validation pour PhoneInput : doit être un numéro valide si renseigné (pas vide)
     phone: z.string()
       .optional()
-      .or(z.literal(""))
-      .refine((val) => !val || isValidPhoneNumber(val), {
+      .refine((val) => !val || val === "" || isValidPhoneNumber(val), {
         message: "Numéro de téléphone invalide",
-      }), 
-    // NIF format: xxx-xxx-xxx-x (13 caractères)
-    nif: z.string().regex(/^\d{3}-\d{3}-\d{3}-\d{1}$/, "Le NIF doit respecter le format xxx-xxx-xxx-x").optional().or(z.literal("")),
-    // NINU format: 10 chiffres
-    ninu: z.string().regex(/^\d{10}$/, "Le NINU doit contenir exactement 10 chiffres").optional().or(z.literal("")),
+      }),
+    // NIF format: xxx-xxx-xxx-x (13 caractères) - optionnel, valide seulement si renseigné
+    nif: z.string()
+      .optional()
+      .refine((val) => !val || val === "" || /^\d{3}-\d{3}-\d{3}-\d{1}$/.test(val), {
+        message: "Le NIF doit respecter le format xxx-xxx-xxx-x",
+      }),
+    // NINU format: 10 chiffres - optionnel, valide seulement si renseigné
+    ninu: z.string()
+      .optional()
+      .refine((val) => !val || val === "" || /^\d{10}$/.test(val), {
+        message: "Le NINU doit contenir exactement 10 chiffres",
+      }),
   }).optional(),
 
   // Classe et salle
@@ -73,10 +88,10 @@ export const addStudentSchema = z.object({
   if (data.responsableMode === 'select') {
     return data.personneResponsableId && data.personneResponsableId.length > 0;
   } else if (data.responsableMode === 'create') {
-    return data.responsable && 
-           data.responsable.firstName && 
-           data.responsable.lastName && 
-           data.responsable.lienParente;
+    return data.responsable &&
+      data.responsable.firstName &&
+      data.responsable.lastName &&
+      data.responsable.lienParente;
   }
   return false;
 }, {

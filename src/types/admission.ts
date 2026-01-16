@@ -100,6 +100,8 @@ export interface CreateOnSiteAdmissionDTO {
   departement: string;
   commune: string;
   sectionCommunale?: string;
+  dernierEtablissementFrequente: string;
+  numeroOrdre9emeAF: string;
   vacation: string;
   classe?: string;
   nomMere: string;
