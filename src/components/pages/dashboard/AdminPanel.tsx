@@ -14,24 +14,21 @@
 import React, { useState, useEffect } from 'react';
 import {
     Users,
-    Shield,
     Settings,
-    Database,
     Activity,
-    AlertTriangle,
-    Download,
-    Upload,
     Trash2,
     Eye,
     Edit,
     Plus,
     RefreshCw,
-    Save,
     Lock,
-    Key,
     CheckCircle,
     X,
-    Archive
+    FileText,
+    Layout,
+    Book,
+    Image,
+    ShieldUser,
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
@@ -72,27 +69,15 @@ import { useUserStore } from '../../../stores/userStore';
 import { useStudentStore } from '../../../stores/studentStore';
 import { useEmployeeStore } from '../../../stores/employeeStore';
 import { toast } from 'react-toastify';
-import type { SettingKey, SettingsGroup } from '../../../types/setting';
 import ArchivesTab from './ArchivesTab';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import '../../../styles/phone-input.css';
 
 // Types pour les données d'administration
-interface SystemUser {
-    id: string;
-    username: string;
-    email: string;
-    role: 'admin' | 'manager' | 'user' | 'viewer';
-    status: 'active' | 'inactive' | 'suspended';
-    lastLogin: string;
-    permissions: string[];
-    createdAt: string;
-}
-
 interface SystemLog {
     id: string;
-    level: 'info' | 'warning' | 'error' | 'critical';
+    level: 'info' | 'warning' | 'error' | 'critical' | 'success';
     message: string;
     user?: string;
     timestamp: string;
@@ -100,78 +85,11 @@ interface SystemLog {
     details?: string;
 }
 
-interface SystemConfig {
-    schoolName: string;
-    schoolAddress: string;
-    schoolPhone: string;
-    schoolEmail: string;
-    academicYear: string;
-    maxStudentsPerClass: number;
-    backupFrequency: 'daily' | 'weekly' | 'monthly';
-    maintenanceMode: boolean;
-    emailNotifications: boolean;
-    smsNotifications: boolean;
-    autoBackup: boolean;
-    sessionTimeout: number;
-    maxLoginAttempts: number;
-}
 
-interface BackupInfo {
-    id: string;
-    filename: string;
-    size: string;
-    type: 'full' | 'incremental';
-    status: 'completed' | 'failed' | 'in_progress';
-    createdAt: string;
-    duration: string;
-}
-
-// Nouveaux types pour les années académiques et classes
-interface AcademicYear {
-    id: string;
-    name: string;
-    startDate: string;
-    endDate: string;
-    status: 'active' | 'inactive' | 'planned' | 'completed';
-    isCurrent: boolean;
-    description?: string;
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface SchoolClass {
-    id: string;
-    level: 'NSI' | 'NSII' | 'NSIII' | 'NSIV';
-    roomName: string;
-    status: 'active' | 'inactive';
-    createdAt: string;
-    updatedAt: string;
-}
 
 const AdminPanel: React.FC = () => { // États locaux
     const [activeTab, setActiveTab] = useState('overview');
-    const [users, setUsers] = useState<SystemUser[]>([]);
     const [logs, setLogs] = useState<SystemLog[]>([]);
-    const [config, setConfig] = useState<SystemConfig>({
-        schoolName: 'Lycée National Charlemagne Péralte',
-        schoolAddress: '123 Rue de l\'Éducation, Port-au-Prince, Haïti',
-        schoolPhone: '+509 1234-5678',
-        schoolEmail: 'contact@lncp.edu.ht',
-        academicYear: '2024-2025',
-        maxStudentsPerClass: 35,
-        backupFrequency: 'daily',
-        maintenanceMode: false,
-        emailNotifications: true,
-        smsNotifications: false,
-        autoBackup: true,
-        sessionTimeout: 30,
-        maxLoginAttempts: 5
-    });
-    const [backups, setBackups] = useState<BackupInfo[]>([]);
-    const [showUserDialog, setShowUserDialog] = useState(false);
-    const [showConfigDialog, setShowConfigDialog] = useState(false);
-    // const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
-
     // Store Zustand pour les années académiques
     const {
         academicYears,
@@ -180,9 +98,6 @@ const AdminPanel: React.FC = () => { // États locaux
         error: academicYearError,
         fetchAllAcademicYears,
         fetchCurrentAcademicYear,
-        createAcademicYear,
-        setCurrentAcademicYear,
-        clearError
     } = useAcademicYearStore();
     const [showAcademicYearDialog, setShowAcademicYearDialog] = useState(false);
 
@@ -223,14 +138,25 @@ const AdminPanel: React.FC = () => { // États locaux
         fetchAll: fetchAllClassrooms,
     } = useClassroomStore();
 
-    // const [selectedAcademicYear, setSelectedAcademicYear] = useState<AcademicYear | null>(null);
-    // const [selectedClass, setSelectedClass] = useState<SchoolClass | null>(null);
 
     // Fonction helper pour récupérer un paramètre par clé
     const getSettingValue = (key: string, defaultValue: string = '-') => {
         const setting = allSettings.find(s => s.key === key);
         return setting?.value || defaultValue;
     };
+
+
+    // Charger les données
+    useEffect(() => {
+        fetchAllAcademicYears();
+        fetchCurrentAcademicYear();
+        fetchMaintenanceStatus();
+        fetchUsers();
+        fetchStudents();
+        fetchEmployees();
+        fetchAllClassrooms();
+        fetchSettings();
+    }, [fetchAllAcademicYears, fetchCurrentAcademicYear, fetchMaintenanceStatus, fetchUsers, fetchStudents, fetchEmployees, fetchAllClassrooms, fetchSettings]);
 
     // Fonction pour générer des logs dynamiques basés sur les stats réelles
     const generateDynamicLogs = () => {
@@ -307,24 +233,8 @@ const AdminPanel: React.FC = () => { // États locaux
             });
         }
 
-        // Si on a assez de logs, on les utilise, sinon on garde les logs par défaut
-        if (dynamicLogs.length >= 3) {
-            setLogs(dynamicLogs);
-        }
+        setLogs(dynamicLogs);
     };
-
-    // Charger les données
-    useEffect(() => {
-        loadAdminData();
-        fetchAllAcademicYears();
-        fetchCurrentAcademicYear();
-        fetchMaintenanceStatus();
-        fetchUsers();
-        fetchStudents();
-        fetchEmployees();
-        fetchAllClassrooms();
-        fetchSettings();
-    }, [fetchAllAcademicYears, fetchCurrentAcademicYear, fetchMaintenanceStatus, fetchUsers, fetchStudents, fetchEmployees, fetchAllClassrooms, fetchSettings]);
 
     // Générer des logs dynamiques quand les données sont chargées
     useEffect(() => {
@@ -333,123 +243,6 @@ const AdminPanel: React.FC = () => { // États locaux
         }
     }, [userStats, studentStats, employeeStats, currentAcademicYear, maintenanceMode]);
 
-    const loadAdminData = () => {
-        // Générer des logs basés sur les vraies activités du système
-        const now = new Date();
-        const formatDate = (date: Date) => {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            const seconds = String(date.getSeconds()).padStart(2, '0');
-            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-        };
-
-        const systemLogs: SystemLog[] = [
-            {
-                id: '1',
-                level: 'info',
-                message: 'Système démarré avec succès',
-                user: 'system',
-                timestamp: formatDate(new Date(now.getTime() - 5 * 60000)),
-                module: 'system'
-            },
-            {
-                id: '2',
-                level: 'info',
-                message: 'Chargement des données utilisateurs depuis l\'API',
-                user: 'system',
-                timestamp: formatDate(new Date(now.getTime() - 4 * 60000)),
-                module: 'api'
-            },
-            {
-                id: '3',
-                level: 'info',
-                message: 'Chargement des paramètres de l\'école',
-                user: 'system',
-                timestamp: formatDate(new Date(now.getTime() - 3 * 60000)),
-                module: 'settings'
-            },
-            {
-                id: '4',
-                level: 'info',
-                message: 'Synchronisation avec le backend réussie',
-                user: 'system',
-                timestamp: formatDate(new Date(now.getTime() - 2 * 60000)),
-                module: 'sync'
-            },
-            {
-                id: '5',
-                level: 'info',
-                message: 'Administration panel chargé',
-                user: 'admin',
-                timestamp: formatDate(new Date(now.getTime() - 1 * 60000)),
-                module: 'ui'
-            }
-        ];
-
-        setLogs(systemLogs);
-
-        // Générer des sauvegardes basées sur les dates récentes
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        setBackups([
-            {
-                id: '1',
-                filename: `backup_${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, '0')}_${String(today.getDate()).padStart(2, '0')}_020000.sql`,
-                size: '2.5 GB',
-                type: 'full',
-                status: 'completed',
-                createdAt: formatDate(new Date(today.setHours(2, 0, 0, 0))),
-                duration: '15 min'
-            },
-            {
-                id: '2',
-                filename: `backup_${yesterday.getFullYear()}_${String(yesterday.getMonth() + 1).padStart(2, '0')}_${String(yesterday.getDate()).padStart(2, '0')}_020000.sql`,
-                size: '2.3 GB',
-                type: 'full',
-                status: 'completed',
-                createdAt: formatDate(new Date(yesterday.setHours(2, 0, 0, 0))),
-                duration: '12 min'
-            }
-        ]);
-
-        setUsers([
-            {
-                id: '1',
-                username: 'admin',
-                email: 'admin@lncp.edu.ht',
-                role: 'admin',
-                status: 'active',
-                lastLogin: formatDate(new Date(now.getTime() - 30 * 60000)),
-                permissions: ['read', 'write', 'delete'],
-                createdAt: formatDate(new Date(now.getTime() - 30 * 24 * 60 * 60000))
-            },
-            {
-                id: '2',
-                username: 'manager',
-                email: 'manager@lncp.edu.ht',
-                role: 'manager',
-                status: 'active',
-                lastLogin: formatDate(new Date(now.getTime() - 60 * 60000)),
-                permissions: ['read', 'write'],
-                createdAt: formatDate(new Date(now.getTime() - 45 * 24 * 60 * 60000))
-            },
-            {
-                id: '3',
-                username: 'viewer',
-                email: 'viewer@lncp.edu.ht',
-                role: 'viewer',
-                status: 'inactive',
-                lastLogin: formatDate(new Date(now.getTime() - 3 * 24 * 60 * 60000)),
-                permissions: ['read'],
-                createdAt: formatDate(new Date(now.getTime() - 60 * 24 * 60 * 60000))
-            }
-        ]);
-    };
 
     const getLogLevelBadge = (level: string) => {
         switch (level) {
@@ -461,66 +254,13 @@ const AdminPanel: React.FC = () => { // États locaux
                 return <Badge className="bg-red-100 text-red-800">Erreur</Badge>;
             case 'critical':
                 return <Badge className="bg-red-600 text-white">Critique</Badge>;
+            case 'success':
+                return <Badge className="bg-green-100 text-green-800">Succès</Badge>;
             default:
                 return <Badge variant="outline"> {level}</Badge>;
         }
     };
 
-
-
-    const getRoleBadge = (role: string) => {
-        switch (role) {
-            case 'admin':
-                return <Badge className="bg-red-100 text-red-800">Administrateur</Badge>;
-            case 'manager':
-                return <Badge className="bg-blue-100 text-blue-800">Gestionnaire</Badge>;
-            case 'user':
-                return <Badge className="bg-green-100 text-green-800">Utilisateur</Badge>;
-            case 'viewer':
-                return <Badge className="bg-gray-100 text-gray-800">Lecteur</Badge>;
-            default:
-                return <Badge variant="outline"> {role}</Badge>;
-        }
-    };
-
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'active':
-                return <Badge className="bg-green-100 text-green-800">Actif</Badge>;
-            case 'inactive':
-                return <Badge className="bg-gray-100 text-gray-800">Inactif</Badge>;
-            case 'suspended':
-                return <Badge className="bg-red-100 text-red-800">Suspendu</Badge>;
-            default:
-                return <Badge variant="outline"> {status}</Badge>;
-        }
-    };
-
-    const getAcademicYearStatusBadge = (status: string) => {
-        switch (status) {
-            case 'active':
-                return <Badge className="bg-green-100 text-green-800">En cours</Badge>;
-            case 'inactive':
-                return <Badge className="bg-gray-100 text-gray-800">Inactive</Badge>;
-            case 'planned':
-                return <Badge className="bg-blue-100 text-blue-800">Planifiée</Badge>;
-            case 'completed':
-                return <Badge className="bg-purple-100 text-purple-800">Terminée</Badge>;
-            default:
-                return <Badge variant="outline"> {status}</Badge>;
-        }
-    };
-
-    const getClassStatusBadge = (status: string) => {
-        switch (status) {
-            case 'active':
-                return <Badge className="bg-green-100 text-green-800">Active</Badge>;
-            case 'inactive':
-                return <Badge className="bg-gray-100 text-gray-800">Inactive</Badge>;
-            default:
-                return <Badge variant="outline"> {status}</Badge>;
-        }
-    };
 
     return (<div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6"> {/* En-tête */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -535,13 +275,7 @@ const AdminPanel: React.FC = () => { // États locaux
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
 
-                <Button onClick={
-                    () => {
-                        setActiveTab('settings');
-                        // Le dialog sera ouvert par le composant SettingsTab via un état partagé
-                    }
-                }
-                    className="flex-1 sm:flex-none text-xs sm:text-sm">
+                <Button onClick={() => setActiveTab('settings')} className="flex-1 sm:flex-none text-xs sm:text-sm">
                     <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">Configuration</span>
                     <span className="sm:hidden">Config</span>
@@ -566,18 +300,20 @@ const AdminPanel: React.FC = () => { // États locaux
                         <SelectItem value="classes"> Classes</SelectItem>
                         <SelectItem value="archives"> Archives</SelectItem>
                         <SelectItem value="settings"> Paramètres</SelectItem>
+                        <SelectItem value="site"> Site</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
 
             {/* Menu desktop - Tabs */}
-            <TabsList className="hidden lg:grid w-full grid-cols-6 h-auto">
+            <TabsList className="hidden lg:grid w-full grid-cols-7 h-auto">
                 <TabsTrigger value="overview" className="text-xs xl:text-sm py-2">Vue d'ensemble</TabsTrigger>
                 <TabsTrigger value="users" className="text-xs xl:text-sm py-2">Utilisateurs</TabsTrigger>
                 <TabsTrigger value="academic-years" className="text-xs xl:text-sm py-2">Années Acad.</TabsTrigger>
                 <TabsTrigger value="classes" className="text-xs xl:text-sm py-2">Classes</TabsTrigger>
                 <TabsTrigger value="archives" className="text-xs xl:text-sm py-2">Archives</TabsTrigger>
                 <TabsTrigger value="settings" className="text-xs xl:text-sm py-2">Paramètres</TabsTrigger>
+                <TabsTrigger value="site" className="text-xs xl:text-sm py-2">Site</TabsTrigger>
             </TabsList>
 
             {/* Vue d'ensemble */}
@@ -662,6 +398,7 @@ const AdminPanel: React.FC = () => { // États locaux
                             </div>
                         </CardContent>
                     </Card>
+
                 </div>
 
                 {/* Configuration rapide */}
@@ -733,6 +470,7 @@ const AdminPanel: React.FC = () => { // États locaux
                             }</div>
                         </CardContent>
                     </Card>
+
                 </div>
             </TabsContent>
 
@@ -761,106 +499,14 @@ const AdminPanel: React.FC = () => { // États locaux
                 <SettingsTab />
             </TabsContent>
 
+            {/* Gestion du site */}
+            <TabsContent value="site" className="space-y-6">
+                <SiteTab />
+            </TabsContent>
+
         </Tabs>
 
         {/* Dialogues */}
-
-        {/* Dialogue de configuration */}
-        <Dialog open={showConfigDialog}
-            onOpenChange={setShowConfigDialog}>
-            <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>Configuration Système</DialogTitle>
-                    <DialogDescription>
-                        Modifiez les paramètres généraux du système
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label>Nom de l'école</Label>
-                            <Input value={
-                                config.schoolName
-                            }
-                                onChange={
-                                    (e) => setConfig({
-                                        ...config,
-                                        schoolName: e.target.value
-                                    })
-                                } />
-                        </div>
-                        <div>
-                            <Label>Année Académique</Label>
-                            <Input value={
-                                config.academicYear
-                            }
-                                onChange={
-                                    (e) => setConfig({
-                                        ...config,
-                                        academicYear: e.target.value
-                                    })
-                                } />
-                        </div>
-                    </div>
-                    <div>
-                        <Label>Adresse</Label>
-                        <Input value={
-                            config.schoolAddress
-                        }
-                            onChange={
-                                (e) => setConfig({
-                                    ...config,
-                                    schoolAddress: e.target.value
-                                })
-                            } />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label>Téléphone</Label>
-                            <Input value={
-                                config.schoolPhone
-                            }
-                                onChange={
-                                    (e) => setConfig({
-                                        ...config,
-                                        schoolPhone: e.target.value
-                                    })
-                                } />
-                        </div>
-                        <div>
-                            <Label>Email</Label>
-                            <Input value={
-                                config.schoolEmail
-                            }
-                                onChange={
-                                    (e) => setConfig({
-                                        ...config,
-                                        schoolEmail: e.target.value
-                                    })
-                                } />
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <Button variant="outline"
-                            onClick={
-                                () => setShowConfigDialog(false)
-                            }>
-                            Annuler
-                        </Button>
-                        <Button onClick={
-                            () => setShowConfigDialog(false)
-                        }>
-                            <Save className="h-4 w-4 mr-2" />
-                            Sauvegarder
-                        </Button>
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
-
-
-
-
         {/* Section de création de classe fictive retirée: gérée par l'onglet Classes */} </div>);
 };
 
@@ -2200,7 +1846,7 @@ const SettingsTab: React.FC = () => {
         { value: "SMS_GATEWAY_API_KEY", label: "📱 Clé API SMS" },
         { value: "BACKUP_FREQUENCY", label: "💾 Fréquence de sauvegarde" },
     ];
-   
+
     // Form states
     const [formData, setFormData] = useState({
         key: '',
@@ -2254,10 +1900,10 @@ const SettingsTab: React.FC = () => {
             // Clé prédéfinie : remplir automatiquement
             setSelectedKey(key);
             const { SETTING_KEY_LABELS, SETTING_KEY_DESCRIPTIONS, SETTING_KEY_GROUPS } = require('../../../types/setting');
-            
+
             // Déterminer le groupe : Mapping local > Mapping importé > GENERAL
             const group = LOCAL_GROUP_MAPPING[key] || SETTING_KEY_GROUPS[key] || 'GENERAL';
-            
+
             // Trouver le label correspondant dans les options prédéfinies
             const predefinedOpt = PREDEFINED_OPTIONS.find(opt => opt.value === key);
             // Utiliser le label importé ou celui de la liste locale (en enlevant l'emoji si besoin pour stocker proprement, ou garder tel quel)
@@ -2272,9 +1918,9 @@ const SettingsTab: React.FC = () => {
             } else if (key === 'DEFAULT_EMAIL_SENDER') {
                 defaultValue = 'no-reply@lnch.edu.ht';
             } else if (key === 'ADMISSION_PERIODE') {
-                 defaultValue = 'YES';
+                defaultValue = 'YES';
             } else if (key === 'BACKUP_FREQUENCY') {
-                 defaultValue = 'DAILY';
+                defaultValue = 'DAILY';
             } else if (['MOYENNE_PASSAGE_CONCOURS', 'MOYENNE_REPECHAGE_CONCOURS'].includes(key)) {
                 defaultValue = 'DECROISSANT';
             }
@@ -3344,6 +2990,130 @@ const UsersTab: React.FC = () => {
                     </div>
                 </DialogContent>
             </Dialog>
+        </div>
+    );
+};
+
+// ---- Tab component: Site ----
+const SiteTab: React.FC = () => {
+    return (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+            <Card className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <ShieldUser className="h-5 w-5 text-blue-500" />
+                        Administration de L'ecole
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                            <span>Mode Public</span>
+                            <Badge className="bg-green-100 text-green-700 border-none">Activé</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                            <span>Commentaires</span>
+                            <Badge variant="outline">Désactivés</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                            <span>Commentaires</span>
+                            <Badge variant="outline">Désactivés</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                            <span>Commentaires</span>
+                            <Badge variant="outline">Désactivés</Badge>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 mt-4">
+                        <Button variant="outline" size="sm" className="flex items-center gap-1 text-primary hover:text-primary">
+                            <Plus className="h-3 w-3" /> Nouveau
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Image className="h-5 w-5 text-indigo-500" />
+                        Gallery & Slides
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 border border-transparent hover:border-gray-100">
+                                <div className="h-8 w-8 rounded bg-gray-100 flex items-center justify-center">
+                                    <FileText className="h-4 w-4 text-gray-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">Annonce de la rentrée 2026</p>
+                                    <p className="text-xs text-gray-500">Publié le 15 Janv.</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                        <Button variant="outline" size="sm" className="flex items-center gap-1 text-primary hover:text-primary">
+                            <Plus className="h-3 w-3" /> Gallery
+                        </Button>
+                        <Button variant="outline" size="sm" className="flex items-center gap-1 text-primary hover:text-primary">
+                            <Plus className="h-3 w-3" /> Slides
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Layout className="h-5 w-5 text-purple-500" />
+                        Configuration
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                            <span>A propos</span>
+                            <Badge className="bg-green-100 text-green-700 border-none">Activé</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                            <span>Mission</span>
+                            <Badge variant="outline">Désactivés</Badge>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 mt-4">
+                        <Button variant="outline" size="sm" className="flex items-center gap-1 text-primary hover:text-primary">
+                            <Plus className="h-3 w-3" /> Nouveau
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Book className="h-5 w-5 text-purple-500" />
+                        Programmes
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                            <span>Mode Public</span>
+                            <Badge className="bg-green-100 text-green-700 border-none">Activé</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                            <span>Commentaires</span>
+                            <Badge variant="outline">Désactivés</Badge>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 mt-4">
+                        <Button variant="outline" size="sm" className="flex items-center gap-1 text-primary hover:text-primary">
+                            <Plus className="h-3 w-3" /> Nouveau
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 };

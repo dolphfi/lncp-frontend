@@ -475,16 +475,14 @@ const AppSidebar = () => {
             <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate('/profile')}>Profil</DropdownMenuItem>
-            <DropdownMenuItem>Paramètres</DropdownMenuItem>
-            <DropdownMenuItem>Équipe</DropdownMenuItem>
-            <DropdownMenuItem>Abonnement</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               disabled={isLoading}
               onClick={() => {
                 logout()
-                navigate('/login', { replace: true })
+                navigate('/', { replace: true })
               }}
+              className="text-red-500"
             >
               Déconnexion
             </DropdownMenuItem>
